@@ -1,6 +1,6 @@
 [package]
 name = "xuxian-desktop"
-version = "2.2.0"
+version = "2.3.0"
 edition = "2021"
 license = "MIT"
 description = "叙线离线剧本编辑器"
@@ -16,13 +16,24 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
-tauri-plugin-single-instance = "2"
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+tempfile = "3"
 xuxian-story-store = { path = "../crates/story-store" }
 xuxian-github-sync = { path = "../crates/github-sync" }
 
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
+
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls-native-roots", "rustls-tls-webpki-roots", "system-proxy"] }
+base64 = "0.22"
+minisign-verify = "0.3"
+sha2 = "0.10"
+semver = "1"
 

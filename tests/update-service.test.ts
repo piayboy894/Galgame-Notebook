@@ -24,6 +24,14 @@ function setup() {
 }
 
 describe("user-controlled updater", () => {
+  it("hands Android installation to the system without forcing a relaunch", async () => {
+    const { service, port } = setup();
+    port.requiresUserInstall = true;
+    await service.check();
+    await service.install(async () => true);
+    expect(service.state.phase).toBe("awaiting-install");
+    expect(port.relaunch).not.toHaveBeenCalled();
+  });
   it("stays offline until the user checks and never installs during a check", async () => {
     const { service, port, update } = setup();
     expect(port.check).not.toHaveBeenCalled();

@@ -2,13 +2,42 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { CommandBody, NativeError } from "../domain/contracts";
 
-export const isDesktop = isTauri();
+export const isNative = isTauri();
+export const isAndroid =
+  isNative &&
+  (window as Window & { __XUXIAN_ANDROID__?: boolean }).__XUXIAN_ANDROID__ ===
+    true;
+export const isDesktop = isNative && !isAndroid;
+export const credentialStoreName = isAndroid
+  ? "Android Keystore"
+  : "Windows 凭据管理器";
+export const projectStorageName = isAndroid
+  ? "本机 · 应用项目库"
+  : "本地 · 文档/叙线/剧本项目";
+let draftEpoch: number | null = null;
+let draftSequence = 0;
+export async function readMobileDraft(): Promise<any> {
+  const result = await nativeCommand("mobile/read-draft");
+  draftEpoch = result.epoch;
+  draftSequence = 0;
+  return result;
+}
+export async function writeMobileDraft(data: CommandBody): Promise<void> {
+  if (draftEpoch === null) return;
+  await nativeCommand("mobile/save-draft", {
+    ...data,
+    epoch: draftEpoch,
+    sequence: ++draftSequence,
+  });
+}
 
-export async function desktopCommand(
+export async function nativeCommand(
   endpoint: string,
   body: CommandBody = {},
 ): Promise<any> {
   try {
+    if (endpoint.startsWith("mobile/"))
+      return await invoke("mobile_command", { endpoint, body });
     if (endpoint.startsWith("sync/")) {
       return await invoke("github_sync_command", { endpoint, body });
     }
@@ -16,12 +45,22 @@ export async function desktopCommand(
       return await invoke("import_folder");
     }
     if (endpoint === "export") {
+      if (isAndroid)
+        return await invoke("mobile_command", {
+          endpoint: "mobile/export",
+          body,
+        });
       return await invoke("export_file", {
         name: String(body.name),
         text: String(body.text),
       });
     }
     if (endpoint === "shutdown") {
+      if (isAndroid)
+        return await invoke("mobile_command", {
+          endpoint: "mobile/background",
+          body: {},
+        });
       await getCurrentWindow().destroy();
       return { stopped: true };
     }

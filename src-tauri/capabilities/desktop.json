@@ -1,0 +1,7 @@
+{
+  "identifier": "desktop-updates",
+  "description": "Desktop window controls and signed desktop updates.",
+  "windows": ["main"],
+  "platforms": ["windows", "macOS", "linux"],
+  "permissions": ["core:window:allow-destroy", "updater:default", "process:allow-restart"]
+}

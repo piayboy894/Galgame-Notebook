@@ -1,0 +1,4 @@
+{
+  "app": { "windows": [{ "label": "main", "title": "叙线", "minWidth": 0, "minHeight": 0, "dragDropEnabled": false }] },
+  "bundle": { "createUpdaterArtifacts": false, "android": { "minSdkVersion": 26 } }
+}

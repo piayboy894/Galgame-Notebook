@@ -1,11 +1,12 @@
 import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
 import { findRow } from "../domain/scenes.js";
+import { initializeMobile } from "./mobile.js";
 import { oneClickSync, showGitHubProjects } from "./github-sync.js";
 import { uid, clone } from "../domain/primitives.js";
 import { line } from "../domain/project.js";
 import { showUpdates, configureUpdates } from "../ui/update-dialog";
-import { isDesktop, onDesktopClose } from "../platform/desktop";
+import { isNative, isAndroid, onDesktopClose } from "../platform/runtime";
 import { version as VERSION } from "../../package.json";
 import {
   centerBoard,
@@ -108,6 +109,12 @@ export // Event delegation keeps document state independent of the current view.
 function dispatch(action, el) {
   const id = el.dataset.id;
   switch (action) {
+    case "board-list":
+    case "board-graph":
+      state.boardPresentation = action === "board-list" ? "list" : "graph";
+      render();
+      persist();
+      break;
     case "board":
       go("board");
       break;
@@ -394,7 +401,11 @@ document.addEventListener("click", (ev) => {
     ) {
       selectRow(row.dataset.branchRow || row.dataset.row, {
         shift: ev.shiftKey,
-        toggle: ev.ctrlKey || ev.metaKey,
+        toggle:
+          ev.ctrlKey ||
+          ev.metaKey ||
+          ev.pointerType === "touch" ||
+          ev.pointerType === "pen",
       });
       if (interactive && !gutter && (ev.shiftKey || ev.ctrlKey || ev.metaKey))
         ev.preventDefault();
@@ -677,21 +688,22 @@ document.addEventListener("keydown", (ev) => {
 });
 
 $("#source-folder-btn").innerHTML = ico("folder");
-$("#source-folder-btn").hidden = !isDesktop;
+$("#source-folder-btn").hidden = !isNative || isAndroid;
 $("#source-folder-btn").onclick = revealSource;
-$("#sync-btn").hidden = !isDesktop;
+$("#sync-btn").hidden = !isNative;
 $("#sync-btn").onclick = oneClickSync;
-$("#library-github").hidden = !isDesktop;
+$("#library-github").hidden = !isNative;
 $("#library-github").onclick = showGitHubProjects;
 $("#library-update").onclick = showUpdates;
 
 $("#library-migrate").onclick = importLegacyProjects;
 
-$("#library-migrate").hidden = !isDesktop;
+$("#library-migrate").hidden = !isNative || isAndroid;
 
 $("#library-refresh").innerHTML = ico("reset");
 
 $("#library-folder").innerHTML = ico("folder");
+$("#library-folder").hidden = isAndroid;
 
 $("#library-folder").onclick = async () => {
   if (!BRIDGE) return;
@@ -812,7 +824,7 @@ window.addEventListener("blur", () => {
 });
 
 configureUpdates(async () => {
-  if (state.dirty) {
+  if (state.dirty || state.exported) {
     const ok = await saveSource();
     if (!ok || state.dirty) return false;
   }
@@ -828,3 +840,4 @@ window.XuXian = Object.freeze({
 });
 
 boot();
+initializeMobile();

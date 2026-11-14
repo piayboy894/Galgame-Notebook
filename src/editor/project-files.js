@@ -1,5 +1,10 @@
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
-import { desktopCommand, isDesktop } from "../platform/desktop";
+import {
+  nativeCommand,
+  isNative,
+  isAndroid,
+  projectStorageName,
+} from "../platform/runtime";
 import { normalizeProject, newProject } from "../domain/project.js";
 import { clone, uid, now } from "../domain/primitives.js";
 import { persist, render, ruleTitle, toast, updateTop } from "./session.js";
@@ -125,10 +130,11 @@ export async function restoreHandle() {
 }
 
 export async function bridgeCall(endpoint, data = {}) {
-  return desktopCommand(endpoint, data);
+  return nativeCommand(endpoint, data);
 }
 
-export function showProjectLibrary() {
+export function showProjectLibrary(asRoot = false) {
+  state.libraryAtRoot = asRoot === true;
   if (!BRIDGE) $("#library-folder").classList.add("hidden");
   $("#library-close").classList.toggle(
     "hidden",
@@ -145,6 +151,7 @@ export function showProjectLibrary() {
 }
 
 export function closeProjectLibrary() {
+  state.libraryAtRoot = false;
   $("#project-library").classList.add("hidden");
 }
 
@@ -163,9 +170,7 @@ export function renderProjectLibrary() {
   counter.textContent = state.libraryItems.length
     ? `${state.libraryItems.length} 个项目`
     : "";
-  status.textContent = state.libraryBusy
-    ? "读取中…"
-    : "本地 · 文档/叙线/剧本项目";
+  status.textContent = state.libraryBusy ? "读取中…" : projectStorageName;
   box.innerHTML =
     state.libraryItems
       .map(
@@ -238,7 +243,7 @@ export async function refreshProjectLibrary() {
     toast("项目列表读取失败：" + e.message, true);
   } finally {
     state.libraryBusy = false;
-    $("#library-status").textContent = "本地 · 文档/叙线/剧本项目";
+    $("#library-status").textContent = projectStorageName;
   }
 }
 
@@ -382,7 +387,21 @@ export function deleteManagedProject(p) {
   );
 }
 
-export function importSourceAction() {
+export async function importSourceAction() {
+  if (isAndroid) {
+    try {
+      const result = await nativeCommand("mobile/import");
+      if (result.cancelled) return;
+      await importSelectedSource(
+        new File([result.text], result.name || "剧本.story.json", {
+          type: "application/json",
+        }),
+      );
+    } catch (error) {
+      toast("导入失败：" + error.message, true);
+    }
+    return;
+  }
   if (BRIDGE || !window.showOpenFilePicker) {
     $("#file-input").click();
   } else openStandaloneSource();
@@ -445,6 +464,7 @@ export function adopt(
   state.view = { type: "board" };
   state.zoom = 1;
   state.boardScroll = { x: 0, y: 0 };
+  state.boardPresentation = "auto";
   state.connectFrom = null;
   state.sim = {
     active: false,
@@ -529,9 +549,9 @@ export function fileName() {
 }
 
 export async function downloadText(text, name, type = "application/json") {
-  if (isDesktop) {
+  if (isNative) {
     try {
-      const r = await desktopCommand("export", { name, text });
+      const r = await nativeCommand("export", { name, text });
       return !r.cancelled;
     } catch (e) {
       toast("导出失败：" + e.message, true);

@@ -1,5 +1,5 @@
 import { GitHubSyncService } from "../application/sync-service";
-import { isDesktop } from "../platform/desktop";
+import { isNative, credentialStoreName } from "../platform/runtime";
 import { normalizeProject } from "../domain/project.js";
 import { $, $$, attr, btn, esc, option, state } from "./context.js";
 import {
@@ -41,7 +41,7 @@ function displayTime(time) {
 }
 
 export async function showSyncSettings(library = false, onConnected = null) {
-  if (!isDesktop) return toast("GitHub 同步请使用 Windows 桌面版", true);
+  if (!isNative) return toast("GitHub 同步请使用叙线应用", true);
   let settings;
   try {
     settings = await bridgeCall("sync/settings", {
@@ -61,7 +61,7 @@ export async function showSyncSettings(library = false, onConnected = null) {
     ${connections.length ? `<div class="field"><label for="sync-existing">已有连接</label><select class="input" id="sync-existing">${option("", "新连接", initial?.id)}${connections.map((item) => option(item.id, `${item.connection.owner}/${item.connection.repo} · ${item.connection.directory}`, initial?.id)).join("")}</select></div>` : ""}
     <div class="field"><label for="sync-repository">GitHub 私有仓库</label><input class="input" id="sync-repository" placeholder="https://github.com/用户名/xuxian-data" autocomplete="off" autofocus></div>
     <div class="sync-fields"><div class="field"><label for="sync-branch">分支</label><input class="input" id="sync-branch" value="main" autocomplete="off"></div><div class="field"><label for="sync-directory">叙线数据目录</label><input class="input" id="sync-directory" value="xuxian/projects" autocomplete="off"></div></div>
-    <div class="field"><label for="sync-token">GitHub Fine-grained Token</label><input class="input" id="sync-token" type="password" autocomplete="new-password" spellcheck="false" placeholder="只在本机 Windows 凭据管理器保存"><small class="tiny" id="sync-token-hint"></small></div>
+    <div class="field"><label for="sync-token">GitHub Fine-grained Token</label><input class="input" id="sync-token" type="password" autocomplete="new-password" spellcheck="false" placeholder="只在本机 ${credentialStoreName} 保存"><small class="tiny" id="sync-token-hint"></small></div>
     <details class="sync-help"><summary>如何创建和授权令牌</summary><ol><li>创建私有仓库，勾选 README，确认已有 main 分支。</li><li>创建 Fine-grained Token，Resource owner 选仓库所有者。</li><li>Repository access 选择 Only select repositories，仅选数据仓库。</li><li>在 Repository 权限添加 Contents，再将该行设为 Read and write。Account 权限留空。</li><li>令牌只填在此处。换电脑时需在新电脑单独配置令牌。</li></ol><button class="btn small" id="sync-token-page">打开预填授权页</button><p class="tiny">令牌的 GitHub 权限作用于所选仓库，数据目录由叙线约束。共享仓库时，各软件应使用独立目录。</p></details>
     <p class="tiny" id="sync-last-time">上次同步：${esc(displayTime(settings.linked?.lastSync))}</p>
     <p id="sync-settings-message" class="sync-message" role="status"></p>
@@ -242,22 +242,20 @@ const service = new GitHubSyncService(
 
 export async function oneClickSync() {
   if (state.syncBusy) return;
-  if (!isDesktop) return toast("GitHub 同步请使用 Windows 桌面版", true);
+  if (!isNative) return toast("GitHub 同步请使用叙线应用", true);
   try {
     const settings = await bridgeCall("sync/settings", {
       projectId: state.project.id,
     });
     if (!settings.linked) return showSyncSettings();
-    await service.synchronize(async () =>
-      state.dirty || !state.bridgeBinding ? saveSource() : true,
-    );
+    await service.synchronize(() => saveSource());
   } catch (error) {
     toast(error.message, true);
   }
 }
 
 export async function showGitHubProjects() {
-  if (!isDesktop) return toast("从 GitHub 恢复项目请使用 Windows 桌面版", true);
+  if (!isNative) return toast("从 GitHub 恢复项目请使用叙线应用", true);
   let settings;
   try {
     settings = await bridgeCall("sync/settings", { projectId: "" });

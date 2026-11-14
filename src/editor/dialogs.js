@@ -15,7 +15,7 @@ import {
 import { clone, PALETTE, uid } from "../domain/primitives.js";
 import { DEMO } from "../domain/demo.js";
 import { showUpdates } from "../ui/update-dialog";
-import { isDesktop } from "../platform/desktop";
+import { isNative, isAndroid } from "../platform/runtime";
 import { version as VERSION } from "../../package.json";
 import {
   $,
@@ -251,13 +251,17 @@ export function guardReplace(fn) {
 export function topMenu(anchor) {
   menu(anchor, [
     { label: "项目列表", icon: "folder", click: showProjectLibrary },
-    ...(isDesktop
+    ...(isNative
       ? [
-          {
-            label: "打开源文件所在文件夹",
-            icon: "folder",
-            click: revealSource,
-          },
+          ...(!isAndroid
+            ? [
+                {
+                  label: "打开源文件所在文件夹",
+                  icon: "folder",
+                  click: revealSource,
+                },
+              ]
+            : []),
           { label: "GitHub 一键同步", icon: "reset", click: oneClickSync },
           {
             label: "GitHub 同步设置",
@@ -309,7 +313,7 @@ export function topMenu(anchor) {
     },
     { label: "使用说明", icon: "help", click: helpDialog },
     { label: "检测 GitHub 更新", icon: "download", click: showUpdates },
-    ...(isDesktop
+    ...(isNative
       ? [
           {
             label: "导入旧版项目文件夹",
@@ -1532,7 +1536,7 @@ export function backupDialog() {
 export function helpDialog() {
   modal(
     "使用说明",
-    `<div class="help"><h3>项目和文件</h3><p>项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查物品各有独立脚本。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p><h3>行与场景组</h3><p>点击行号选中，Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>Ctrl/⌘+C/V 复制和粘贴选中行，支持整组、跨阶段和跨项目。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。按住行空白区域拖动排序。</p><h3>文件兼容</h3><p>新版使用 JSON v4 保存场景组和地点，兼容读取 v1–v3。保存旧文件时自动迁移并备份。旧版编辑器不能读取 v4，请继续使用新版。</p></div>`,
+    `<div class="help"><h3>项目和文件</h3><p>${isAndroid ? "项目保存在应用私有目录；系统自动回收进程后可恢复最近草稿。卸载会删除本机数据，请先同步或导出备份。保存写入本机项目库；另存会创建新副本；导入、导出通过系统文件选择器选择位置。" : "项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。"}</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查物品各有独立脚本。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p><h3>行与场景组</h3><p>点击行号选中，触屏连续点行号可多选；键盘使用 Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>Ctrl/⌘+C/V 复制和粘贴选中行，支持整组、跨阶段和跨项目。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。按住行空白区域拖动排序。</p><h3>文件兼容</h3><p>新版使用 JSON v4 保存场景组和地点，兼容读取 v1–v3。保存旧文件时自动迁移并备份。旧版编辑器不能读取 v4，请继续使用新版。</p></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );
@@ -1541,7 +1545,7 @@ export function helpDialog() {
 export function aboutDialog() {
   modal(
     "叙线",
-    `<div class="help"><p>轻量 AVG 剧情编辑器 · ${VERSION}</p><p>独立桌面应用 · 本地优先 · MIT 开源许可</p><h3>MIT License</h3><p>Copyright (c) 2026</p><p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p><p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p><p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p></div>`,
+    `<div class="help"><p>轻量 AVG 剧情编辑器 · ${VERSION}</p><p>${isAndroid ? "Android 应用" : "独立桌面应用"} · 本地优先 · MIT 开源许可</p><h3>MIT License</h3><p>Copyright (c) 2026</p><p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p><p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p><p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );

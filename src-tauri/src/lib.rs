@@ -4,6 +4,7 @@ use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use xuxian_story_store::{Error, Store};
+mod github_sync;
 
 struct AppStore(Mutex<Store>);
 fn lock<'a>(store: &'a State<'_, AppStore>) -> Result<std::sync::MutexGuard<'a, Store>, Error> {
@@ -134,13 +135,15 @@ pub fn run() {
                 .seed_once(&[include_str!("../../examples/三线交汇_示例.story.json")])
                 .map_err(|e| std::io::Error::other(e.message))?;
             app.manage(AppStore(Mutex::new(store)));
+            app.manage(github_sync::SyncState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             project_command,
             import_folder,
             export_file,
-            backup_before_update
+            backup_before_update,
+            github_sync::github_sync_command
         ])
         .run(tauri::generate_context!())
         .expect("无法启动叙线桌面版");

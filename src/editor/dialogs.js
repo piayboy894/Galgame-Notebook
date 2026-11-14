@@ -64,6 +64,7 @@ import {
   showProjectLibrary,
 } from "./project-files.js";
 import { freeY } from "./route-graph.js";
+import { oneClickSync, showSyncSettings } from "./github-sync.js";
 
 export function closeMenu() {
   $("#menu-root").innerHTML = "";
@@ -197,6 +198,7 @@ export function modal(title, body, foot = "", wide = false, onClose = null) {
 }
 
 export function closeModal() {
+  if (state.syncBusy) return;
   const fn = state.modalClose;
   state.modalClose = null;
   $("#modal-root").innerHTML = "";
@@ -250,7 +252,19 @@ export function topMenu(anchor) {
   menu(anchor, [
     { label: "项目列表", icon: "folder", click: showProjectLibrary },
     ...(isDesktop
-      ? [{ label: "打开源文件所在文件夹", icon: "folder", click: revealSource }]
+      ? [
+          {
+            label: "打开源文件所在文件夹",
+            icon: "folder",
+            click: revealSource,
+          },
+          { label: "GitHub 一键同步", icon: "reset", click: oneClickSync },
+          {
+            label: "GitHub 同步设置",
+            icon: "settings",
+            click: () => showSyncSettings(),
+          },
+        ]
       : []),
     { label: "地点预设", icon: "map", click: () => go("locations") },
     {
@@ -321,6 +335,10 @@ export function topMenu(anchor) {
 }
 
 export async function requestDesktopClose() {
+  if (state.syncBusy) {
+    toast("同步进行中，请完成后再关闭");
+    return false;
+  }
   if (!state.dirty) return true;
   return new Promise((resolve) => {
     let answered = false;

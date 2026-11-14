@@ -27,6 +27,7 @@ export const state = {
   cacheTimer: null,
   toastTimer: null,
   saving: false,
+  syncBusy: false,
   composition: false,
   sim: {
     active: false,

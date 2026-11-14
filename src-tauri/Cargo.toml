@@ -1,6 +1,6 @@
 [package]
 name = "xuxian-desktop"
-version = "2.1.0"
+version = "2.2.0"
 edition = "2021"
 license = "MIT"
 description = "叙线离线剧本编辑器"
@@ -21,4 +21,8 @@ tauri-plugin-process = "2"
 tauri-plugin-single-instance = "2"
 serde_json = "1"
 xuxian-story-store = { path = "../crates/story-store" }
+xuxian-github-sync = { path = "../crates/github-sync" }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"] }
 

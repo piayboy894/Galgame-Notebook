@@ -15,7 +15,6 @@
         android:resizeableActivity="true"
         android:supportsRtl="true"
         android:usesCleartextTraffic="${usesCleartextTraffic}">
-        <meta-data android:name="android.supports_size_changes" android:value="true" />
         <meta-data android:name="com.samsung.android.dex.launchwidth" android:value="1100" />
         <meta-data android:name="com.samsung.android.dex.launchheight" android:value="760" />
         <activity
@@ -26,6 +25,7 @@
             android:label="@string/main_activity_title"
             android:name=".MainActivity"
             android:exported="true">
+            <meta-data android:name="android.supports_size_changes" android:value="true" />
             <layout android:defaultWidth="1100dp" android:defaultHeight="760dp" android:minWidth="280dp" android:minHeight="240dp" android:gravity="center" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

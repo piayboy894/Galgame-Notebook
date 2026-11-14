@@ -9,3 +9,4 @@ target/
 *.key.pub
 .env*
 test-results/
+src-tauri/gen/

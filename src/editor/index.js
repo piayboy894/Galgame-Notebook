@@ -335,8 +335,9 @@ function dispatch(action, el) {
 document.addEventListener("click", (ev) => {
   if (
     Date.now() < state.dragSuppressUntil &&
-    ev.target.closest('.chapter-card,.script-row,.branch-script-row')
-  ) return;
+    ev.target.closest(".chapter-card,.script-row,.branch-script-row")
+  )
+    return;
   const row = ev.target.closest(".branch-script-row,.script-row");
   if (row && state.view.type === "stage" && !$("#modal-root").firstChild) {
     const gutter = ev.target.closest(".row-select,.row-number");
@@ -502,6 +503,7 @@ document.addEventListener("compositionstart", () => (state.composition = true));
 document.addEventListener("compositionend", () => (state.composition = false));
 
 document.addEventListener("keydown", (ev) => {
+  if (document.querySelector(".update-overlay:not([hidden])")) return;
   if (state.composition || ev.isComposing || ev.keyCode === 229) return;
   const mod = ev.ctrlKey || ev.metaKey,
     k = ev.key.toLowerCase();
@@ -729,7 +731,6 @@ configureUpdates(async () => {
     if (!ok || state.dirty) return false;
   }
   persist();
-  state.suppressUnload = true;
   return true;
 });
 

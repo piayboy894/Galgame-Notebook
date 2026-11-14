@@ -1,0 +1,31 @@
+name: Verify updater signing secret
+on:
+  push:
+    branches: [verify/updater-signing-key]
+permissions:
+  contents: read
+jobs:
+  check-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - name: Sign a non-secret test file with the repository secret
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is missing or empty."
+            exit 1
+          fi
+          npm run tauri -- signer sign --app-version 2.0.0 signing-check/challenge.bin
+      - name: Verify against the public key built into the released application
+        run: cargo run --quiet --manifest-path signing-check/Cargo.toml -- src-tauri/tauri.conf.json signing-check/challenge.bin

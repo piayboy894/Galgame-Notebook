@@ -30,6 +30,13 @@ fn project_command(
             .map_err(|e| Error::new(500, e.to_string()))?;
         return Ok(json!({"opened":true}));
     }
+    if endpoint == "projects/reveal-source" {
+        let path = store.source_path(body["bindingId"].as_str().unwrap_or(""))?;
+        app.opener()
+            .reveal_item_in_dir(&path)
+            .map_err(|e| Error::new(500, e.to_string()))?;
+        return Ok(json!({"opened": true}));
+    }
     if endpoint == "projects/open-folder" {
         app.opener()
             .open_path(store.root().to_string_lossy().into_owned(), None::<&str>)

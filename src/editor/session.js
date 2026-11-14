@@ -1,3 +1,5 @@
+import { findRow } from "../domain/scenes.js";
+import { renderLocations } from "./scenes.js";
 import {
   flattenRows,
   branchRowCount,
@@ -34,21 +36,22 @@ import {
 } from "./project-files.js";
 
 export function rowLocation(id) {
-  const rows = currentRows();
-  if (!rows) return null;
-  for (const row of rows) {
-    if (row.id === id) return { row, rows };
-    if (row.type === "branch")
-      for (const opt of row.options)
-        for (const sub of opt.rows || [])
-          if (sub.id === id)
-            return { row: sub, rows: opt.rows, parent: row, opt };
-  }
-  return null;
+  return findRow(currentRows() || [], id);
 }
-
 export function selectableRows() {
-  return flattenRows(currentRows() || []);
+  const result = [];
+  const visit = (rows) => {
+    for (const row of rows) {
+      result.push(row);
+      if (row.type === "group" && !state.collapsedGroupIds.has(row.id))
+        visit(row.rows);
+      if (row.type === "branch")
+        for (const option of row.options)
+          if (!state.collapsedOptionIds.has(option.id)) visit(option.rows);
+    }
+  };
+  visit(currentRows() || []);
+  return result;
 }
 
 export function currentInvestigationItem() {
@@ -119,6 +122,7 @@ export function edit(token, fn) {
 }
 
 export function undo() {
+  closeMenu();
   if (!state.history.length) return;
   state.future.push(clone(state.project));
   state.project = state.history.pop();
@@ -129,6 +133,7 @@ export function undo() {
 }
 
 export function redo() {
+  closeMenu();
   if (!state.future.length) return;
   state.history.push(clone(state.project));
   state.project = state.future.pop();
@@ -345,6 +350,7 @@ export function render() {
   else if (state.view.type === "chapter") renderChapter(e);
   else if (state.view.type === "stage") renderStage(e);
   else if (state.view.type === "characters") renderCharacters(e);
+  else if (state.view.type === "locations") renderLocations(e);
   requestAnimationFrame(() => {
     $$("textarea.autosize").forEach(autoSize);
     const sc = $(".script-scroll") || $(".page-scroll");

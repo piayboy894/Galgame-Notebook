@@ -1,0 +1,129 @@
+.group-row {
+  display: block !important;
+  border: 1px solid #d9e3e5;
+  border-radius: 10px;
+  margin: 12px 0;
+  overflow: hidden;
+  background: #fff;
+}
+.scene-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  background: #f2f6f6;
+  min-height: 52px;
+}
+.scene-group-head .group-select {
+  flex: 0 0 36px;
+  color: #617d85;
+}
+.scene-group-toggle {
+  padding: 5px;
+}
+.scene-group-title {
+  font-weight: 650;
+  text-align: left;
+  min-width: 70px;
+  overflow-wrap: anywhere;
+}
+.scene-group-location {
+  margin-left: auto;
+  color: #69838a;
+  font-size: 12px;
+}
+.scene-group-meta {
+  padding: 0 18px 8px 60px;
+  background: #f2f6f6;
+  font-size: 12px;
+  color: #6e7b80;
+  line-height: 1.8;
+}
+.scene-group-meta span {
+  display: inline-block;
+  margin-right: 18px;
+}
+.scene-group-meta p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.scene-group-content {
+  padding: 0 12px 10px;
+}
+.scene-group-rows > .script-row:last-child {
+  border-bottom: 0;
+}
+.group-overrides {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.group-overrides label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.group-overrides input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.group-overrides input:disabled {
+  background: var(--soft);
+  color: var(--muted);
+}
+.location-card h2 {
+  margin: 4px 0 14px;
+}
+.location-card dl {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.location-card dl > div {
+  display: flex;
+  gap: 14px;
+}
+.location-card dt {
+  min-width: 40px;
+  color: var(--muted);
+}
+.location-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.read-scene-group {
+  padding: 12px 16px;
+  border-left: 3px solid #b5cace;
+  background: #f5f8f8;
+  margin: 14px 0;
+}
+.read-scene-group > p {
+  font-size: 12px;
+  color: #6b7b81;
+}
+.menu-item > svg:last-child:not(:first-child) {
+  width: 14px;
+  margin-left: auto;
+}
+.group-row.selected > .scene-group-head {
+  background: #e8f0f1;
+}
+.scene-group-meta:empty {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .group-overrides {
+    grid-template-columns: 1fr;
+  }
+  .scene-group-head {
+    flex-wrap: wrap;
+  }
+  .scene-group-location {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+:where([hidden]) {
+  display: none !important;
+}

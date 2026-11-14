@@ -1,4 +1,4 @@
-import { stageRootRows } from "../domain/project.js";
+import { flattenRows, stageRootRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
 import {
   $,
@@ -53,7 +53,7 @@ export function ruleEdges() {
         edges.push({ from: from.id, to: c.id, ruleId: r.id, type: r.type });
     }
     for (const s of c.stages)
-      for (const row of stageRootRows(s))
+      for (const row of flattenRows(stageRootRows(s)))
         if (row.type === "branch")
           for (const op of row.options) {
             if (op.mode === "jump" && C(op.chapterId) && op.chapterId !== c.id)
@@ -497,7 +497,7 @@ export function scheduleEdges() {
 
 export function renderBoard(e) {
   const { w, h } = boardGeometry();
-  e.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${state.project.routes.length} 条路线 · ${state.project.chapters.length} 章</span></div><div class="view-actions">${state.sim.active ? `<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn("条件", "flag", "sim-flags", "ghost small")}${ib("reset", "sim-reset", "重置演练")}</div>` : ""}${btn("角色", "users", "characters", "ghost")}${btn(state.sim.active ? "结束" : "演练", state.sim.active ? "stop" : "play", "sim-toggle", state.sim.active ? "active" : "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><div id="graph-viewport" class="graph-viewport ${state.connectFrom ? "connecting" : ""}"><div class="board-wrap" id="board-wrap" style="width:${w * state.zoom}px;height:${h * state.zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${state.zoom})">${state.project.routes
+  e.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${state.project.routes.length} 条路线 · ${state.project.chapters.length} 章</span></div><div class="view-actions">${state.sim.active ? `<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn("条件", "flag", "sim-flags", "ghost small")}${ib("reset", "sim-reset", "重置演练")}</div>` : ""}${btn("角色", "users", "characters", "ghost")}${btn("地点", "map", "locations", "ghost")}${btn(state.sim.active ? "结束" : "演练", state.sim.active ? "stop" : "play", "sim-toggle", state.sim.active ? "active" : "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><div id="graph-viewport" class="graph-viewport ${state.connectFrom ? "connecting" : ""}"><div class="board-wrap" id="board-wrap" style="width:${w * state.zoom}px;height:${h * state.zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${state.zoom})">${state.project.routes
     .map((r, i) => {
       const x = 54 + i * 354,
         last = Math.max(112, ...routeChapters(r.id).map((c) => c.y)) + 173;
@@ -607,6 +607,7 @@ export function attachCardDrag(el) {
       if (el.hasPointerCapture(e.pointerId))
         el.releasePointerCapture(e.pointerId);
       state.dragSuppressUntil = Date.now() + 250;
+      state.dragSource = "chapter";
       if (moved) {
         const ri = Math.max(
             0,

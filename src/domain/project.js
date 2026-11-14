@@ -1,4 +1,5 @@
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
+import { rowChildren, normalizeProperties, LOCATION_FIELDS } from "./scenes.js";
 
 export function line(type = "dialogue") {
   return {
@@ -32,20 +33,22 @@ export function line(type = "dialogue") {
   };
 }
 export function flattenRows(rows) {
-  return rows.flatMap((r) =>
-    r.type === "branch"
-      ? [r, ...(r.options || []).flatMap((o) => o.rows || [])]
-      : [r],
-  );
+  return (rows || []).flatMap((row) => [
+    row,
+    ...rowChildren(row).flatMap(flattenRows),
+  ]);
 }
-export function regenRowIds(r) {
-  r.id = uid("line");
-  if (!Array.isArray(r.options)) r.options = [];
-  for (const op of r.options) {
-    op.id = uid("opt");
-    for (const sub of op.rows || []) regenRowIds(sub);
+export function regenRowIds(row) {
+  row.id = uid(row.type === "group" ? "group" : "line");
+  if (row.type === "group") row.rows.forEach(regenRowIds);
+  else {
+    if (!Array.isArray(row.options)) row.options = [];
+    for (const option of row.options) {
+      option.id = uid("opt");
+      option.rows.forEach(regenRowIds);
+    }
   }
-  return r;
+  return row;
 }
 export function stageRootRows(s) {
   return s.kind === "investigation"
@@ -58,7 +61,8 @@ export function stageRowsGroups(s) {
     : [s.rows];
 }
 export function branchRowCount(s) {
-  return flattenRows(stageRootRows(s)).length;
+  return flattenRows(stageRootRows(s)).filter((row) => row.type !== "group")
+    .length;
 }
 export function investigationObject(name = "新调查物品") {
   return { id: uid("object"), name, notes: "", rows: [] };
@@ -88,13 +92,14 @@ export function chapter(routeId, title = "新章节", y = 112) {
 export function newProject(title = "未命名剧本") {
   const p = {
     format: FORMAT,
-    version: 3,
+    version: 4,
     id: uid("project"),
     title,
     createdAt: now(),
     updatedAt: now(),
     routes: [],
     characters: [],
+    locations: [],
     flags: [],
     chapters: [],
   };
@@ -112,7 +117,7 @@ export function newProject(title = "未命名剧本") {
 export function normalizeProject(raw) {
   if (!raw || typeof raw !== "object" || raw.format !== FORMAT)
     throw Error("这不是叙线源文件（.json）");
-  if (![1, 2, 3].includes(raw.version))
+  if (![1, 2, 3, 4].includes(raw.version))
     throw Error("源文件版本不受支持，请使用兼容的编辑器");
   const ids = new Set();
   const id = (v) => {
@@ -132,13 +137,14 @@ export function normalizeProject(raw) {
     typeof v === "string" && /^[a-zA-Z0-9_-]{0,100}$/.test(v) ? v : "";
   const p = {
     format: FORMAT,
-    version: 3,
+    version: 4,
     id: id(raw.id),
     title: str(raw.title, "未命名剧本"),
     createdAt: str(raw.createdAt, now()),
     updatedAt: str(raw.updatedAt, now()),
     routes: [],
     characters: [],
+    locations: [],
     flags: [],
     chapters: [],
   };
@@ -157,12 +163,49 @@ export function normalizeProject(raw) {
     expressions: arr(c.expressions).filter((x) => typeof x === "string"),
     actions: arr(c.actions).filter((x) => typeof x === "string"),
   }));
+  p.locations = arr(raw.locations).map((location) => ({
+    id: id(location.id),
+    name: str(location.name, "未命名地点"),
+    background: str(location.background),
+    bgm: str(location.bgm),
+    ambience: str(location.ambience),
+    notes: str(location.notes),
+    properties: normalizeProperties(location.properties),
+  }));
+  if (p.locations.length > 1000) throw Error("地点数量超过安全上限（1000）");
   p.flags = arr(raw.flags).map((f) => ({
     id: id(f.id),
     name: str(f.name, "未命名条件"),
     notes: str(f.notes),
   }));
-  const parseRow = (r, inside = false) => {
+  const parseRow = (r, inside = false, inGroup = false, depth = 0) => {
+    if (depth > 12) throw Error("脚本结构嵌套过深");
+    if (r?.type === "group") {
+      if (inGroup) throw Error("场景组采用单层结构，不支持嵌套");
+      const overrides = {};
+      for (const { key } of LOCATION_FIELDS)
+        if (Object.hasOwn(r.overrides || {}, key))
+          overrides[key] = str(r.overrides[key]);
+      if (Object.hasOwn(r.overrides || {}, "properties"))
+        overrides.properties = normalizeProperties(r.overrides.properties);
+      const locationId = ref(r.locationId);
+      if (
+        locationId &&
+        !p.locations.some((location) => location.id === locationId)
+      )
+        throw Error("场景组引用了不存在的地点");
+      return {
+        id: id(r.id),
+        type: "group",
+        title: str(r.title, "新场景组"),
+        locationId,
+        notes: str(r.notes),
+        overrides,
+        rows: arr(r.rows).map((child) =>
+          parseRow(child, inside, true, depth + 1),
+        ),
+      };
+    }
     const rawType = [
       "dialogue",
       "note",
@@ -202,7 +245,7 @@ export function normalizeProject(raw) {
                 : "continue",
         chapterId: ref(o.chapterId),
         stageId: ref(o.stageId),
-        rows: arr(o.rows).map((x) => parseRow(x, true)),
+        rows: arr(o.rows).map((x) => parseRow(x, true, inGroup, depth + 1)),
       }));
     return base;
   };

@@ -1,3 +1,4 @@
+import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import { desktopCommand, isDesktop } from "../platform/desktop";
 import { normalizeProject, newProject } from "../domain/project.js";
 import { clone, uid, now } from "../domain/primitives.js";
@@ -430,6 +431,7 @@ export function adopt(
 ) {
   $("#project-library")?.classList.add("hidden");
   state.collapsedOptionIds.clear();
+  state.collapsedGroupIds.clear();
   state.project = p;
   state.sourceName = name;
   state.fileHandle = handle;
@@ -625,6 +627,18 @@ export async function chooseLinkForExisting() {
   return h;
 }
 
+export async function revealSource() {
+  if (!state.bridgeBinding)
+    return toast("当前是未保存草稿，请先保存源文件", true);
+  try {
+    await bridgeCall("projects/reveal-source", {
+      bindingId: state.bridgeBinding,
+    });
+  } catch (error) {
+    toast("无法打开源文件位置：" + error.message, true);
+  }
+}
+
 export async function saveSource(asNew = false, force = false) {
   if (state.saving) return false;
   state.saving = true;
@@ -757,6 +771,23 @@ export async function saveSource(asNew = false, force = false) {
 
 export function appendMarkdownRows(out, rows, indent = "") {
   for (const row of rows) {
+    if (row.type === "group") {
+      const location = effectiveLocation(row, state.project.locations);
+      out.push(indent + "〔场景组〕" + row.title, "");
+      if (location.name) out.push(indent + "地点：" + location.name, "");
+      for (const field of LOCATION_FIELDS)
+        if (location[field.key] || Object.hasOwn(row.overrides, field.key))
+          out.push(
+            indent + field.label + "：" + (location[field.key] || "无"),
+            "",
+          );
+      for (const property of location.properties)
+        out.push(indent + property.name + "：" + property.value, "");
+      if (row.notes) out.push(indent + "备注：" + row.notes, "");
+      appendMarkdownRows(out, row.rows, indent);
+      continue;
+    }
+
     if (row.type === "note") {
       out.push(indent + "〔笔记〕" + row.text, "");
       continue;

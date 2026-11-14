@@ -1,3 +1,6 @@
+import { revealSource } from "./project-files.js";
+import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
+import { findRow } from "../domain/scenes.js";
 import { uid, clone } from "../domain/primitives.js";
 import { line } from "../domain/project.js";
 import { showUpdates, configureUpdates } from "../ui/update-dialog";
@@ -107,6 +110,40 @@ function dispatch(action, el) {
     case "board":
       go("board");
       break;
+    case "locations":
+      go("locations");
+      break;
+    case "add-location":
+      locationDialog();
+      break;
+    case "edit-location":
+      locationDialog(id);
+      break;
+    case "group-selected":
+      groupDialog();
+      break;
+    case "edit-group":
+      groupDialog(id);
+      break;
+    case "group-menu":
+      groupMenu(id, el);
+      break;
+    case "group-toggle":
+      state.collapsedGroupIds.has(id)
+        ? state.collapsedGroupIds.delete(id)
+        : state.collapsedGroupIds.add(id);
+      render();
+      break;
+    case "group-add-dialogue":
+    case "group-add-effect": {
+      const group = rowLocation(id)?.row;
+      if (group?.type === "group") {
+        const row = line(action === "group-add-effect" ? "effect" : "dialogue");
+        mutate(() => group.rows.push(row));
+        focusRow(row.id);
+      }
+      break;
+    }
     case "characters":
       go("characters");
       break;
@@ -198,7 +235,7 @@ function dispatch(action, el) {
       break;
     }
     case "local-add-option": {
-      const row = currentRows()?.find((r) => r.id === id);
+      const row = rowLocation(id)?.row;
       if (!row || row.type !== "branch") break;
       mutate(() =>
         row.options.push({
@@ -213,7 +250,7 @@ function dispatch(action, el) {
       break;
     }
     case "branch-add-line": {
-      const row = currentRows()?.find((r) => r.id === id),
+      const row = rowLocation(id)?.row,
         op = row?.options.find((o) => o.id === el.dataset.option);
       if (!op) break;
       const r = line();
@@ -222,7 +259,7 @@ function dispatch(action, el) {
       break;
     }
     case "branch-add-effect": {
-      const row = currentRows()?.find((r) => r.id === id),
+      const row = rowLocation(id)?.row,
         op = row?.options.find((o) => o.id === el.dataset.option);
       if (!op) break;
       const r = line("effect");
@@ -261,7 +298,7 @@ function dispatch(action, el) {
       scriptMenu(el);
       break;
     case "action-presets": {
-      const row = currentRows()?.find((r) => r.id === id),
+      const row = rowLocation(id)?.row,
         p = P(row?.speakerId);
       if (p)
         menu(
@@ -335,7 +372,11 @@ function dispatch(action, el) {
 document.addEventListener("click", (ev) => {
   if (
     Date.now() < state.dragSuppressUntil &&
-    ev.target.closest(".chapter-card,.script-row,.branch-script-row")
+    ev.target.closest(
+      state.dragSource === "chapter"
+        ? ".chapter-card"
+        : ".script-row,.branch-script-row",
+    )
   )
     return;
   const row = ev.target.closest(".branch-script-row,.script-row");
@@ -364,6 +405,28 @@ document.addEventListener("click", (ev) => {
     ev.stopPropagation();
     dispatch(el.dataset.act, el);
   }
+});
+
+document.addEventListener("contextmenu", (event) => {
+  if (
+    state.view.type !== "stage" ||
+    $("#modal-root").firstChild ||
+    libraryVisible()
+  )
+    return;
+  const element = event.target.closest(".script-row,.branch-script-row");
+  if (!element || event.target.closest("input,textarea,select")) return;
+  event.preventDefault();
+  const id = element.dataset.branchRow || element.dataset.row;
+  if (!state.selectedRowIds.has(id)) selectRow(id);
+  const anchor = {
+    getBoundingClientRect: () => ({
+      right: event.clientX,
+      bottom: event.clientY,
+    }),
+  };
+  if (rowLocation(id)?.row.type === "group") groupMenu(id, anchor);
+  else rowMenu(id, anchor);
 });
 
 document.addEventListener("pointerdown", (ev) => {
@@ -404,7 +467,7 @@ document.addEventListener("input", (ev) => {
   }
   if (t.dataset.rowField && t.tagName !== "SELECT") {
     const id = t.closest("[data-row]").dataset.row,
-      r = currentRows()?.find((r) => r.id === id);
+      r = rowLocation(id)?.row;
     if (!r) return;
     edit(
       "row:" + id + ":" + t.dataset.rowField,
@@ -416,7 +479,7 @@ document.addEventListener("input", (ev) => {
   if (t.dataset.optionField && t.tagName !== "SELECT") {
     const id = t.closest("[data-row]").dataset.row,
       oid = t.closest("[data-option]").dataset.option,
-      row = currentRows()?.find((r) => r.id === id),
+      row = rowLocation(id)?.row,
       op = row?.options.find((o) => o.id === oid);
     edit(
       "option:" + oid + ":" + t.dataset.optionField,
@@ -438,7 +501,7 @@ document.addEventListener("change", (ev) => {
   }
   if (t.dataset.rowField && t.tagName === "SELECT") {
     const id = t.closest("[data-row]").dataset.row,
-      row = currentRows()?.find((r) => r.id === id);
+      row = rowLocation(id)?.row;
     if (!row) return;
     if (t.value === "__new") {
       t.value = row.speakerId;
@@ -449,7 +512,7 @@ document.addEventListener("change", (ev) => {
   if (t.dataset.optionField && t.tagName === "SELECT") {
     const id = t.closest("[data-row]").dataset.row,
       oid = t.closest("[data-option]").dataset.option,
-      row = currentRows()?.find((r) => r.id === id),
+      row = rowLocation(id)?.row,
       op = row?.options.find((o) => o.id === oid);
     const key = t.dataset.optionField,
       value = t.value;
@@ -507,6 +570,17 @@ document.addEventListener("keydown", (ev) => {
   if (state.composition || ev.isComposing || ev.keyCode === 229) return;
   const mod = ev.ctrlKey || ev.metaKey,
     k = ev.key.toLowerCase();
+  if (
+    mod &&
+    k === "g" &&
+    state.view.type === "stage" &&
+    !$("#modal-root").firstChild &&
+    !libraryVisible()
+  ) {
+    ev.preventDefault();
+    groupDialog();
+    return;
+  }
   if (mod && ["s", "o", "k", "z", "y"].includes(k)) {
     if (k === "s") {
       ev.preventDefault();
@@ -597,6 +671,9 @@ document.addEventListener("keydown", (ev) => {
   }
 });
 
+$("#source-folder-btn").innerHTML = ico("folder");
+$("#source-folder-btn").hidden = !isDesktop;
+$("#source-folder-btn").onclick = revealSource;
 $("#library-update").onclick = showUpdates;
 
 $("#library-migrate").onclick = importLegacyProjects;

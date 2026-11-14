@@ -1,3 +1,6 @@
+import { findRow } from "../domain/scenes.js";
+import { locationDialog } from "./scenes.js";
+import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import {
   normalizeProject,
   newProject,
@@ -57,6 +60,7 @@ import {
   importSourceAction,
   newHubDialog,
   saveSource,
+  revealSource,
   showProjectLibrary,
 } from "./project-files.js";
 import { freeY } from "./route-graph.js";
@@ -67,42 +71,114 @@ export function closeMenu() {
 
 export function menu(anchor, items) {
   closeMenu();
-  const r = anchor?.getBoundingClientRect?.() || {
-    right: innerWidth - 24,
-    bottom: 64,
+  const root = $("#menu-root");
+  const removeAfter = (depth) => {
+    for (const popup of root.querySelectorAll(".menu"))
+      if (Number(popup.dataset.depth) > depth) popup.remove();
   };
-  const m = document.createElement("div");
-  m.className = "menu";
-  m.setAttribute("role", "menu");
-  for (const item of items) {
-    if (!item) {
-      const sep = document.createElement("div");
-      sep.className = "menu-sep";
-      m.append(sep);
-      continue;
+  function show(entries, rectangle, depth = 0, parentButton = null) {
+    removeAfter(depth - 1);
+    const popup = document.createElement("div");
+    popup.className = "menu";
+    popup.dataset.depth = depth;
+    popup.setAttribute("role", "menu");
+    for (const item of entries) {
+      if (!item) {
+        const separator = document.createElement("div");
+        separator.className = "menu-sep";
+        popup.append(separator);
+        continue;
+      }
+      const button = document.createElement("button");
+      button.className = "menu-item" + (item.danger ? " danger" : "");
+      button.disabled = !!item.disabled;
+      button.setAttribute("role", "menuitem");
+      button.setAttribute("aria-label", item.label);
+      if (item.shortcut)
+        button.setAttribute(
+          "aria-keyshortcuts",
+          item.shortcut.replaceAll("Ctrl", "Control").replaceAll(" ", "+"),
+        );
+      button.innerHTML =
+        (item.icon ? ico(item.icon) : "") +
+        `<span>${esc(item.label)}</span>` +
+        (item.children
+          ? ico("next")
+          : item.shortcut
+            ? `<span class="shortcut">${esc(item.shortcut)}</span>`
+            : "");
+      const expand = () => {
+        if (button.disabled) return;
+        removeAfter(depth);
+        if (item.children)
+          show(
+            item.children,
+            button.getBoundingClientRect(),
+            depth + 1,
+            button,
+          );
+      };
+      button.onmouseenter = expand;
+      button.onclick = (event) => {
+        event.stopPropagation();
+        if (item.children) {
+          expand();
+          root
+            .querySelector(`[data-depth="${depth + 1}"] button:not(:disabled)`)
+            ?.focus();
+        } else {
+          closeMenu();
+          item.click?.();
+        }
+      };
+      if (item.children) button.setAttribute("aria-haspopup", "menu");
+      popup.append(button);
     }
-    const b = document.createElement("button");
-    b.className = "menu-item" + (item.danger ? " danger" : "");
-    b.disabled = !!item.disabled;
-    b.innerHTML =
-      (item.icon ? ico(item.icon) : "") +
-      `<span>${esc(item.label)}</span>` +
-      (item.shortcut
-        ? `<span class="shortcut">${esc(item.shortcut)}</span>`
-        : "");
-    b.onclick = (e) => {
-      e.stopPropagation();
-      closeMenu();
-      item.click();
+    root.append(popup);
+    const bounds = popup.getBoundingClientRect();
+    let left = depth ? rectangle.right + 3 : rectangle.right - bounds.width;
+    if (left + bounds.width > innerWidth - 8)
+      left = depth
+        ? rectangle.left - bounds.width - 3
+        : innerWidth - bounds.width - 8;
+    popup.style.left = Math.max(8, left) + "px";
+    popup.style.top =
+      Math.max(
+        8,
+        Math.min(
+          innerHeight - bounds.height - 8,
+          depth ? rectangle.top : rectangle.bottom + 7,
+        ),
+      ) + "px";
+    popup.onkeydown = (event) => {
+      const buttons = [...popup.querySelectorAll("button:not(:disabled)")],
+        index = buttons.indexOf(document.activeElement);
+      if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+        buttons[
+          (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
+            buttons.length
+        ]?.focus();
+      } else if (
+        event.key === "ArrowRight" &&
+        document.activeElement?.getAttribute("aria-haspopup")
+      ) {
+        event.preventDefault();
+        document.activeElement.click();
+      } else if (event.key === "ArrowLeft" && parentButton) {
+        event.preventDefault();
+        removeAfter(depth - 1);
+        parentButton.focus();
+      }
     };
-    m.append(b);
+    return popup;
   }
-  $("#menu-root").append(m);
-  const mr = m.getBoundingClientRect();
-  m.style.left =
-    Math.max(8, Math.min(innerWidth - mr.width - 8, r.right - mr.width)) + "px";
-  m.style.top =
-    Math.max(8, Math.min(innerHeight - mr.height - 8, r.bottom + 7)) + "px";
+  const popup = show(
+    items,
+    anchor?.getBoundingClientRect?.() || { right: innerWidth - 24, bottom: 64 },
+  );
+  popup.querySelector("button:not(:disabled)")?.focus();
 }
 
 export function modal(title, body, foot = "", wide = false, onClose = null) {
@@ -173,6 +249,10 @@ export function guardReplace(fn) {
 export function topMenu(anchor) {
   menu(anchor, [
     { label: "项目列表", icon: "folder", click: showProjectLibrary },
+    ...(isDesktop
+      ? [{ label: "打开源文件所在文件夹", icon: "folder", click: revealSource }]
+      : []),
+    { label: "地点预设", icon: "map", click: () => go("locations") },
     {
       label: "新建剧本",
       icon: "file",
@@ -514,8 +594,8 @@ export function duplicateChapter(id) {
   });
   c.unlock.rules.forEach((r) => (r.id = uid("rule")));
   c.stages.forEach((s) =>
-    stageRootRows(s).forEach((row) =>
-      row.options.forEach((op) => {
+    flattenRows(stageRootRows(s)).forEach((row) =>
+      (row.options || []).forEach((op) => {
         if (op.chapterId === id) {
           op.chapterId = c.id;
           op.stageId = stageMap.get(op.stageId) || "";
@@ -537,8 +617,8 @@ export function referencesTo(chapterId, stageIds = []) {
         (r.type === "stage" && stageIds.includes(r.targetId)),
     ).length;
     for (const s of c.stages)
-      for (const r of stageRootRows(s))
-        for (const op of r.options)
+      for (const r of flattenRows(stageRootRows(s)))
+        for (const op of r.options || [])
           if (
             (chapterId && op.chapterId === chapterId) ||
             stageIds.includes(op.stageId)
@@ -558,8 +638,8 @@ export function removeReferences(chapterId, stageIds = []) {
         ),
     );
     for (const s of c.stages)
-      for (const row of stageRootRows(s))
-        for (const op of row.options) {
+      for (const row of flattenRows(stageRootRows(s)))
+        for (const op of row.options || []) {
           if (chapterId && op.chapterId === chapterId) {
             op.chapterId = "";
             op.stageId = "";
@@ -1072,6 +1152,16 @@ export function flagsDialog(forSimulation = false) {
 }
 
 export function previewRow(r) {
+  if (r.type === "group") {
+    const location = effectiveLocation(r, state.project.locations);
+    return `<section class="read-scene-group"><h3>${esc(r.title)}</h3><p>${esc(location.name)} ${LOCATION_FIELDS.filter(
+      (field) => location[field.key],
+    )
+      .map((field) => esc(field.label + "：" + location[field.key]))
+      .join(
+        " · ",
+      )}</p>${location.properties.map((property) => "<p>" + esc(property.name) + "：" + esc(property.value) + "</p>").join("")}${r.notes ? "<p>" + esc(r.notes) + "</p>" : ""}${r.rows.map(previewRow).join("")}</section>`;
+  }
   if (r.type === "note")
     return `<div class="preview-note">${esc(r.text)}</div>`;
   if (r.type === "effect")
@@ -1102,7 +1192,7 @@ export function readStage() {
 export function searchDialog() {
   modal(
     "搜索",
-    `<input id="search-input" class="search-input" placeholder="章节、阶段、对白、角色…" aria-label="搜索剧情" autofocus><div id="search-results" class="search-results"></div>`,
+    `<input id="search-input" class="search-input" placeholder="章节、阶段、对白、角色、地点…" aria-label="搜索剧情" autofocus><div id="search-results" class="search-results"></div>`,
     "",
     true,
   );
@@ -1149,6 +1239,11 @@ export function searchDialog() {
           if (
             [
               r.text,
+              r.type === "group" ? r.title : "",
+              r.type === "group" ? r.notes : "",
+              r.type === "group"
+                ? effectiveLocation(r, state.project.locations).name
+                : "",
               r.action,
               r.expression,
               P(r.speakerId)?.name,
@@ -1157,7 +1252,7 @@ export function searchDialog() {
           )
             found.push({
               title:
-                P(r.speakerId)?.name ||
+                (r.type === "group" ? r.title : P(r.speakerId)?.name) ||
                 (r.type === "branch"
                   ? "选项组"
                   : r.type === "effect"
@@ -1166,7 +1261,10 @@ export function searchDialog() {
                       ? "笔记"
                       : "旁白"),
               path,
-              text: r.text || r.action || r.expression,
+              text:
+                r.type === "group"
+                  ? r.notes
+                  : r.text || r.action || r.expression,
               chapterId: c.id,
               stageId: s.id,
               rowId: r.id,
@@ -1182,6 +1280,25 @@ export function searchDialog() {
           text: p.notes,
           characterId: p.id,
         });
+    for (const location of state.project.locations)
+      if (
+        [
+          location.name,
+          location.notes,
+          location.bgm,
+          location.background,
+          location.ambience,
+          ...location.properties.map(
+            (property) => property.name + " " + property.value,
+          ),
+        ].some(match)
+      )
+        found.push({
+          title: location.name,
+          path: "地点预设",
+          text: location.notes,
+          locationId: location.id,
+        });
     const results = found.slice(0, 150);
     $("#search-results").innerHTML =
       results
@@ -1195,12 +1312,32 @@ export function searchDialog() {
         (b.onclick = () => {
           const r = results[+b.dataset.result];
           closeModal();
-          if (r.characterId) {
+          if (r.locationId) {
+            go("locations");
+            locationDialog(r.locationId);
+          } else if (r.characterId) {
             go("characters");
             characterDialog(r.characterId);
           } else {
             go(r.stageId ? "stage" : "chapter", r.chapterId, r.stageId || null);
-            if (r.rowId)
+            if (r.rowId) {
+              const stage = S(r.stageId)?.stage;
+              let location = findRow(stage?.rows || [], r.rowId);
+              if (stage?.kind === "investigation")
+                for (const item of stage.objects) {
+                  const candidate = findRow(item.rows, r.rowId);
+                  if (candidate) {
+                    state.activeInspectObjectId = item.id;
+                    location = candidate;
+                    break;
+                  }
+                }
+              state.collapsedGroupIds.delete(r.rowId);
+              for (const parent of location?.ancestors || [])
+                state.collapsedGroupIds.delete(parent.id);
+              if (location?.opt)
+                state.collapsedOptionIds.delete(location.opt.id);
+              render();
               requestAnimationFrame(() => {
                 const row = $(
                   `[data-row="${r.rowId}"],[data-branch-row="${r.rowId}"]`,
@@ -1208,6 +1345,7 @@ export function searchDialog() {
                 row?.scrollIntoView({ block: "center" });
                 row?.classList.add("flash-row");
               });
+            }
           }
         }),
     );
@@ -1260,7 +1398,7 @@ export function auditProject() {
             kind: "角色",
           });
         if (r.type === "branch")
-          for (const op of r.options) {
+          for (const op of r.options || []) {
             if (op.mode !== "jump") continue;
             if (!op.chapterId || !C(op.chapterId))
               issues.push({
@@ -1376,7 +1514,7 @@ export function backupDialog() {
 export function helpDialog() {
   modal(
     "使用说明",
-    `<div class="help"><h3>项目</h3><p>启动器扫描「剧本项目」文件夹。一份 JSON 对应一个项目，自动列出可新建、复制、重命名、删除的项目。Ctrl+S 保存回原文件；删除项目会先移至回收站。</p><h3>脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查阶段可创建调查物品，每个物品下独立编排脚本；点击物品卡片展开相应对白。每行对白可设置说话人、对白、表情、动作。Enter 在同一句中换行，Alt+Enter 添加对白。「＋描述」添加没有序号的独立演出描述行，适合镜头、画面、音效与转场。</p><p>选项组内可创建多个选项、分别编写对白与描述。每个选项独立设置「合流」或「跳转」，跳转可指定目标章节与阶段；只有跳转到其他章节的分支在路线图上形成虚线。旧版的「局部选项」和「章节跳转」打开后都会自动升级为选项组。</p><h3>行操作</h3><p>点击行号可选中整行，描述行点击左侧小圆点；Shift 连选，Ctrl/⌘ 单选。选择后按 Delete 删除整行，可以 Ctrl/⌘ Z 撤销；在输入框中按 Delete 则正常删字。Ctrl/⌘ C/V 复制粘贴选中行，也支持跨章节、跨阶段。文字框本身保持普通文字复制。</p><h3>路线</h3><p>在路线图管理章节位置和解锁条件。阶段可以分别设置剧情或调查类型、标题、笔记、顺序；有脚本内容的阶段不可直接更换类型，以避免误丢失内容。解锁可依赖完成其他章节、完成某阶段或自定义条件。「演练」用于检查解锁关系，不影响剧本数据。</p><h3>保存</h3><p>Windows：用「启动叙线.cmd」打开。支持本地扫描项目和直接 JSON 写回。单独打开 HTML 时浏览器访问本地磁盘受到权限限制；Chrome/Edge 可在授权后写回，其他浏览器可下载文件副本。升级前请备份项目 JSON。v1.7 使用 JSON v3 格式，支持读取旧 v1–v2 文件，旧版编辑器不支持新的选项与描述结构。</p></div>`,
+    `<div class="help"><h3>项目和文件</h3><p>项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查物品各有独立脚本。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p><h3>行与场景组</h3><p>点击行号选中，Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>Ctrl/⌘+C/V 复制和粘贴选中行，支持整组、跨阶段和跨项目。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。按住行空白区域拖动排序。</p><h3>文件兼容</h3><p>新版使用 JSON v4 保存场景组和地点，兼容读取 v1–v3。保存旧文件时自动迁移并备份。旧版编辑器不能读取 v4，请继续使用新版。</p></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );

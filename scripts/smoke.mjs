@@ -1,0 +1,38 @@
+import { spawn } from "node:child_process";
+
+const url = process.env.APP_URL || "http://127.0.0.1:1420";
+let server;
+async function ready() {
+  try {
+    return (await fetch(url)).ok;
+  } catch {
+    return false;
+  }
+}
+try {
+  if (!(await ready())) {
+    server = spawn(
+      process.execPath,
+      ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1"],
+      { stdio: "inherit" },
+    );
+    for (let attempt = 0; !(await ready()); attempt++) {
+      if (attempt > 60 || server.exitCode !== null)
+        throw new Error("Preview server did not become ready.");
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  for (const path of ["tests/editor_smoke.py", "tests/desktop_smoke.py"]) {
+    const child = spawn(process.env.PYTHON || "python", [path], {
+      stdio: "inherit",
+      env: { ...process.env, APP_URL: url },
+    });
+    const code = await new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("exit", resolve);
+    });
+    if (code !== 0) throw new Error(`${path} failed (${code})`);
+  }
+} finally {
+  server?.kill();
+}

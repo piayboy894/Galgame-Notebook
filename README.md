@@ -25,6 +25,6 @@ npm run build
 npm run desktop:build
 ```
 
-`npm run dev` 仅为前端预览，不提供原生文件库/更新。回归测试：安装 Python Playwright，启动预览后执行 `npm run test:e2e`。默认 Chromium 路径 `/usr/bin/chromium`，可通过 `CHROMIUM_PATH` 配置。
+`npm run dev` 仅为前端预览，不提供原生文件库/更新。回归测试：安装 Python Playwright 及 Chromium 后执行 `npm run test:e2e`，会按需启动预览。支持通过 `CHROMIUM_PATH` 配置浏览器路径；测试包括模拟原生 IPC 的更新流程，不实际安装更新。
 
 Tauri 2 + Rust 文件核心 + TypeScript 应用服务 + 模块化 DOM 编辑界面。参阅 [架构说明](docs/architecture.md) 与 [发布维护](docs/releases.md)。旧版归档在 `legacy/v1.8`，不参与新版构建。MIT 许可见 [LICENSE](LICENSE.txt)。

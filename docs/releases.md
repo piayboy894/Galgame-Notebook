@@ -18,7 +18,7 @@ GitHub App 没有 Secrets 管理权限时，由仓库所有者配置。不降低
 ## 常规发布
 
 1. 在 `package.json` 增加稳定版本号，例如 `2.1.0`。
-2. 运行 `npm run version:sync`，同步原生版本；更新 Cargo 锁文件。
+2. 运行 `npm run version:sync`，同步前端、原生版本和对应锁文件。
 3. PR 通过前端、领域、存储及 Windows 检查后合并 main。
 4. `Publish Windows release` 构建并签名安装器，发布版本及 `latest.json`；也支持手动运行。
 5. 验证公开下载、更新清单及上一版本的检测/安装行为。
@@ -28,3 +28,5 @@ GitHub App 没有 Secrets 管理权限时，由仓库所有者配置。不降低
 ## 本地发布
 
 也可由维护者在 Windows 设置上述环境变量，运行测试及 `npm run desktop:build`，将 `src-tauri/target/release/bundle/nsis/` 的安装器与 `.sig` 发布至 Release，并生成 Tauri v2 格式 `latest.json`。Windows x64 的平台键为 `windows-x86_64`。程序有变化必须增加版本号，以供已安装用户检测。
+
+已构建签名包后，也可执行 `npm run release:publish -- 安装器路径`。脚本校验版本及 main 源码树，先创建包含安装器、签名、更新清单和 SHA-256 的草稿 Release，再发布。脚本只读取公开签名文件，不读取或上传私钥。

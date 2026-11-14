@@ -10,3 +10,4 @@ target/
 .env*
 test-results/
 src-tauri/gen/
+work/

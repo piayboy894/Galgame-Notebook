@@ -5,7 +5,8 @@ import os
 
 ROOT = Path(__file__).resolve().parents[1]
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH', '/usr/bin/chromium'), headless=True, args=['--no-sandbox'])
+    executable = os.environ.get('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
+    browser = p.chromium.launch(executable_path=executable, headless=True, args=['--no-sandbox'])
     page = browser.new_page(viewport={'width': 1360, 'height': 900})
     failures = []
     page.on('pageerror', lambda error: failures.append(str(error)))
@@ -36,8 +37,9 @@ with sync_playwright() as p:
     page.locator('.inspect-open').nth(1).click()
     expect(page.locator('.inspect-card.is-open .inspect-name')).to_have_text('房门')
     page.locator('.inspect-card.is-open [data-row-field="text"]').first.fill('调查阶段编辑仍然可用')
-    Path('/workspace/work/screenshots').mkdir(parents=True, exist_ok=True)
-    page.screenshot(path='/workspace/work/screenshots/editor-desktop-preview.png', full_page=True)
+    screenshots = Path(os.environ.get('SCREENSHOT_DIR', ROOT / 'work/test-results'))
+    screenshots.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=str(screenshots / 'editor-desktop-preview.png'), full_page=True)
     assert failures == [], failures
     print('PASS: import, routes, dialogue, effect rows, undo/redo, investigation, update entry, no JS errors')
     browser.close()

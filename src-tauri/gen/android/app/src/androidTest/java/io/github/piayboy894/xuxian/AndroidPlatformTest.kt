@@ -80,6 +80,8 @@ class AndroidPlatformTest {
       ready(scenario,"window.__draftTest==='ok'")
       scenario.recreate()
       ready(scenario,"window.XuXian && window.XuXian.snapshot().title==='Android 原生草稿恢复'")
+      js(scenario,"""window.__background=false;window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/background',body:{}}).then(r=>window.__background=r.backgrounded);true""")
+      ready(scenario,"window.__background===true")
     } finally {
       // Do not destroy Tao's final Activity inside the instrumentation process: its event loop
       // intentionally calls process::exit. The runner reports results, then Android cleans up.

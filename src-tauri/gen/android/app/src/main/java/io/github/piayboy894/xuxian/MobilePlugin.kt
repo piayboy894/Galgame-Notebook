@@ -20,6 +20,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import app.tauri.plugin.PluginManager
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -69,9 +70,12 @@ class TokenVault(context: Context) {
 }
 
 @TauriPlugin
-class MobilePlugin(private val activity: Activity): Plugin(activity) {
+class MobilePlugin(initialActivity: Activity): Plugin(initialActivity) {
+  private val context=initialActivity.applicationContext
+  private val activity: Activity
+    get()=PluginManager.activity ?: throw IllegalStateException("No active Android window")
   private val worker = Executors.newSingleThreadExecutor()
-  private val vault = TokenVault(activity)
+  private val vault = TokenVault(context)
   private var exporting: ExportArgs? = null
   private var fileOperation = false
 
@@ -100,16 +104,16 @@ class MobilePlugin(private val activity: Activity): Plugin(activity) {
   @Command fun secretDelete(invoke: Invoke) = secret(invoke) { args ->
     vault.delete(args.key); JSObject().put("deleted",true)
   }
-  @Command fun background(invoke: Invoke) { activity.moveTaskToBack(true); invoke.resolve() }
+  @Command fun background(invoke: Invoke) { invoke.resolve(JSObject().put("backgrounded",activity.moveTaskToBack(true))) }
   @Command fun installUpdate(invoke: Invoke) {
     try {
-      if(!activity.packageManager.canRequestPackageInstalls()) {
-        activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:"+activity.packageName)))
+      if(!context.packageManager.canRequestPackageInstalls()) {
+        activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:"+context.packageName)))
         invoke.resolve(JSObject().put("permissionRequired",true));return
       }
-      val file=File(activity.cacheDir,"updates/Xuxian-update.apk")
+      val file=File(context.cacheDir,"updates/Xuxian-update.apk")
       require(file.isFile)
-      val uri=FileProvider.getUriForFile(activity,activity.packageName+".fileprovider",file)
+      val uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
       activity.startActivity(Intent(Intent.ACTION_VIEW).apply { setDataAndType(uri,"application/vnd.android.package-archive");addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) })
       invoke.resolve(JSObject().put("opened",true))
     } catch (_: Exception) { invoke.reject("无法打开系统安装器，请通过下载页面安装新版") }
@@ -133,11 +137,11 @@ class MobilePlugin(private val activity: Activity): Plugin(activity) {
     worker.execute {
       try {
         var name="剧本.story.json"
-        activity.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use { cursor ->
+        context.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use { cursor ->
           if(cursor.moveToFirst()) name=cursor.getString(0) ?: name
         }
         val output=ByteArrayOutputStream()
-        activity.contentResolver.openInputStream(uri)!!.use { input ->
+        context.contentResolver.openInputStream(uri)!!.use { input ->
           val buffer=ByteArray(8192)
           while(true) { val count=input.read(buffer); if(count<0) break; require(output.size()+count<=25*1024*1024); output.write(buffer,0,count) }
         }
@@ -165,7 +169,7 @@ class MobilePlugin(private val activity: Activity): Plugin(activity) {
     if(result.resultCode!=Activity.RESULT_OK || uri==null || args==null) { invoke.resolve(JSObject().put("cancelled",true)); return }
     worker.execute {
       try {
-        activity.contentResolver.openOutputStream(uri,"wt")!!.use { it.write(args.text.toByteArray(Charsets.UTF_8)) }
+        context.contentResolver.openOutputStream(uri,"wt")!!.use { it.write(args.text.toByteArray(Charsets.UTF_8)) }
         invoke.resolve(JSObject().put("saved",true))
       } catch (_: Exception) { invoke.reject("导出失败，本地项目已保留") }
     }

@@ -1,4 +1,4 @@
-import { isDesktop } from "../platform/desktop";
+import { isNative } from "../platform/runtime";
 import {
   branchRowCount,
   flattenRows,
@@ -19,6 +19,7 @@ export const state = {
   view: { type: "board", chapterId: null, stageId: null },
   zoom: 1,
   boardScroll: { x: 0, y: 0 },
+  boardPresentation: "auto",
   connectFrom: null,
   history: [],
   future: [],
@@ -126,7 +127,7 @@ export const ib = (icon, action, title, extra = "") =>
 export const option = (v, label, current) =>
   `<option value="${attr(v)}"${v === current ? " selected" : ""}>${esc(label)}</option>`;
 
-export const BRIDGE = isDesktop ? "desktop" : "";
+export const BRIDGE = isNative ? "desktop" : "";
 
 export const HANDLE_DB = "xuxian-sources-v1";
 

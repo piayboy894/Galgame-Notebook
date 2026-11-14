@@ -15,7 +15,7 @@ import {
 import { clone, PALETTE, uid } from "../domain/primitives.js";
 import { DEMO } from "../domain/demo.js";
 import { showUpdates } from "../ui/update-dialog";
-import { isDesktop } from "../platform/desktop";
+import { isNative, isAndroid } from "../platform/runtime";
 import { version as VERSION } from "../../package.json";
 import {
   $,
@@ -251,13 +251,17 @@ export function guardReplace(fn) {
 export function topMenu(anchor) {
   menu(anchor, [
     { label: "项目列表", icon: "folder", click: showProjectLibrary },
-    ...(isDesktop
+    ...(isNative
       ? [
-          {
-            label: "打开源文件所在文件夹",
-            icon: "folder",
-            click: revealSource,
-          },
+          ...(!isAndroid
+            ? [
+                {
+                  label: "打开源文件所在文件夹",
+                  icon: "folder",
+                  click: revealSource,
+                },
+              ]
+            : []),
           { label: "GitHub 一键同步", icon: "reset", click: oneClickSync },
           {
             label: "GitHub 同步设置",
@@ -309,7 +313,7 @@ export function topMenu(anchor) {
     },
     { label: "使用说明", icon: "help", click: helpDialog },
     { label: "检测 GitHub 更新", icon: "download", click: showUpdates },
-    ...(isDesktop
+    ...(isNative
       ? [
           {
             label: "导入旧版项目文件夹",

@@ -3,17 +3,21 @@ use serde_json::{json, Value};
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
-use xuxian_github_sync::{Connection, Credentials, Engine, GithubTransport};
+#[cfg(not(target_os = "android"))]
+use xuxian_github_sync::Credentials;
+use xuxian_github_sync::{Connection, Engine, GithubTransport};
 use xuxian_story_store::{Error, Stamp};
 
 #[derive(Default)]
 pub struct SyncState(Mutex<Option<Engine>>);
+#[cfg(not(target_os = "android"))]
 struct SystemCredentials;
 #[cfg(windows)]
 fn entry(key: &str) -> Result<keyring::Entry, Error> {
     keyring::Entry::new("com.xuxian.desktop.github-sync", key)
         .map_err(|_| Error::new(500, "无法访问 Windows 凭据管理器"))
 }
+#[cfg(not(target_os = "android"))]
 impl Credentials for SystemCredentials {
     fn get(&self, key: &str) -> Result<Option<String>, Error> {
         #[cfg(windows)]
@@ -82,7 +86,11 @@ pub async fn github_sync_command(
         let mut guard = state.0.lock().map_err(|_| Error::new(500, "同步服务忙，请重试"))?;
         if guard.is_none() {
             let root = app.path().app_config_dir().map_err(|_| Error::new(500, "无法获取本机设置目录"))?.join("github-sync");
-            *guard = Some(Engine::new(root, Box::new(SystemCredentials), Box::new(GithubTransport))?);
+            #[cfg(target_os="android")]
+            let credentials=Box::new(crate::mobile::AndroidCredentials(app.clone()));
+            #[cfg(not(target_os="android"))]
+            let credentials=Box::new(SystemCredentials);
+            *guard = Some(Engine::new(root, credentials, Box::new(GithubTransport))?);
         }
         let engine = guard.as_mut().unwrap();
         let text = |key: &str| body[key].as_str().unwrap_or("");

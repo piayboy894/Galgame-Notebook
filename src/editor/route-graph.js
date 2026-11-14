@@ -496,6 +496,11 @@ export function scheduleEdges() {
 }
 
 export function renderBoard(e) {
+  if (
+    state.boardPresentation === "list" ||
+    (state.boardPresentation === "auto" && window.innerWidth < 600)
+  )
+    return renderBoardList(e);
   const { w, h } = boardGeometry();
   e.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${state.project.routes.length} 条路线 · ${state.project.chapters.length} 章</span></div><div class="view-actions">${state.sim.active ? `<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn("条件", "flag", "sim-flags", "ghost small")}${ib("reset", "sim-reset", "重置演练")}</div>` : ""}${btn("角色", "users", "characters", "ghost")}${btn("地点", "map", "locations", "ghost")}${btn(state.sim.active ? "结束" : "演练", state.sim.active ? "stop" : "play", "sim-toggle", state.sim.active ? "active" : "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><div id="graph-viewport" class="graph-viewport ${state.connectFrom ? "connecting" : ""}"><div class="board-wrap" id="board-wrap" style="width:${w * state.zoom}px;height:${h * state.zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${state.zoom})">${state.project.routes
     .map((r, i) => {
@@ -506,6 +511,10 @@ export function renderBoard(e) {
     .join(
       "",
     )}<svg class="edge-layer" id="edges" viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px"></svg>${state.project.chapters.map((c) => cardHTML(c)).join("")}</div></div></div><div class="board-tools">${ib("minus", "zoom-out", "缩小")}<button class="zoom-value" data-act="zoom-reset" title="恢复 100%">${Math.round(state.zoom * 100)}%</button>${ib("plus", "zoom-in", "放大")}<span class="divider"></span>${ib("fit", "fit-board", "适应画布")}${ib("link", "connection-toggle", state.connectFrom ? "取消连线" : "点击章节下方圆点，再点击目标章节上方圆点")}${state.connectFrom ? btn("取消", null, "cancel-connect", "ghost small") : ""}</div>`;
+  $(".view-head .view-actions").insertAdjacentHTML(
+    "afterbegin",
+    btn("列表", "layers", "board-list", "ghost"),
+  );
   const vp = $("#graph-viewport");
   vp.scrollLeft = state.boardScroll.x;
   vp.scrollTop = state.boardScroll.y;
@@ -522,6 +531,22 @@ export function renderBoard(e) {
   );
   $$(".chapter-card").forEach((card) => attachCardDrag(card));
   updateEdges();
+}
+
+function renderBoardList(element) {
+  element.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线与章节</h1><span class="count">${state.project.chapters.length} 章</span></div><div class="view-actions">${btn("路线图", "map", "board-graph", "ghost")}${btn("角色", "users", "characters", "ghost")}${btn("地点", "map", "locations", "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><div class="board-list">${state.project.routes
+    .map(
+      (route) =>
+        `<section><div class="route-list-head"><i class="route-dot" style="background:${safeColor(route.color)}"></i><h2>${esc(route.name)}</h2>${ib("plus", "lane-add", "添加章节", `data-id="${attr(route.id)}"`)}${ib("dots", "route-menu", "管理路线", `data-id="${attr(route.id)}"`)}</div><div class="route-chapter-list">${routeChapters(
+          route.id,
+        )
+          .map(
+            (chapter, index) =>
+              `<article class="route-chapter-item"><span class="tiny">${String(index + 1).padStart(2, "0")}</span><button class="chapter-list-open" data-act="open-chapter" data-id="${attr(chapter.id)}"><strong>${esc(chapter.title)}</strong><small>${chapter.stages.length} 阶段 · ${linesOf(chapter)} 行</small></button>${ib("dots", "chapter-menu", "章节操作", `data-id="${attr(chapter.id)}"`)}</article>`,
+          )
+          .join("")}</div></section>`,
+    )
+    .join("")}</div>`;
 }
 
 export function cardHTML(c) {

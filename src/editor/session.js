@@ -7,7 +7,12 @@ import {
   newProject,
 } from "../domain/project.js";
 import { clone, now } from "../domain/primitives.js";
-import { isDesktop } from "../platform/desktop";
+import {
+  isNative,
+  isAndroid,
+  readMobileDraft,
+  writeMobileDraft,
+} from "../platform/runtime";
 import {
   $,
   $$,
@@ -144,24 +149,27 @@ export function redo() {
 }
 
 export function persist() {
+  const data = {
+    project: state.project,
+    sourceName: state.sourceName,
+    fileStamp: state.fileStamp,
+    dirty: state.dirty,
+    view: state.view,
+    zoom: state.zoom,
+    boardPresentation: state.boardPresentation,
+    savedAt: now(),
+  };
   try {
-    localStorage.setItem(
-      STORAGE,
-      JSON.stringify({
-        project: state.project,
-        sourceName: state.sourceName,
-        fileStamp: state.fileStamp,
-        dirty: state.dirty,
-        view: state.view,
-        zoom: state.zoom,
-        savedAt: now(),
-      }),
-    );
+    localStorage.setItem(STORAGE, JSON.stringify(data));
     state.cacheOK = true;
   } catch (e) {
     if (state.cacheOK) toast("浏览器暂存空间不足，请保存源文件", true);
     state.cacheOK = false;
   }
+  if (isAndroid && state.project)
+    void writeMobileDraft(data).catch(() =>
+      toast("本机草稿暂存失败，请保存源文件", true),
+    );
   updateTop();
 }
 
@@ -358,16 +366,35 @@ export function render() {
   });
 }
 
-export function boot() {
+export async function boot() {
   let restored = false;
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE) || "null");
+    let data = JSON.parse(localStorage.getItem(STORAGE) || "null");
+    if (isAndroid) {
+      try {
+        const nativeResult = await readMobileDraft();
+        if (nativeResult.warning) toast(nativeResult.warning, true);
+        const nativeDraft = nativeResult.draft;
+        if (
+          nativeDraft?.project &&
+          (!data?.project || String(nativeDraft.savedAt) > String(data.savedAt))
+        )
+          data = nativeDraft;
+      } catch {
+        toast("本机草稿无法读取，请从项目库打开", true);
+      }
+    }
     if (data?.project) {
       state.project = normalizeProject(data.project);
       state.sourceName = data.sourceName || "";
       state.fileStamp = data.fileStamp || null;
       state.dirty = data.dirty !== false;
       state.view = data.view || { type: "board" };
+      state.boardPresentation = ["auto", "list", "graph"].includes(
+        data.boardPresentation,
+      )
+        ? data.boardPresentation
+        : "auto";
       state.zoom =
         typeof data.zoom === "number"
           ? Math.max(0.35, Math.min(1.6, data.zoom))
@@ -384,7 +411,7 @@ export function boot() {
   state.restoredDraft = restored;
   render();
   if (restored) {
-    if (isDesktop && state.sourceName) {
+    if (isNative && state.sourceName) {
       bridgeCall("projects/open", { fileName: state.sourceName })
         .then((d) => {
           if (JSON.parse(d.text).id === state.project.id) {

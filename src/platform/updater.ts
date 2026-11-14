@@ -2,6 +2,30 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
 import type { UpdatePort } from "../application/update-service";
+import { nativeCommand } from "./runtime";
+
+export const androidUpdater: UpdatePort = {
+  requiresUserInstall: true,
+  async check() {
+    const available = await nativeCommand("mobile/check-update");
+    if (!available) return null;
+    return {
+      version: available.version,
+      notes: available.notes,
+      async install(progress) {
+        progress(0);
+        const result = await nativeCommand("mobile/install-update");
+        if (result.permissionRequired)
+          throw Error("请允许叙线安装应用，返回后重新点击更新");
+      },
+      async close() {},
+    };
+  },
+  async backup() {
+    await invoke("backup_before_update");
+  },
+  async relaunch() {},
+};
 
 /** Signature and HTTPS verification are enforced by the native Tauri updater. */
 export const desktopUpdater: UpdatePort = {

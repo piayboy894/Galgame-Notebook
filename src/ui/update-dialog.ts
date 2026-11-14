@@ -1,6 +1,6 @@
 import { UpdateService, type UpdateState } from "../application/update-service";
-import { desktopUpdater } from "../platform/updater";
-import { isDesktop, desktopCommand } from "../platform/desktop";
+import { desktopUpdater, androidUpdater } from "../platform/updater";
+import { isNative, isAndroid, nativeCommand } from "../platform/runtime";
 import { version } from "../../package.json";
 
 let service: UpdateService | undefined;
@@ -71,25 +71,32 @@ export function showUpdates(): void {
     }
   });
   overlay.querySelector<HTMLAnchorElement>("a")!.onclick = async (event) => {
-    if (!isDesktop) return;
+    if (!isNative) return;
     event.preventDefault();
     try {
-      await desktopCommand("updates/open-download-page");
+      await nativeCommand("updates/open-download-page");
     } catch {
       overlay!.querySelector("#update-status")!.textContent =
         "无法打开下载页面，请重试。";
     }
   };
-  if (!isDesktop) {
+  if (!isNative) {
     overlay.querySelector("#update-status")!.textContent =
       "浏览器预览模式。请安装 Windows 桌面版以使用一键更新。";
     action.hidden = true;
     overlay.querySelector<HTMLButtonElement>("#update-close")!.focus();
     return;
   }
-  service ??= new UpdateService(desktopUpdater, render);
+  service ??= new UpdateService(
+    isAndroid ? androidUpdater : desktopUpdater,
+    render,
+  );
   render(service.state);
   action.onclick = async () => {
+    if (service?.state.phase === "awaiting-install") {
+      closeUpdates();
+      return;
+    }
     if (service?.state.phase === "available")
       await service.install(async () => {
         const dialog = overlay!;
@@ -127,7 +134,11 @@ function render(state: UpdateState): void {
   progress.hidden = state.phase !== "downloading";
   notes.textContent = state.phase === "available" ? state.notes : "";
   action.textContent =
-    state.phase === "available" ? "保存并一键更新" : "检测 GitHub 更新";
+    state.phase === "awaiting-install"
+      ? "关闭"
+      : state.phase === "available"
+        ? "保存并一键更新"
+        : "检测 GitHub 更新";
   if (state.phase === "idle")
     status.textContent = "点击下方按钮，检查是否有新版本。";
   if (state.phase === "checking") status.textContent = "正在连接 GitHub…";
@@ -145,6 +156,9 @@ function render(state: UpdateState): void {
   }
   if (state.phase === "installing")
     status.textContent = "正在安装更新，程序即将重新启动…";
+  if (state.phase === "awaiting-install")
+    status.textContent =
+      "签名校验已通过，系统安装器已打开，请按系统提示完成更新。";
   if (state.phase === "error")
     status.textContent = `更新未完成：${state.message}。请检查网络后重试，也可以打开下载页面。`;
 }

@@ -2,7 +2,7 @@ export type UpdateState =
   | { phase: "idle" | "checking" | "current" }
   | { phase: "available"; version: string; notes: string }
   | { phase: "downloading"; received: number; total?: number }
-  | { phase: "installing" }
+  | { phase: "installing" | "awaiting-install" }
   | { phase: "error"; message: string };
 
 export interface AvailableUpdate {
@@ -13,6 +13,7 @@ export interface AvailableUpdate {
 }
 
 export interface UpdatePort {
+  requiresUserInstall?: boolean;
   check(): Promise<AvailableUpdate | null>;
   backup(): Promise<void>;
   relaunch(): Promise<void>;
@@ -71,8 +72,12 @@ export class UpdateService {
       await this.update.install((received, total) =>
         this.set({ phase: "downloading", received, total }),
       );
-      this.set({ phase: "installing" });
-      await this.port.relaunch();
+      if (this.port.requiresUserInstall)
+        this.set({ phase: "awaiting-install" });
+      else {
+        this.set({ phase: "installing" });
+        await this.port.relaunch();
+      }
     } catch (cause) {
       this.set({
         phase: "error",

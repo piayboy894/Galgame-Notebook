@@ -22,7 +22,11 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
-  for (const path of ["tests/editor_smoke.py", "tests/desktop_smoke.py"]) {
+  for (const path of [
+    "tests/editor_smoke.py",
+    "tests/desktop_smoke.py",
+    "tests/scenes_smoke.py",
+  ]) {
     const child = spawn(process.env.PYTHON || "python", [path], {
       stdio: "inherit",
       env: { ...process.env, APP_URL: url },

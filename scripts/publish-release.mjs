@@ -1,3 +1,4 @@
+import { releaseNotes } from "./release-notes.mjs";
 /** Publish an already built and signed installer. Never reads or uploads the signing key. */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { basename, resolve } from "node:path";
@@ -51,7 +52,7 @@ const folder = resolve("work/release");
 await mkdir(folder, { recursive: true });
 const manifest = {
   version,
-  notes: "叙线独立桌面版：GitHub 一键更新、剧本备份和旧项目导入。",
+  notes: releaseNotes(version),
   pub_date: new Date().toISOString(),
   platforms: {
     "windows-x86_64": {
@@ -71,7 +72,7 @@ await writeFile(
     basename(installer) +
     "\n",
 );
-const notes = `叙线 ${tag} · Windows 10/11 x64\n\n下载下方 Xuxian_${version}_x64-setup.exe 并安装。独立桌面窗口，无需手动启动浏览器或 PowerShell。\n\n- 项目列表或更多菜单中检测 GitHub 更新，保存并备份后校验签名、一键安装。\n- 项目保存在系统「文档/叙线/剧本项目」，升级不会覆盖。\n- 旧版用户点击「导入旧版文件夹」复制原有项目，保留原文件。兼容 JSON v1–v3。\n- Tauri 2 + Rust 存储核心 + TypeScript 应用服务，保留现有路线、调查、分支和排序功能。\n\n本版本采用更新包签名；未配置微软 Authenticode 发布者证书。\n`;
+const notes = `叙线 ${tag} · Windows 10/11 x64\n\n下载 Xuxian_${version}_x64-setup.exe，或在已安装的程序中检测更新。\n\n${releaseNotes(version)}\n`;
 await writeFile(`${folder}/release-notes.md`, notes);
 const run = (args) => execFileSync("gh", args, { stdio: "inherit" });
 run([

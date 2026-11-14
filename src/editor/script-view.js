@@ -1,3 +1,4 @@
+import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import { branchRowCount, flattenRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
 import {
@@ -64,7 +65,40 @@ export function optionBodyTargets(op) {
     : `<div class="local-option-target"><select class="cell" data-option-field="chapterId" aria-label="跳转目标章节">${option("", "目标章节", op.chapterId)}${state.project.chapters.map((c) => option(c.id, `${R(c.routeId)?.name || ""} / ${c.title}`, op.chapterId)).join("")}</select><select class="cell" data-option-field="stageId" aria-label="跳转目标阶段">${option("", "章节起始", op.stageId)}${(C(op.chapterId)?.stages || []).map((st) => option(st.id, st.title, op.stageId)).join("")}</select></div>`;
 }
 
+export function groupHTML(group, insideOption = false, counter = { value: 0 }) {
+  const values = effectiveLocation(group, state.project.locations);
+  const collapsed = state.collapsedGroupIds.has(group.id);
+  const body = renderSequence(group.rows, insideOption, counter);
+  return `<section class="script-row group-row ${state.selectedRowIds.has(group.id) ? "selected" : ""}" data-row="${attr(group.id)}"><div class="scene-group-head"><button class="row-select group-select" aria-label="选择场景组 ${attr(group.title)}" data-select-row="${attr(group.id)}">组</button><button class="scene-group-toggle" data-act="group-toggle" data-id="${attr(group.id)}" aria-expanded="${!collapsed}" title="展开或折叠场景组">${ico(collapsed ? "next" : "down")}</button><button class="scene-group-title" data-act="edit-group" data-id="${attr(group.id)}">${esc(group.title)}</button><span class="scene-group-location">${esc(values.name || "未关联地点")}</span><span class="tiny">${flattenRows(group.rows).filter((row) => row.type !== "group").length} 行</span>${ib("dots", "group-menu", "场景组操作", `data-id="${attr(group.id)}"`)}</div><div class="scene-group-meta">${LOCATION_FIELDS.filter(
+    (field) => values[field.key] || Object.hasOwn(group.overrides, field.key),
+  )
+    .map(
+      (field) =>
+        `<span>${field.label}：${esc(values[field.key] || "无")}${Object.hasOwn(group.overrides, field.key) ? " · 本组" : ""}</span>`,
+    )
+    .join(
+      "",
+    )}${values.properties.map((property) => `<span>${esc(property.name)}：${esc(property.value)}</span>`).join("")}${group.notes ? `<p>${esc(group.notes)}</p>` : ""}</div><div class="scene-group-content ${collapsed ? "hidden" : ""}"><div class="scene-group-rows">${body}</div><div class="row-add-pair"><button class="row-add" data-act="group-add-dialogue" data-id="${attr(group.id)}">${ico("plus")} 对白</button><button class="row-add" data-act="group-add-effect" data-id="${attr(group.id)}">${ico("plus")} 描述</button></div></div></section>`;
+}
+
+export function renderSequence(
+  rows,
+  insideOption = false,
+  counter = { value: 0 },
+) {
+  return rows
+    .map((row) => {
+      if (row.type === "group") return groupHTML(row, insideOption, counter);
+      const number = row.type === "effect" ? -1 : counter.value++;
+      return insideOption
+        ? branchLineHTML(null, null, row, number)
+        : rowHTML(row, number);
+    })
+    .join("");
+}
+
 export function rowHTML(row, i) {
+  if (row.type === "group") return groupHTML(row);
   const selected = state.selectedRowIds.has(row.id);
   const num = `<div class="row-number"><span class="drag-handle" data-drag-row="${attr(row.id)}" title="拖动排序">${ico("grip")}</span><button class="row-select" data-select-row="${attr(row.id)}" aria-pressed="${selected}" aria-label="选择第 ${i + 1} 行" title="选择行 · Shift 连选 · Ctrl 单选 · Delete 删除">${String(i + 1).padStart(2, "0")}</button></div>`;
   const menu = `<button class="icon-btn row-menu" data-act="row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico("dots")}</button>`;
@@ -82,12 +116,7 @@ export function rowHTML(row, i) {
        idx,
      ) => `<section class="local-option ${state.collapsedOptionIds.has(op.id) ? "collapsed" : ""}" data-option="${attr(op.id)}" data-parent="${attr(row.id)}">
    <div class="local-option-title"><button class="local-fold" data-act="local-toggle" title="展开或折叠" aria-expanded="${!state.collapsedOptionIds.has(op.id)}">${ico("down")}</button><span class="local-branch-label">${String.fromCharCode(65 + idx)}</span><input class="cell" data-option-field="text" value="${attr(op.text)}" placeholder="选项文字" aria-label="选项文字"><select class="cell local-option-mode" data-option-field="mode" aria-label="选项去向" title="此选项播放完后">${option("continue", "合流", op.mode)}${option("jump", "跳转", op.mode)}</select>${ib("dots", "local-option-menu", "选项操作", `data-id="${attr(row.id)}" data-option="${attr(op.id)}"`)}</div>
-   <div class="local-option-content">${optionBodyTargets(op)}<div class="local-option-lines">${(() => {
-     let n = 0;
-     return (op.rows || [])
-       .map((r) => branchLineHTML(row, op, r, r.type === "effect" ? -1 : n++))
-       .join("");
-   })()}</div><div class="local-add-pair"><button class="local-add-line" data-act="branch-add-line" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加对白">${ico("plus")}<span>对白</span></button><button class="local-add-line" data-act="branch-add-effect" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加画面效果描述">${ico("plus")}<span>描述</span></button></div></div>
+   <div class="local-option-content">${optionBodyTargets(op)}<div class="local-option-lines">${renderSequence(op.rows || [], true)}</div><div class="local-add-pair"><button class="local-add-line" data-act="branch-add-line" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加对白">${ico("plus")}<span>对白</span></button><button class="local-add-line" data-act="branch-add-effect" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加画面效果描述">${ico("plus")}<span>描述</span></button></div></div>
   </section>`,
    )
    .join("")}</div>
@@ -99,6 +128,7 @@ export function rowHTML(row, i) {
 }
 
 export function branchLineHTML(parent, op, row, i) {
+  if (row.type === "group") return groupHTML(row, true);
   const selected = state.selectedRowIds.has(row.id),
     p = P(row.speakerId),
     num = String(i + 1).padStart(2, "0");
@@ -116,8 +146,7 @@ export function branchLineHTML(parent, op, row, i) {
 }
 
 export function stageScriptTable(rows) {
-  let index = 0;
-  return `<div class="script-table"><div class="script-table-head"><span></span><span>说话人</span><span>对白</span><span>立绘表情</span><span>人物动作</span><span></span></div><div id="script-rows">${rows.map((r) => rowHTML(r, r.type === "effect" ? -1 : index++)).join("")}</div><div class="row-add-pair"><button class="row-add" data-act="add-row" title="新增对白 · Alt Enter">${ico("plus")}<span>对白</span></button><button class="row-add" data-act="add-effect" title="新增画面效果描述">${ico("plus")}<span>描述</span></button></div></div>`;
+  return `<div class="script-table"><div class="script-table-head"><span></span><span>说话人</span><span>对白</span><span>立绘表情</span><span>人物动作</span><span></span></div><div id="script-rows">${renderSequence(rows)}</div><div class="row-add-pair"><button class="row-add" data-act="add-row" title="新增对白 · Alt Enter">${ico("plus")}<span>对白</span></button><button class="row-add" data-act="add-effect" title="新增画面效果描述">${ico("plus")}<span>描述</span></button></div></div>`;
 }
 
 export function renderStage(e) {
@@ -135,7 +164,7 @@ export function renderStage(e) {
     `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${investigation ? btn("物品", "plus", "inspect-add", "primary") : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div><div class="selection-toolbar" id="selection-toolbar" hidden></div>`;
   let body = "";
   if (investigation) {
-    body = `<div class="script-scroll investigation-scroll"><div class="inspect-stack">${s.objects.map((o, i) => `<section class="inspect-card ${o.id === opened?.id ? "is-open" : ""}"><div class="inspect-head"><button class="inspect-open" data-act="inspect-select" data-id="${attr(o.id)}" aria-expanded="${o.id === opened?.id}" title="展开调查物品"><span class="inspect-order">${String(i + 1).padStart(2, "0")}</span><span class="inspect-name">${esc(o.name)}</span><span class="inspect-count">${flattenRows(o.rows).length} 行</span>${ico("down")}</button>${ib("dots", "inspect-menu", "物品操作", `data-id="${attr(o.id)}"`)}</div>${o.id === opened?.id ? `<div class="inspect-details">${o.notes ? `<div class="inspect-notes">${esc(o.notes)}</div>` : ""}${stageScriptTable(o.rows)}</div>` : ""}</section>`).join("")}<button class="inspect-add" data-act="inspect-add" title="添加调查物品">${ico("plus")}<span>调查物品</span></button></div></div>`;
+    body = `<div class="script-scroll investigation-scroll"><div class="inspect-stack">${s.objects.map((o, i) => `<section class="inspect-card ${o.id === opened?.id ? "is-open" : ""}"><div class="inspect-head"><button class="inspect-open" data-act="inspect-select" data-id="${attr(o.id)}" aria-expanded="${o.id === opened?.id}" title="展开调查物品"><span class="inspect-order">${String(i + 1).padStart(2, "0")}</span><span class="inspect-name">${esc(o.name)}</span><span class="inspect-count">${flattenRows(o.rows).filter((row) => row.type !== "group").length} 行</span>${ico("down")}</button>${ib("dots", "inspect-menu", "物品操作", `data-id="${attr(o.id)}"`)}</div>${o.id === opened?.id ? `<div class="inspect-details">${o.notes ? `<div class="inspect-notes">${esc(o.notes)}</div>` : ""}${stageScriptTable(o.rows)}</div>` : ""}</section>`).join("")}<button class="inspect-add" data-act="inspect-add" title="添加调查物品">${ico("plus")}<span>调查物品</span></button></div></div>`;
   } else body = `<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
   e.innerHTML = header + body;
   setupRowDrag();
@@ -143,7 +172,7 @@ export function renderStage(e) {
 }
 
 export function renderCharacters(e) {
-  e.innerHTML = `<div class="view-head"><div class="view-title"><button class="icon-btn" data-act="board" title="路线图">${ico("back")}</button><h1>角色</h1><span class="count">${state.project.characters.length}</span></div><div class="view-actions">${btn("角色", "plus", "add-character", "primary")}</div></div><div class="page-scroll"><div class="characters-grid">${state.project.characters
+  e.innerHTML = `<div class="view-head"><div class="view-title"><button class="icon-btn" data-act="board" title="路线图">${ico("back")}</button><h1>角色</h1><span class="count">${state.project.characters.length}</span></div><div class="view-actions">${btn("地点", "map", "locations", "ghost")}${btn("角色", "plus", "add-character", "primary")}</div></div><div class="page-scroll"><div class="characters-grid">${state.project.characters
     .map(
       (p) =>
         `<article class="character-card" data-act="edit-character" data-id="${attr(p.id)}" tabindex="0"><div class="character-head"><div class="avatar" style="background:${safeColor(p.color)}18;color:${safeColor(p.color)}">${esc(p.name[0] || "角")}</div><h2>${esc(p.name)}</h2></div>${p.notes ? `<p>${esc(p.notes)}</p>` : ""}<div class="character-tags">${p.expressions

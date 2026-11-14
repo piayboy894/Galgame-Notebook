@@ -29,7 +29,7 @@ with sync_playwright() as p:
     page.keyboard.press('Control+Shift+z')
     assert page.evaluate('window.XuXian.snapshot().chapters[0].stages[0].rows.length') == before
     page.locator('#menu-btn').click()
-    page.get_by_role('button', name='载入示例', exact=True).click()
+    page.get_by_role('menuitem', name='载入示例', exact=True).click()
     page.locator('#replace-discard').click()
     page.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click()
     page.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()

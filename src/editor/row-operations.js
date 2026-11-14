@@ -1,3 +1,10 @@
+import {
+  effectiveLocation,
+  LOCATION_FIELDS,
+  normalizeProperties,
+  selectedRoots,
+} from "../domain/scenes.js";
+import { groupDialog } from "./scenes.js";
 import { clone, uid, safeColor, PALETTE } from "../domain/primitives.js";
 import { flattenRows, regenRowIds, line } from "../domain/project.js";
 import {
@@ -56,7 +63,7 @@ export function syncRowSelection() {
   const count = state.selectedRowIds.size;
   bar.hidden = !count;
   bar.innerHTML = count
-    ? `<span class="selected-count">${count} 行</span><button class="selection-action" data-act="copy-rows" title="复制所选行 · Ctrl C">${ico("copy")}<span>复制</span></button><button class="selection-action" data-act="paste-rows" title="粘贴到所选行之后 · Ctrl V">${ico("layers")}<span>粘贴</span></button><button class="selection-action delete-action" data-act="delete-selected" title="删除所选行 · Delete">${ico("trash")}<span>删除</span></button><button class="selection-clear" data-act="clear-rows" title="清除选择" aria-label="清除选择">${ico("close")}</button>`
+    ? `<span class="selected-count">${count} 项</span><button class="selection-action" data-act="group-selected" title="建立场景组 · Ctrl G">${ico("layers")}<span>建组</span></button><button class="selection-action" data-act="copy-rows" title="复制所选行 · Ctrl C">${ico("copy")}<span>复制</span></button><button class="selection-action" data-act="paste-rows" title="粘贴到所选行之后 · Ctrl V">${ico("layers")}<span>粘贴</span></button><button class="selection-action delete-action" data-act="delete-selected" title="删除所选行 · Delete">${ico("trash")}<span>删除</span></button><button class="selection-clear" data-act="clear-rows" title="清除选择" aria-label="清除选择">${ico("close")}</button>`
     : "";
 }
 
@@ -87,12 +94,9 @@ export function deleteSelectedRows() {
     rows = currentRows();
   if (!rows) return;
   mutate(() => {
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const r = rows[i];
-      if (picked.has(r.id)) rows.splice(i, 1);
-      else if (r.type === "branch")
-        for (const op of r.options)
-          op.rows = op.rows.filter((child) => !picked.has(child.id));
+    for (const loc of selectedRoots(rows, picked)) {
+      const index = loc.rows.indexOf(loc.row);
+      if (index >= 0) loc.rows.splice(index, 1);
     }
     state.selectedRowIds.clear();
     state.selectionAnchor = null;
@@ -100,9 +104,20 @@ export function deleteSelectedRows() {
   toast("已删除选中行 · Ctrl Z 可撤销");
 }
 
-export function rowText(rows, characters) {
+export function rowText(rows, characters, locations = []) {
   return rows
     .map((row) => {
+      if (row.type === "group") {
+        const location = effectiveLocation(row, locations);
+        return (
+          "〔场景组〕" +
+          row.title +
+          (location.name ? " · " + location.name : "") +
+          (row.notes ? "\n" + row.notes : "") +
+          "\n" +
+          rowText(row.rows, characters, locations)
+        );
+      }
       const name =
         characters.find((p) => p.id === row.speakerId)?.name || "旁白";
       if (row.type === "note") return "〔笔记〕" + row.text;
@@ -119,7 +134,7 @@ export function rowText(rows, characters) {
                 o.text +
                 (o.mode === "jump" ? " → 跳转" : " → 合流") +
                 "\n" +
-                rowText(o.rows || [], characters)
+                rowText(o.rows || [], characters, locations)
                   .split("\n")
                   .map((x) => "　　 " + x)
                   .join("\n"),
@@ -140,16 +155,8 @@ export function rowText(rows, characters) {
 
 export function collectRows() {
   const rows = clone(
-    selectedRows().filter(
-      (r) =>
-        !selectableRows().some(
-          (parent) =>
-            parent.type === "branch" &&
-            state.selectedRowIds.has(parent.id) &&
-            parent.options.some((o) =>
-              (o.rows || []).some((child) => child.id === r.id),
-            ),
-        ),
+    selectedRoots(currentRows() || [], state.selectedRowIds).map(
+      (loc) => loc.row,
     ),
   );
   if (!rows.length) return null;
@@ -159,7 +166,14 @@ export function collectRows() {
     ),
   );
   return {
-    format: "xuxian.rows.v1",
+    format: "xuxian.rows.v2",
+    locations: clone(
+      state.project.locations.filter((location) =>
+        flattenRows(rows).some(
+          (row) => row.type === "group" && row.locationId === location.id,
+        ),
+      ),
+    ),
     projectId: state.project.id,
     rows,
     characters: chars,
@@ -168,7 +182,11 @@ export function collectRows() {
 
 export function rememberRows(bundle) {
   if (!bundle) return null;
-  const plain = rowText(bundle.rows, bundle.characters || []);
+  const plain = rowText(
+    bundle.rows,
+    bundle.characters || [],
+    bundle.locations || [],
+  );
   state.rowClipboard = { ...bundle, text: plain };
   return state.rowClipboard;
 }
@@ -185,7 +203,8 @@ export function copyRowsButton() {
 export function parseRows(raw) {
   try {
     const data = JSON.parse(raw);
-    return data?.format === "xuxian.rows.v1" && Array.isArray(data.rows)
+    return ["xuxian.rows.v1", "xuxian.rows.v2"].includes(data?.format) &&
+      Array.isArray(data.rows)
       ? data
       : null;
   } catch {
@@ -198,7 +217,7 @@ export function pasteRows(bundle) {
   const s = currentStage(),
     roots = currentRows();
   if (!roots) return toast("请先添加调查物品");
-  const locs = [...state.selectedRowIds].map(rowLocation).filter(Boolean);
+  const locs = selectedRoots(roots, state.selectedRowIds);
   const sameContainer =
     locs.length > 0 && locs.every((x) => x.rows === locs[0].rows);
   const dest = sameContainer ? locs[0].rows : roots;
@@ -207,13 +226,85 @@ export function pasteRows(bundle) {
     ...dest.map((r, i) => (state.selectedRowIds.has(r.id) ? i : -1)),
   );
   const rows = [];
+  const insideOption = sameContainer && !!locs[0].opt;
+  const insideGroup =
+    sameContainer && locs[0].ancestors.some((row) => row.type === "group");
+  let prepared, incomingLocations;
+  try {
+    prepared = clone(bundle.rows).map((raw) => normalizeCopiedRow(raw));
+    incomingLocations = (
+      Array.isArray(bundle.locations) ? bundle.locations : []
+    ).map((location) => ({
+      id: String(location.id || ""),
+      name: String(location.name || "未命名地点"),
+      background: String(location.background || ""),
+      bgm: String(location.bgm || ""),
+      ambience: String(location.ambience || ""),
+      notes: String(location.notes || ""),
+      properties: normalizeProperties(location.properties),
+    }));
+  } catch (error) {
+    toast("无法粘贴：" + error.message, true);
+    return false;
+  }
+  prepared = prepared.filter(
+    (row) =>
+      !(
+        insideOption &&
+        flattenRows([row]).some((item) => item.type === "branch")
+      ) &&
+      !(
+        insideGroup && flattenRows([row]).some((item) => item.type === "group")
+      ),
+  );
+  if (!prepared.length) return toast("当前位置不支持嵌套选项或场景组", true);
+  const locationRefs = new Map();
   mutate(() => {
     const chars = Array.isArray(bundle.characters) ? bundle.characters : [],
       charRefs = new Map();
-    for (const raw of clone(bundle.rows)) {
-      const r = normalizeCopiedRow(raw);
+    for (const r of prepared) {
+      for (const group of flattenRows([r]).filter(
+        (row) => row.type === "group" && row.locationId,
+      )) {
+        if (
+          bundle.projectId === state.project.id &&
+          state.project.locations.some(
+            (location) => location.id === group.locationId,
+          )
+        )
+          continue;
+        const source = incomingLocations.find(
+          (location) => location.id === group.locationId,
+        );
+        if (!source) {
+          group.locationId = "";
+          continue;
+        }
+        if (!locationRefs.has(source.id)) {
+          const { id: oldId, ...properties } = source;
+          let found = state.project.locations.find((location) => {
+            const { id, ...value } = location;
+            return JSON.stringify(value) === JSON.stringify(properties);
+          });
+          if (!found) {
+            let name = source.name;
+            let number = 2;
+            while (
+              state.project.locations.some((location) => location.name === name)
+            )
+              name = source.name + " (" + number++ + ")";
+            found = { ...source, id: uid("location"), name };
+            state.project.locations.push(found);
+          }
+          locationRefs.set(source.id, found.id);
+        }
+        group.locationId = locationRefs.get(source.id);
+      }
       for (const item of flattenRows([r])) {
-        if (item.speakerId && !P(item.speakerId)) {
+        if (
+          item.speakerId &&
+          (bundle.projectId !== state.project.id || !P(item.speakerId))
+        ) {
           const old = chars.find((c) => c.id === item.speakerId);
           if (old) {
             let found = state.project.characters.find(
@@ -238,7 +329,7 @@ export function pasteRows(bundle) {
         }
       }
       // A local option's dialogue cannot contain another branch container.
-      if (dest !== roots && r.type === "branch") continue;
+
       regenRowIds(r);
       for (const item of flattenRows([r]))
         if (item.type === "branch")
@@ -270,15 +361,42 @@ export function pasteRows(bundle) {
   return true;
 }
 
-export function normalizeCopiedRow(raw) {
-  const text = (v) => (typeof v === "string" ? v : "");
+export function normalizeCopiedRow(
+  raw,
+  insideOption = false,
+  inGroup = false,
+  depth = 0,
+) {
+  if (depth > 12) throw Error("脚本结构嵌套过深");
+  const text = (value) => (typeof value === "string" ? value : "");
+  if (raw?.type === "group") {
+    if (inGroup) throw Error("场景组不支持嵌套");
+    const overrides = {};
+    for (const field of LOCATION_FIELDS)
+      if (Object.hasOwn(raw.overrides || {}, field.key))
+        overrides[field.key] = text(raw.overrides[field.key]);
+    if (Object.hasOwn(raw.overrides || {}, "properties"))
+      overrides.properties = normalizeProperties(raw.overrides.properties);
+    return {
+      id: uid("group"),
+      type: "group",
+      title: text(raw.title) || "新场景组",
+      locationId: text(raw.locationId),
+      notes: text(raw.notes),
+      overrides,
+      rows: (Array.isArray(raw.rows) ? raw.rows : []).map((row) =>
+        normalizeCopiedRow(row, insideOption, true, depth + 1),
+      ),
+    };
+  }
   const rawType = raw?.type;
-  const type = ["dialogue", "note", "effect", "branch"].includes(rawType)
+  let type = ["dialogue", "note", "effect", "branch"].includes(rawType)
     ? rawType
     : ["choice", "localChoice"].includes(rawType)
       ? "branch"
       : "dialogue";
-  const r = {
+  if (insideOption && type === "branch") throw Error("选项中不能嵌套选项组");
+  const row = {
     id: uid("line"),
     type,
     speakerId: text(raw?.speakerId),
@@ -288,28 +406,26 @@ export function normalizeCopiedRow(raw) {
     options: [],
   };
   if (type === "branch")
-    r.options = (Array.isArray(raw.options) ? raw.options : []).map((o) => ({
-      id: uid("opt"),
-      text: text(o?.text),
-      mode:
-        rawType === "choice"
-          ? "jump"
-          : rawType === "localChoice"
-            ? "continue"
-            : o?.mode === "jump"
-              ? "jump"
-              : "continue",
-      chapterId: text(o?.chapterId),
-      stageId: text(o?.stageId),
-      rows: (Array.isArray(o?.rows) ? o.rows : []).map((x) => {
-        const sub = normalizeCopiedRow(x);
-        if (!["dialogue", "note", "effect"].includes(sub.type))
-          sub.type = "dialogue";
-        sub.options = [];
-        return sub;
+    row.options = (Array.isArray(raw.options) ? raw.options : []).map(
+      (option) => ({
+        id: uid("opt"),
+        text: text(option?.text),
+        mode:
+          rawType === "choice"
+            ? "jump"
+            : rawType === "localChoice"
+              ? "continue"
+              : option?.mode === "jump"
+                ? "jump"
+                : "continue",
+        chapterId: text(option?.chapterId),
+        stageId: text(option?.stageId),
+        rows: (Array.isArray(option?.rows) ? option.rows : []).map((child) =>
+          normalizeCopiedRow(child, true, inGroup, depth + 1),
+        ),
       }),
-    }));
-  return r;
+    );
+  return row;
 }
 
 export function pasteRowsButton() {
@@ -395,7 +511,7 @@ function setupRowDrag() {
       speaker = P(row.speakerId)?.name || "旁白";
     const symbol =
       row.type === "effect" ? "◌" : row.type === "branch" ? "◇" : "•";
-    let sample = String(row.text || "")
+    let sample = String(row.type === "group" ? row.title : row.text || "")
       .trim()
       .replace(/\s+/g, " ");
     if (row.type === "branch" && !sample)
@@ -406,7 +522,7 @@ function setupRowDrag() {
     if (!sample) sample = "···";
     s.ghost = document.createElement("div");
     s.ghost.className = "row-drag-ghost";
-    s.ghost.innerHTML = `<span class="row-drag-mark">${symbol}</span><span class="row-drag-content"><span class="row-drag-label">${esc(row.type === "effect" ? "演出" : row.type === "branch" ? "选项" : row.type === "note" ? "笔记" : speaker)}</span><span class="row-drag-excerpt">${esc(sample.slice(0, 100))}</span></span>`;
+    s.ghost.innerHTML = `<span class="row-drag-mark">${symbol}</span><span class="row-drag-content"><span class="row-drag-label">${esc(row.type === "effect" ? "演出" : row.type === "branch" ? "选项" : row.type === "note" ? "笔记" : row.type === "group" ? "场景组" : speaker)}</span><span class="row-drag-excerpt">${esc(sample.slice(0, 100))}</span></span>`;
     s.ghost.style.width =
       Math.min(
         490,
@@ -575,6 +691,7 @@ function setupRowDrag() {
       return;
     }
     state.dragSuppressUntil = Date.now() + 360;
+    state.dragSource = "row";
     const newIndex = Array.from(s.container.children)
       .filter((el) => el.matches(".script-row,.branch-script-row"))
       .indexOf(s.el);
@@ -700,72 +817,96 @@ function setupRowDrag() {
   });
 }
 
+export function insertRowAt(id, type = "dialogue", position = "below") {
+  const loc = rowLocation(id);
+  if (!loc) return;
+  const row = line(type);
+  if (type === "dialogue" && loc.row.type === "dialogue") {
+    row.speakerId = loc.row.speakerId;
+    row.expression = loc.row.expression;
+  }
+  mutate(() =>
+    loc.rows.splice(
+      loc.rows.indexOf(loc.row) + (position === "above" ? 0 : 1),
+      0,
+      row,
+    ),
+  );
+  focusRow(row.id);
+}
 export function addRow(type = "dialogue", afterId = null) {
+  if (afterId) return insertRowAt(afterId, type);
   const rows = currentRows();
   if (!rows) return toast("请先添加调查物品");
-  const r = line(type),
-    prev = afterId ? rows.find((x) => x.id === afterId) : rows.at(-1);
-  if (type === "dialogue" && prev?.type === "dialogue") {
-    r.speakerId = prev.speakerId;
-    r.expression = prev.expression;
+  const row = line(type),
+    last = rows.at(-1);
+  if (type === "dialogue" && last?.type === "dialogue") {
+    row.speakerId = last.speakerId;
+    row.expression = last.expression;
   }
-  mutate(() => {
-    if (afterId) {
-      const idx = rows.findIndex((x) => x.id === afterId);
-      rows.splice(idx + 1, 0, r);
-    } else rows.push(r);
-  });
-  focusRow(r.id);
+  mutate(() => rows.push(row));
+  focusRow(row.id);
 }
-
 export function focusRow(id) {
   requestAnimationFrame(() => {
-    const el = $(`[data-row="${id}"],[data-branch-row="${id}"]`);
-    if (el) {
-      el.scrollIntoView({ block: "nearest" });
-      $('[data-row-field="text"]', el)?.focus();
-    }
+    const element = $(`[data-row="${id}"],[data-branch-row="${id}"]`);
+    if (!element) return;
+    element.scrollIntoView({ block: "nearest" });
+    (
+      element.querySelector(
+        '[data-row-field="text"],[data-branch-field="text"]',
+      ) || element.querySelector("button")
+    )?.focus();
   });
 }
-
+export function rowInsertionItems(id) {
+  const insertion = (position) =>
+    ["dialogue", "effect"].map((type) => ({
+      label: type === "dialogue" ? "对白" : "描述",
+      icon: type === "dialogue" ? "plus" : "note",
+      click: () => insertRowAt(id, type, position),
+    }));
+  return [
+    { label: "在上方插入", icon: "up", children: insertion("above") },
+    { label: "在下方插入", icon: "down", children: insertion("below") },
+  ];
+}
 export function rowMenu(id, anchor) {
-  const rows = currentRows() || [],
-    idx = rows.findIndex((r) => r.id === id),
-    row = rows[idx];
-  if (!row) return;
+  const loc = rowLocation(id);
+  if (!loc) return;
+  const { row, rows } = loc,
+    index = rows.indexOf(row);
   menu(anchor, [
+    ...rowInsertionItems(id),
+    null,
     {
-      label: "在下方插入对白",
-      icon: "plus",
-      click: () => addRow("dialogue", id),
-    },
-    {
-      label: "在下方插入描述",
-      icon: "note",
-      click: () => addRow("effect", id),
+      label: "将选中行建立为场景组",
+      icon: "layers",
+      shortcut: "Ctrl G",
+      click: () => groupDialog(),
     },
     {
       label: "复制此行",
       icon: "copy",
       click: () => {
-        const r = regenRowIds(clone(row));
-        mutate(() => rows.splice(idx + 1, 0, r));
-        focusRow(r.id);
+        const copied = regenRowIds(clone(row));
+        mutate(() => rows.splice(index + 1, 0, copied));
+        focusRow(copied.id);
       },
     },
     {
       label: "上移",
       icon: "up",
-      disabled: idx <= 0,
+      disabled: index === 0,
       click: () =>
-        mutate(() => rows.splice(idx - 1, 0, rows.splice(idx, 1)[0])),
+        mutate(() => rows.splice(index - 1, 0, rows.splice(index, 1)[0])),
     },
     {
       label: "下移",
       icon: "down",
-      disabled: idx >= rows.length - 1,
+      disabled: index === rows.length - 1,
       click: () =>
-        mutate(() => rows.splice(idx + 1, 0, rows.splice(idx, 1)[0])),
+        mutate(() => rows.splice(index + 1, 0, rows.splice(index, 1)[0])),
     },
     { label: "移至其他阶段", icon: "layers", click: () => moveRowDialog(id) },
     null,
@@ -773,71 +914,16 @@ export function rowMenu(id, anchor) {
       label: "删除此行",
       icon: "trash",
       danger: true,
-      click: () => mutate(() => rows.splice(idx, 1)),
+      click: () => mutate(() => rows.splice(rows.indexOf(row), 1)),
     },
   ]);
 }
-
 export function branchRowMenu(id, anchor) {
-  const loc = rowLocation(id);
-  if (!loc || !loc.parent) return;
-  const rows = loc.rows,
-    i = rows.indexOf(loc.row);
-  menu(anchor, [
-    {
-      label: "在下方插入对白",
-      icon: "plus",
-      click: () => {
-        const r = line();
-        mutate(() => rows.splice(i + 1, 0, r));
-        focusRow(r.id);
-      },
-    },
-    {
-      label: "在下方插入描述",
-      icon: "note",
-      click: () => {
-        const r = line("effect");
-        mutate(() => rows.splice(i + 1, 0, r));
-        focusRow(r.id);
-      },
-    },
-    {
-      label: "复制此行",
-      icon: "copy",
-      click: () => {
-        const r = regenRowIds(clone(loc.row));
-        mutate(() => rows.splice(i + 1, 0, r));
-        focusRow(r.id);
-      },
-    },
-    {
-      label: "上移",
-      icon: "up",
-      disabled: i === 0,
-      click: () => mutate(() => rows.splice(i - 1, 0, rows.splice(i, 1)[0])),
-    },
-    {
-      label: "下移",
-      icon: "down",
-      disabled: i === rows.length - 1,
-      click: () => mutate(() => rows.splice(i + 1, 0, rows.splice(i, 1)[0])),
-    },
-    { label: "移至其他阶段", icon: "layers", click: () => moveRowDialog(id) },
-    null,
-    {
-      label: "删除此行",
-      icon: "trash",
-      danger: true,
-      click: () => mutate(() => rows.splice(i, 1)),
-    },
-  ]);
+  rowMenu(id, anchor);
 }
 
 export function localOptionMenu(parentId, optId, anchor) {
-  const parent = currentRows()?.find(
-      (r) => r.id === parentId && r.type === "branch",
-    ),
+  const parent = rowLocation(parentId)?.row,
     opts = parent?.options || [],
     idx = opts.findIndex((o) => o.id === optId),
     op = opts[idx];
@@ -961,6 +1047,12 @@ export function scriptMenu(anchor) {
           },
         ]
       : []),
+    {
+      label: "选中行建立场景组",
+      icon: "layers",
+      shortcut: "Ctrl G",
+      click: () => groupDialog(),
+    },
     { label: "添加选项组", icon: "branch", click: () => addRow("branch") },
     { label: "添加画面描述", icon: "note", click: () => addRow("effect") },
     { label: "添加笔记行", icon: "note", click: () => addRow("note") },

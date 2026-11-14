@@ -87,7 +87,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
                 .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
     });
     if value["format"] != "xuxian.story"
-        || !matches!(value["version"].as_u64(), Some(1..=3))
+        || !matches!(value["version"].as_u64(), Some(1..=4))
         || !valid_id
         || !value["routes"]
             .as_array()
@@ -97,7 +97,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
             .is_some_and(|a| a.len() <= 3000)
         || !value["title"].is_string()
     {
-        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v3）"));
+        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v4）"));
     }
     Ok(value)
 }
@@ -402,6 +402,15 @@ impl Store {
         }
         Ok(folder)
     }
+    pub fn source_path(&self, binding: &str) -> Result<PathBuf> {
+        let binding = self
+            .bindings
+            .get(binding)
+            .ok_or_else(|| Error::new(409, "请先保存或重新打开源文件"))?;
+        let path = self.path(&binding.name)?;
+        read_story(&path)?;
+        Ok(path)
+    }
     pub fn command(&mut self, endpoint: &str, body: &Value) -> Result<Value> {
         let text = |name: &str| body[name].as_str().unwrap_or("");
         match endpoint {
@@ -466,6 +475,26 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(fs::read_to_string(backup.path()).unwrap(), changed);
+    }
+    #[test]
+    fn source_location_tracks_the_bound_file_and_v4_can_be_saved() {
+        let (_dir, mut store) = store();
+        assert!(store.source_path("missing-binding").is_err());
+        let mut project = validate_story(&story("p1", "地点剧本")).unwrap();
+        project["version"] = json!(4);
+        project["locations"] = json!([]);
+        let opened = store.create(&project.to_string()).unwrap();
+        assert_eq!(
+            store.source_path(&opened.binding_id).unwrap(),
+            store.root.join(&opened.name)
+        );
+        let copy = store.duplicate(&opened.name).unwrap();
+        assert_ne!(
+            store.source_path(&opened.binding_id).unwrap(),
+            store.source_path(&copy.binding_id).unwrap()
+        );
+        store.delete(&opened.name).unwrap();
+        assert!(store.source_path(&opened.binding_id).is_err());
     }
     #[test]
     fn rejects_paths_reserved_names_and_other_project_bindings() {

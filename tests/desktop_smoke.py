@@ -70,10 +70,12 @@ with sync_playwright() as p:
 
     context, tab, errors = page()
     tab.locator('.library-open').click()
+    tab.locator('#source-folder-btn').click()
+    assert 'projects/reveal-source' in tab.evaluate('window.testCalls')
     tab.locator('#project-name').fill('有未保存的修改')
     tab.evaluate('window.failSave = true')
     tab.locator('#menu-btn').click()
-    tab.get_by_role('button', name='检测 GitHub 更新', exact=True).click()
+    tab.get_by_role('menuitem', name='检测 GitHub 更新', exact=True).click()
     expect(tab.locator('#update-status')).to_have_text('发现新版本 v2.1.0')
     tab.locator('#update-action').click()
     expect(tab.locator('#conflict-write')).to_be_visible()

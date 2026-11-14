@@ -1,0 +1,37 @@
+.update-overlay {
+  z-index: 10000;
+}
+.update-modal {
+  max-width: 560px;
+}
+.update-version {
+  font-size: 16px;
+  font-weight: 600;
+}
+.update-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.update-modal pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.8;
+  max-height: 240px;
+  overflow: auto;
+}
+.update-modal progress {
+  width: 100%;
+  accent-color: var(--green);
+}
+.library-toolbar {
+  flex-wrap: wrap;
+}
+.desktop-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+#library-update {
+  white-space: nowrap;
+}

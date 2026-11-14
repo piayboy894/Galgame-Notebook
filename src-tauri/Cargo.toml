@@ -1,0 +1,24 @@
+[package]
+name = "xuxian-desktop"
+version = "2.0.0"
+edition = "2021"
+license = "MIT"
+description = "叙线离线剧本编辑器"
+
+[lib]
+name = "xuxian_desktop"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
+serde_json = "1"
+xuxian-story-store = { path = "../crates/story-store" }
+

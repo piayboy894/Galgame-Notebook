@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Local editor window; file paths are selected by native dialogs or confined to the project store.",
+  "windows": ["main"],
+  "permissions": ["core:default", "core:window:allow-destroy", "updater:default", "process:allow-restart"]
+}

@@ -2,3 +2,10 @@
 /剧本项目/*
 !/剧本项目/说明.txt
 !/剧本项目/三线交汇_示例.story.json
+node_modules/
+dist/
+target/
+*.key
+*.key.pub
+.env*
+test-results/

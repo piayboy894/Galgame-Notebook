@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light" />
+
+    <title>叙线 · 桌面剧本编辑器 2.0</title>
+    <!-- Xuxian Desktop | MIT License -->
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <button
+          class="brand"
+          id="brand"
+          title="返回路线图"
+          aria-label="返回路线图"
+        ></button>
+        <span class="divider"></span>
+        <div class="project-zone">
+          <input
+            class="project-name"
+            id="project-name"
+            aria-label="剧本名称"
+            title="剧本名称"
+            maxlength="200"
+          /><span class="save-state" id="save-state"
+            ><i class="state-dot dirty"></i
+            ><span class="state-label">本地草稿</span></span
+          >
+        </div>
+        <div class="top-actions">
+          <button
+            class="icon-btn desktop-only"
+            id="undo-btn"
+            title="撤销 · Ctrl Z"
+            aria-label="撤销"
+          ></button>
+          <button
+            class="icon-btn"
+            id="search-btn"
+            title="搜索 · Ctrl K"
+            aria-label="搜索"
+          ></button>
+          <span class="divider desktop-only"></span>
+          <button class="btn ghost" id="open-btn" title="选择剧本项目 · Ctrl O">
+            打开
+          </button>
+          <button class="btn primary" id="save-btn" title="保存源文件 · Ctrl S">
+            保存
+          </button>
+          <button
+            class="icon-btn"
+            id="menu-btn"
+            title="更多"
+            aria-label="更多"
+          ></button>
+        </div>
+      </header>
+      <main class="view" id="view"></main>
+    </div>
+
+    <section
+      id="project-library"
+      class="project-library hidden"
+      aria-label="剧本项目"
+    >
+      <div class="library-top">
+        <span class="library-logo">叙线</span><span class="library-sep"></span
+        ><span class="library-top-meta">项目</span>
+        <div class="library-toolbar">
+          <button class="btn ghost" id="library-update">检测更新</button
+          ><button class="btn ghost" id="library-migrate">导入旧版文件夹</button
+          ><button
+            class="icon-btn"
+            id="library-refresh"
+            title="刷新项目列表"
+            aria-label="刷新项目列表"
+          >
+            ↻</button
+          ><button
+            class="icon-btn"
+            id="library-folder"
+            title="打开项目文件夹"
+            aria-label="打开项目文件夹"
+          ></button
+          ><button
+            class="btn ghost"
+            id="library-import"
+            title="导入已有 JSON 剧本"
+          >
+            导入</button
+          ><button class="btn primary" id="library-create">+ 新建</button
+          ><button
+            class="icon-btn"
+            id="library-close"
+            title="返回编辑器"
+            aria-label="返回编辑器"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      <div class="library-main">
+        <div class="library-heading">
+          <h1>项目</h1>
+          <span class="library-count" id="library-count"></span>
+        </div>
+        <div class="library-grid" id="library-grid"></div>
+        <div class="library-status" id="library-status"></div>
+      </div>
+    </section>
+    <div id="modal-root"></div>
+    <div id="menu-root"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <input id="file-input" type="file" accept=".json,application/json" hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

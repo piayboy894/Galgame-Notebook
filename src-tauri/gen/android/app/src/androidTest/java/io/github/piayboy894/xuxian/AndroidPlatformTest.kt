@@ -46,7 +46,8 @@ class AndroidPlatformTest {
     fail("Android editor did not become ready: "+js(scenario,"document.body.innerText.slice(0,300)"))
   }
   @Test fun nativeBridgePickerAndDraftSurviveActivityRecreation() {
-    ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+    val scenario=ActivityScenario.launch(MainActivity::class.java)
+    try {
       ready(scenario,"window.XuXian && document.querySelector('.library-open')")
       assertEquals("true",js(scenario,"window.__XUXIAN_ANDROID__===true"))
       // This round trip exercises Rust -> Kotlin plugin registration and the system document picker.
@@ -79,6 +80,10 @@ class AndroidPlatformTest {
       ready(scenario,"window.__draftTest==='ok'")
       scenario.recreate()
       ready(scenario,"window.XuXian && window.XuXian.snapshot().title==='Android 原生草稿恢复'")
+    } finally {
+      // Do not destroy Tao's final Activity inside the instrumentation process: its event loop
+      // intentionally calls process::exit. The runner reports results, then Android cleans up.
+      scenario.onActivity { it.moveTaskToBack(true) }
     }
   }
 }

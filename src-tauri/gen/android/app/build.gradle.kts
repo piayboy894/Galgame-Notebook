@@ -27,6 +27,8 @@ android {
         minSdk = 26
         targetSdk = 36
         testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner"
+        // Tao exits the native process when its final Activity is destroyed. Report tests first.
+        testInstrumentationRunnerArguments["waitForActivitiesToComplete"]="false"
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }

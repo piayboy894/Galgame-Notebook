@@ -33,6 +33,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
       - name: Verify existing release identity can unlock Android signing

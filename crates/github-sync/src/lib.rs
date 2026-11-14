@@ -472,12 +472,7 @@ impl Engine {
         if project["id"].as_str() != Some(project_id) {
             return Err(Error::new(400, "远端文件名与剧本标识不匹配"));
         }
-        if store.list()?["items"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item["id"] == project["id"])
-        {
+        if store.contains_project(project_id)? {
             return Err(Error::new(409, "本地已有这个项目，请打开该项目并一键同步"));
         }
         let opened = store.create(&file.text)?;

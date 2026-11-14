@@ -266,6 +266,17 @@ impl Store {
         atomic_write(&self.path(&name)?, text.trim_start_matches('\u{feff}'))?;
         self.open(&name)
     }
+    /// Identity checks must cover the whole library, including entries beyond its display limit.
+    pub fn contains_project(&self, project_id: &str) -> Result<bool> {
+        for entry in fs::read_dir(&self.root)? {
+            if let Ok((_, project, _)) = read_story(&entry?.path()) {
+                if project["id"].as_str() == Some(project_id) {
+                    return Ok(true);
+                }
+            }
+        }
+        Ok(false)
+    }
     pub fn save(
         &mut self,
         binding: &str,

@@ -2,7 +2,7 @@ name: Publish Windows release
 on:
   push:
     branches: [main]
-    paths: [package.json]
+    paths: [package.json, CHANGELOG.md, scripts/release-notes.mjs, .github/workflows/release.yml]
   workflow_dispatch:
 permissions:
   contents: write

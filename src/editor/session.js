@@ -164,13 +164,21 @@ export function persist() {
     localStorage.setItem(STORAGE, JSON.stringify(data));
     state.cacheOK = true;
   } catch (e) {
-    if (state.cacheOK) toast("浏览器暂存空间不足，请保存源文件", true);
+    if (state.cacheOK && !isAndroid)
+      toast("本机草稿暂存空间不足，请保存源文件", true);
     state.cacheOK = false;
   }
   if (isAndroid && state.project)
-    void writeMobileDraft(data).catch(() =>
-      toast("本机草稿暂存失败，请保存源文件", true),
-    );
+    void writeMobileDraft(data)
+      .then(() => {
+        state.cacheOK = true;
+        updateTop();
+      })
+      .catch(() => {
+        state.cacheOK = false;
+        updateTop();
+        toast("本机草稿暂存失败，请保存源文件", true);
+      });
   updateTop();
 }
 
@@ -208,7 +216,7 @@ export function updateTop() {
     (state.dirty
       ? "改动尚未保存到源文件。"
       : "当前版本已" + (state.exported ? "导出。" : "保存。")) +
-    (state.cacheOK ? "浏览器暂存不能替代文件备份。" : "浏览器暂存不可用。");
+    (state.cacheOK ? "本机草稿暂存不能替代文件备份。" : "本机草稿暂存不可用。");
   $("#undo-btn").disabled = !state.history.length;
   const stageCount = $(".stage-header .count");
   if (stageCount && currentStage())

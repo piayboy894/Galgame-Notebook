@@ -15,7 +15,6 @@ src-tauri/gen/android/app/src/main/assets/
 src-tauri/gen/android/app/src/main/jniLibs/
 src-tauri/gen/android/app/tauri.build.gradle.kts
 src-tauri/gen/android/app/tauri.properties
-src-tauri/gen/android/buildSrc/src/main/java/
 src-tauri/gen/android/**/.kotlin/
 *.jks
 *.keystore

@@ -82,7 +82,7 @@ export function showUpdates(): void {
   };
   if (!isNative) {
     overlay.querySelector("#update-status")!.textContent =
-      "浏览器预览模式。请安装 Windows 桌面版以使用一键更新。";
+      "浏览器预览模式。请安装 Windows 或 Android 应用以使用一键更新。";
     action.hidden = true;
     overlay.querySelector<HTMLButtonElement>("#update-close")!.focus();
     return;

@@ -1,8 +1,12 @@
-# 叙线 · Galgame Notebook 2.2
+# 叙线 · Galgame Notebook 2.3
 
 离线 AVG 剧本编辑器，支持多路线、章节解锁、剧情/调查阶段、分支合流/跳转、对白与演出描述、行排序、撤销及 JSON/Markdown 导出。
 
 **[下载 Windows 桌面版](https://github.com/piayboy894/Galgame-Notebook/releases/latest)**：选择 `Xuxian_版本号_x64-setup.exe`。安装后打开「Xuxian」，无需启动浏览器、PowerShell 或本地服务器。支持 Windows 10/11 x64，安装器按需安装微软 WebView2。
+
+**[下载 Android 版](https://github.com/piayboy894/Galgame-Notebook/releases/latest)**：选择 `Xuxian_版本号_android.apk`，支持 Android 8.0+ ARM64 手机／平板及 x86_64 环境。按窗口宽高适配横竖屏、平板分屏和 Samsung DeX；窄窗口可使用章节列表，触屏点行号增减选择后可建组，外接键鼠保留原有快捷键。
+
+Android 项目保存在应用内部，点击导入或导出可选择系统文件位置；跨设备使用同一 GitHub 数据目录同步。卸载应用会清除本机数据，请先同步或导出。安装和更新由 Android 系统确认。详见 [Android 与 DeX 适配说明](docs/android.md)。
 
 ## GitHub 数据同步
 

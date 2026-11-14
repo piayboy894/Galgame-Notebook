@@ -1,5 +1,5 @@
 import { releaseNotes } from "./release-notes.mjs";
-/** Publish an already built and signed installer. Never reads or uploads the signing key. */
+/** Publish complete, already signed Windows and Android assets. Never reads signing keys. */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -26,6 +26,32 @@ if (
     "Installer signature does not name this release version. Rebuild with the current Tauri CLI.",
   );
 const tag = `v${version}`;
+const androidFolder = resolve("work/android-release");
+const androidApk = `${androidFolder}/Xuxian_${version}_android.apk`;
+const androidBytes = await readFile(androidApk);
+const androidSignature = (await readFile(androidApk + ".sig", "utf8")).trim();
+const androidManifest = JSON.parse(
+  await readFile(`${androidFolder}/android-latest.json`, "utf8"),
+);
+if (
+  androidManifest.version !== version ||
+  androidManifest.signature !== androidSignature ||
+  androidManifest.url !==
+    `https://github.com/${repository}/releases/download/${tag}/${basename(androidApk)}` ||
+  androidManifest.sha256 !==
+    createHash("sha256").update(androidBytes).digest("hex") ||
+  !Buffer.from(androidSignature, "base64")
+    .toString("utf8")
+    .split(/\r?\n/)
+    .some(
+      (line) =>
+        line.startsWith("trusted comment: ") &&
+        line.split("\t").includes(`version:${version}`),
+    )
+)
+  throw new Error(
+    "Run scripts/android-release.mjs for the same version before publishing.",
+  );
 if (
   spawnSync("gh", ["release", "view", tag, "--repo", repository], {
     stdio: "ignore",
@@ -72,7 +98,7 @@ await writeFile(
     basename(installer) +
     "\n",
 );
-const notes = `叙线 ${tag} · Windows 10/11 x64\n\n下载 Xuxian_${version}_x64-setup.exe，或在已安装的程序中检测更新。\n\n${releaseNotes(version)}\n`;
+const notes = `叙线 ${tag} · Windows 10/11 x64 / Android 8+\n\nWindows 下载 Xuxian_${version}_x64-setup.exe；Android 下载 Xuxian_${version}_android.apk。也可在已安装的程序中检测更新。\n\n${releaseNotes(version)}\n`;
 await writeFile(`${folder}/release-notes.md`, notes);
 const run = (args) => execFileSync("gh", args, { stdio: "inherit" });
 run([
@@ -83,6 +109,10 @@ run([
   installer + ".sig",
   `${folder}/latest.json`,
   `${folder}/SHA256SUMS.txt`,
+  androidApk,
+  androidApk + ".sig",
+  `${androidFolder}/android-latest.json`,
+  `${androidFolder}/android-SHA256SUMS.txt`,
   "--repo",
   repository,
   "--target",

@@ -60,6 +60,9 @@ class AndroidPlatformTest {
       }
       assertTrue("System file picker did not open",pickerReady)
       device.pressBack();ready(scenario,"window.__picker==='ok'")
+      // Edit through the actual UI so lifecycle flushing contains the same unsaved project.
+      js(scenario,"""const title=document.querySelector('#project-name');title.value='Android 原生草稿恢复';title.dispatchEvent(new Event('input',{bubbles:true}));true""")
+      ready(scenario,"window.XuXian.snapshot().title==='Android 原生草稿恢复'")
       js(scenario,"""window.__draftTest='pending';(async()=>{
         const rpc=window.__TAURI_INTERNALS__.invoke;
         const initial=await rpc('mobile_command',{endpoint:'mobile/read-draft',body:{}});

@@ -2,7 +2,7 @@ name: Verify Android app
 on:
   pull_request:
   push:
-    branches: [feat/android-adaptive]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

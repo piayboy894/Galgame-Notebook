@@ -1,0 +1,41 @@
+name: Publish verified prebuilt Windows installer
+on:
+  push:
+    branches: [release-staging/v2.0.0]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify source, checksums, and manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          expected=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          test "$(git rev-parse HEAD^)" = "$expected"
+          cd .release-assets
+          sha256sum --check SHA256SUMS.txt
+          cd ..
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const m=JSON.parse(fs.readFileSync('.release-assets/latest.json'));
+          assert.equal(m.version, '2.0.0');
+          assert.equal(m.platforms['windows-x86_64'].url, 'https://github.com/piayboy894/Galgame-Notebook/releases/download/v2.0.0/Xuxian_2.0.0_x64-setup.exe');
+          assert.equal(m.platforms['windows-x86_64'].signature, fs.readFileSync('.release-assets/Xuxian_2.0.0_x64-setup.exe.sig','utf8').trim());
+          JS
+      - name: Verify installer signature and reject tampered bytes
+        run: cargo run --quiet --manifest-path release-tools/Cargo.toml -- src-tauri/tauri.conf.json .release-assets/Xuxian_2.0.0_x64-setup.exe
+      - name: Upload and publish the verified release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload v2.0.0 .release-assets/Xuxian_2.0.0_x64-setup.exe .release-assets/Xuxian_2.0.0_x64-setup.exe.sig .release-assets/latest.json .release-assets/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit v2.0.0 --repo "$GITHUB_REPOSITORY" --draft=false --latest

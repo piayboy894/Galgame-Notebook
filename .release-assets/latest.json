@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "notes": "叙线独立桌面版：GitHub 一键更新、剧本备份和旧项目导入。",
+  "pub_date": "2026-11-14T04:25:54.298Z",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/piayboy894/Galgame-Notebook/releases/download/v2.0.0/Xuxian_2.0.0_x64-setup.exe",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSSGlSNWtrc0g5cTN1dFZoeWNkb3FGbWhVZ0plcVdocUc1NE5SelBmdnR0bHJHTXNMbGJ2Y25Mc3hPczlZMkY1WVRQOEk4bWo1UTN6OFJZU0RNL1RESGFFRkVtVXlkdmcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk0NjMwMTkwCWZpbGU6WHV4aWFuXzIuMC4wX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjAuMApENVNQUC9nejZoTVliVzlEMnc2NlkrNnMrc0xXUHFXZ1hVOHBvZFo2R1lDRDBZalZUT1RWMGQ0WDNJbDBxVWRWS1VRd0h3Rk5IcnAyaDRyeUc5TFdCQT09Cg=="
+    }
+  }
+}

@@ -26,6 +26,7 @@ try {
     "tests/editor_smoke.py",
     "tests/desktop_smoke.py",
     "tests/scenes_smoke.py",
+    "tests/github_sync_smoke.py",
   ]) {
     const child = spawn(process.env.PYTHON || "python", [path], {
       stdio: "inherit",

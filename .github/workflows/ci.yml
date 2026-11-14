@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:e2e
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --locked --manifest-path crates/story-store/Cargo.toml
+      - run: cargo test --locked --manifest-path crates/github-sync/Cargo.toml
   windows-native:
     runs-on: windows-latest
     steps:
@@ -42,3 +43,4 @@ jobs:
       - run: npm run build
       - run: cargo check --locked --manifest-path src-tauri/Cargo.toml
       - run: cargo test --locked --manifest-path crates/story-store/Cargo.toml
+      - run: cargo test --locked --manifest-path crates/github-sync/Cargo.toml

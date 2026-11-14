@@ -9,6 +9,9 @@ export async function desktopCommand(
   body: CommandBody = {},
 ): Promise<any> {
   try {
+    if (endpoint.startsWith("sync/")) {
+      return await invoke("github_sync_command", { endpoint, body });
+    }
     if (endpoint === "projects/import-folder") {
       return await invoke("import_folder");
     }

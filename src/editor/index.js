@@ -1,6 +1,7 @@
 import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
 import { findRow } from "../domain/scenes.js";
+import { oneClickSync, showGitHubProjects } from "./github-sync.js";
 import { uid, clone } from "../domain/primitives.js";
 import { line } from "../domain/project.js";
 import { showUpdates, configureUpdates } from "../ui/update-dialog";
@@ -566,6 +567,10 @@ document.addEventListener("compositionstart", () => (state.composition = true));
 document.addEventListener("compositionend", () => (state.composition = false));
 
 document.addEventListener("keydown", (ev) => {
+  if (state.syncBusy) {
+    ev.preventDefault();
+    return;
+  }
   if (document.querySelector(".update-overlay:not([hidden])")) return;
   if (state.composition || ev.isComposing || ev.keyCode === 229) return;
   const mod = ev.ctrlKey || ev.metaKey,
@@ -674,6 +679,10 @@ document.addEventListener("keydown", (ev) => {
 $("#source-folder-btn").innerHTML = ico("folder");
 $("#source-folder-btn").hidden = !isDesktop;
 $("#source-folder-btn").onclick = revealSource;
+$("#sync-btn").hidden = !isDesktop;
+$("#sync-btn").onclick = oneClickSync;
+$("#library-github").hidden = !isDesktop;
+$("#library-github").onclick = showGitHubProjects;
 $("#library-update").onclick = showUpdates;
 
 $("#library-migrate").onclick = importLegacyProjects;

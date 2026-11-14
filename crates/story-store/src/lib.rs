@@ -411,6 +411,23 @@ impl Store {
         read_story(&path)?;
         Ok(path)
     }
+    /// Read the currently bound file, rejecting replacement by another project.
+    pub fn read_bound(&self, binding_id: &str) -> Result<Opened> {
+        let binding = self
+            .bindings
+            .get(binding_id)
+            .ok_or_else(|| Error::new(409, "请先保存或重新打开源文件"))?;
+        let (text, project, stamp) = read_story(&self.path(&binding.name)?)?;
+        if project["id"].as_str() != Some(&binding.project_id) {
+            return Err(Error::new(409, "磁盘文件已被另一份剧本替换，请重新打开"));
+        }
+        Ok(Opened {
+            name: binding.name.clone(),
+            text,
+            stamp,
+            binding_id: binding_id.into(),
+        })
+    }
     pub fn command(&mut self, endpoint: &str, body: &Value) -> Result<Value> {
         let text = |name: &str| body[name].as_str().unwrap_or("");
         match endpoint {
@@ -484,6 +501,13 @@ mod tests {
         project["version"] = json!(4);
         project["locations"] = json!([]);
         let opened = store.create(&project.to_string()).unwrap();
+        assert_eq!(
+            store.read_bound(&opened.binding_id).unwrap().text,
+            opened.text
+        );
+        fs::write(store.root.join(&opened.name), story("foreign", "其他项目")).unwrap();
+        assert!(store.read_bound(&opened.binding_id).is_err());
+        fs::write(store.root.join(&opened.name), &opened.text).unwrap();
         assert_eq!(
             store.source_path(&opened.binding_id).unwrap(),
             store.root.join(&opened.name)

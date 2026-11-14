@@ -1,8 +1,14 @@
-# 叙线 · Galgame Notebook 2.1
+# 叙线 · Galgame Notebook 2.2
 
 离线 AVG 剧本编辑器，支持多路线、章节解锁、剧情/调查阶段、分支合流/跳转、对白与演出描述、行排序、撤销及 JSON/Markdown 导出。
 
 **[下载 Windows 桌面版](https://github.com/piayboy894/Galgame-Notebook/releases/latest)**：选择 `Xuxian_版本号_x64-setup.exe`。安装后打开「Xuxian」，无需启动浏览器、PowerShell 或本地服务器。支持 Windows 10/11 x64，安装器按需安装微软 WebView2。
+
+## GitHub 数据同步
+
+在「更多 → GitHub 同步设置」配置私有仓库、分支、数据目录和 Fine-grained Token（仅授权数据仓库的 Contents 读写权限）。点击顶部「一键同步」，先保存本地，再上传或拉取变化；双方修改时保留副本并提示选择。Token 保存在本机 Windows 凭据管理器，剧本和导出不携带凭据。
+
+默认只读写 `xuxian/projects/`，可与其他软件共用仓库。换电脑后，在项目列表的「GitHub 数据」中配置同一连接，预览并恢复项目。仅在点击时联网，断网仍可本地编辑。设置和冲突规则见 [GitHub 同步说明](docs/github-sync.md)。
 
 ## 场景编排
 

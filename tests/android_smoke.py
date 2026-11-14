@@ -91,5 +91,7 @@ with sync_playwright() as p:
     page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.stage-grid')).to_be_visible()
     page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.board-list')).to_be_visible()
     page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('#project-library')).to_be_visible()
+    page.evaluate('window.backChannel.onmessage({canGoBack:false})')
+    page.wait_for_function('window.androidCalls.includes("mobile/background")')
     assert not errors,errors;browser.close()
     print('PASS: Android files, touch grouping, 9 window sizes, keyboard/DeX, draft recovery, back navigation and installer flow')

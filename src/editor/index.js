@@ -824,7 +824,7 @@ window.addEventListener("blur", () => {
 });
 
 configureUpdates(async () => {
-  if (state.dirty) {
+  if (state.dirty || state.exported) {
     const ok = await saveSource();
     if (!ok || state.dirty) return false;
   }

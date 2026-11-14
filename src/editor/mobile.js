@@ -49,13 +49,14 @@ export function initializeMobile() {
       return;
     }
     if (libraryVisible()) {
-      if (state.dirty || state.sourceName) closeProjectLibrary();
+      if (!state.libraryAtRoot && (state.dirty || state.sourceName))
+        closeProjectLibrary();
       else {
         persist();
         await nativeCommand("mobile/background");
       }
     } else if (state.view.type === "stage") go("chapter", state.view.chapterId);
     else if (state.view.type !== "board") go("board");
-    else showProjectLibrary();
+    else showProjectLibrary(true);
   }).catch(() => toast("系统返回操作初始化失败", true));
 }

@@ -52,7 +52,13 @@ class AndroidPlatformTest {
       // This round trip exercises Rust -> Kotlin plugin registration and the system document picker.
       js(scenario,"""window.__picker='pending';window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/import',body:{}}).then(r=>window.__picker=r.cancelled?'ok':'selected').catch(e=>window.__picker='error');true""")
       val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-      repeat(30){if(device.currentPackageName!=InstrumentationRegistry.getInstrumentation().targetContext.packageName)return@repeat;Thread.sleep(100)}
+      var pickerReady=false
+      for(attempt in 0 until 50) {
+        val name=device.currentPackageName
+        if(!name.isNullOrBlank() && name!=InstrumentationRegistry.getInstrumentation().targetContext.packageName){pickerReady=true;break}
+        Thread.sleep(100)
+      }
+      assertTrue("System file picker did not open",pickerReady)
       device.pressBack();ready(scenario,"window.__picker==='ok'")
       js(scenario,"""window.__draftTest='pending';(async()=>{
         const rpc=window.__TAURI_INTERNALS__.invoke;

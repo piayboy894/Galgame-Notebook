@@ -133,7 +133,8 @@ export async function bridgeCall(endpoint, data = {}) {
   return nativeCommand(endpoint, data);
 }
 
-export function showProjectLibrary() {
+export function showProjectLibrary(asRoot = false) {
+  state.libraryAtRoot = asRoot === true;
   if (!BRIDGE) $("#library-folder").classList.add("hidden");
   $("#library-close").classList.toggle(
     "hidden",
@@ -150,6 +151,7 @@ export function showProjectLibrary() {
 }
 
 export function closeProjectLibrary() {
+  state.libraryAtRoot = false;
   $("#project-library").classList.add("hidden");
 }
 

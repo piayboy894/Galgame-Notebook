@@ -51,6 +51,7 @@ export const state = {
   dragSource: null,
   libraryItems: [],
   libraryBusy: false,
+  libraryAtRoot: true,
   restoredDraft: false,
   dragDepth: 0,
 };

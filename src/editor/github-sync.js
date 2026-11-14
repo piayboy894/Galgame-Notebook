@@ -248,9 +248,7 @@ export async function oneClickSync() {
       projectId: state.project.id,
     });
     if (!settings.linked) return showSyncSettings();
-    await service.synchronize(async () =>
-      state.dirty || !state.bridgeBinding ? saveSource() : true,
-    );
+    await service.synchronize(() => saveSource());
   } catch (error) {
     toast(error.message, true);
   }

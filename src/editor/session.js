@@ -154,6 +154,7 @@ export function persist() {
     sourceName: state.sourceName,
     fileStamp: state.fileStamp,
     dirty: state.dirty,
+    exported: state.exported,
     view: state.view,
     zoom: state.zoom,
     boardPresentation: state.boardPresentation,
@@ -389,6 +390,7 @@ export async function boot() {
       state.sourceName = data.sourceName || "";
       state.fileStamp = data.fileStamp || null;
       state.dirty = data.dirty !== false;
+      state.exported = data.exported === true;
       state.view = data.view || { type: "board" };
       state.boardPresentation = ["auto", "list", "graph"].includes(
         data.boardPresentation,
@@ -412,16 +414,27 @@ export async function boot() {
   render();
   if (restored) {
     if (isNative && state.sourceName) {
+      const restoredName = state.sourceName,
+        restoredId = state.project.id;
       bridgeCall("projects/open", { fileName: state.sourceName })
         .then((d) => {
-          if (JSON.parse(d.text).id === state.project.id) {
+          if (
+            state.sourceName === restoredName &&
+            state.project.id === restoredId &&
+            JSON.parse(d.text).id === state.project.id
+          ) {
             state.bridgeBinding = d.bindingId;
             state.fileStamp = state.fileStamp || d.stamp;
+            if (
+              JSON.stringify(normalizeProject(JSON.parse(d.text))) !==
+              JSON.stringify(state.project)
+            )
+              state.dirty = true;
             updateTop();
           }
         })
         .catch(() => {});
     } else restoreHandle();
   }
-  showProjectLibrary();
+  showProjectLibrary(true);
 }

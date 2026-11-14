@@ -1,0 +1,731 @@
+{
+  "format": "xuxian.story",
+  "version": 3,
+  "id": "project_demo_01",
+  "title": "三线交汇 · 示例",
+  "createdAt": "2026-11-12T06:00:00.000Z",
+  "updatedAt": "2026-11-12T06:00:00.000Z",
+  "routes": [
+    {
+      "id": "route_a",
+      "name": "调查线",
+      "color": "#79929d"
+    },
+    {
+      "id": "route_b",
+      "name": "追忆线",
+      "color": "#9b8da8"
+    },
+    {
+      "id": "route_c",
+      "name": "外侧线",
+      "color": "#809b8e"
+    }
+  ],
+  "characters": [
+    {
+      "id": "char_protagonist",
+      "name": "主角",
+      "color": "#79929d",
+      "notes": "记录在不同路线中逐步改变的判断。",
+      "expressions": [
+        "平静",
+        "迟疑",
+        "疑惑",
+        "惊讶",
+        "坚定"
+      ],
+      "actions": [
+        "抬头",
+        "停下脚步",
+        "看向窗外",
+        "翻开笔记"
+      ]
+    },
+    {
+      "id": "char_lin",
+      "name": "凛",
+      "color": "#9b8da8",
+      "notes": "同一条线索，在她的讲述里似乎有另一层含义。",
+      "expressions": [
+        "平静",
+        "微笑",
+        "回避",
+        "严肃"
+      ],
+      "actions": [
+        "转过身",
+        "握住信封",
+        "移开视线"
+      ]
+    },
+    {
+      "id": "char_yao",
+      "name": "遥",
+      "color": "#809b8e",
+      "notes": "负责外侧线的调查。",
+      "expressions": [
+        "冷静",
+        "困惑",
+        "惊讶"
+      ],
+      "actions": [
+        "放下耳机",
+        "指向屏幕",
+        "打开门"
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "id": "flag_log",
+      "name": "已读出旧日志",
+      "notes": "演练时在“条件”中手动切换。"
+    }
+  ],
+  "chapters": [
+    {
+      "id": "chapter_a1",
+      "routeId": "route_a",
+      "title": "雨夜来信",
+      "summary": "在同一场雨中，三条路线开始出现不一致的时间记录。",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_a1_1",
+          "title": "没有署名的信",
+          "notes": "场景起点。先用一段平静对话，留下时间上的细微矛盾。",
+          "rows": [
+            {
+              "id": "line_1",
+              "type": "dialogue",
+              "speakerId": "",
+              "text": "雨声沿着玻璃缓缓滑落。桌上的信封没有署名。",
+              "expression": "",
+              "action": "",
+              "options": []
+            },
+            {
+              "id": "line_2",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "这封信，是什么时候送到的？",
+              "expression": "疑惑",
+              "action": "拿起信封，翻到背面",
+              "options": []
+            },
+            {
+              "id": "line_3",
+              "type": "dialogue",
+              "speakerId": "char_lin",
+              "text": "你离开以后。大概……十分钟。",
+              "expression": "回避",
+              "action": "把视线移向窗外",
+              "options": []
+            },
+            {
+              "id": "line_4",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "可我没有离开过。",
+              "expression": "平静",
+              "action": "放下信封",
+              "options": []
+            },
+            {
+              "id": "line_local_demo",
+              "type": "branch",
+              "speakerId": "",
+              "text": "信封该怎么办？",
+              "expression": "",
+              "action": "",
+              "options": [
+                {
+                  "id": "opt_local_1",
+                  "text": "先打开信封",
+                  "rows": [
+                    {
+                      "id": "line_local_a1",
+                      "type": "dialogue",
+                      "speakerId": "char_protagonist",
+                      "text": "我现在就拆开。",
+                      "expression": "坚定",
+                      "action": "撕开封口",
+                      "options": []
+                    },
+                    {
+                      "id": "line_local_a2",
+                      "type": "dialogue",
+                      "speakerId": "char_lin",
+                      "text": "等等，里面可能不是信。",
+                      "expression": "惊讶",
+                      "action": "伸手阻止",
+                      "options": []
+                    }
+                  ],
+                  "mode": "continue",
+                  "chapterId": "",
+                  "stageId": ""
+                },
+                {
+                  "id": "opt_local_2",
+                  "text": "先询问凛",
+                  "rows": [
+                    {
+                      "id": "line_local_b1",
+                      "type": "dialogue",
+                      "speakerId": "char_protagonist",
+                      "text": "你是不是知道这封信的来历？",
+                      "expression": "疑惑",
+                      "action": "放下信封",
+                      "options": []
+                    },
+                    {
+                      "id": "line_local_b2",
+                      "type": "dialogue",
+                      "speakerId": "char_lin",
+                      "text": "……我只知道它不该出现在这里。",
+                      "expression": "回避",
+                      "action": "移开视线",
+                      "options": []
+                    }
+                  ],
+                  "mode": "continue",
+                  "chapterId": "",
+                  "stageId": ""
+                }
+              ]
+            },
+            {
+              "id": "line_5",
+              "type": "dialogue",
+              "speakerId": "char_lin",
+              "text": "那就先别拆开。",
+              "expression": "严肃",
+              "action": "按住信封的一角",
+              "options": []
+            },
+            {
+              "id": "line_6",
+              "type": "note",
+              "speakerId": "",
+              "text": "此处留下时间矛盾，后续追忆线回收。",
+              "expression": "",
+              "action": "",
+              "options": []
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_a1_2",
+          "title": "门外的脚步",
+          "notes": "把第一次选择放在对话自然中断之后。",
+          "rows": [
+            {
+              "id": "line_7",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "门外有人。",
+              "expression": "平静",
+              "action": "转向玄关",
+              "options": []
+            },
+            {
+              "id": "line_8",
+              "type": "branch",
+              "speakerId": "",
+              "text": "先调查哪里？",
+              "expression": "",
+              "action": "",
+              "options": [
+                {
+                  "id": "opt_a1_1",
+                  "text": "留在房间检查信封",
+                  "chapterId": "chapter_a1",
+                  "stageId": "stage_a1_3",
+                  "mode": "jump",
+                  "rows": []
+                },
+                {
+                  "id": "opt_a1_2",
+                  "text": "跟随声音来到走廊",
+                  "chapterId": "chapter_a2",
+                  "stageId": "stage_a2_1",
+                  "mode": "jump",
+                  "rows": []
+                }
+              ]
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_a1_3",
+          "title": "第一处矛盾",
+          "notes": "记录信封上的日期，但暂时不解释。",
+          "rows": [
+            {
+              "id": "line_9",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "这个日期，不是今天。",
+              "expression": "迟疑",
+              "action": "将信封放到灯下",
+              "options": []
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_a1_investigation",
+          "title": "房间调查",
+          "notes": "点击物品展开其独立对白。",
+          "kind": "investigation",
+          "rows": [],
+          "objects": [
+            {
+              "id": "object_letter",
+              "name": "信封",
+              "notes": "放在书桌中央。",
+              "rows": [
+                {
+                  "id": "line_inv_effect",
+                  "type": "effect",
+                  "speakerId": "",
+                  "text": "镜头缓慢推近信封，雨声渐弱。",
+                  "expression": "",
+                  "action": "",
+                  "options": []
+                },
+                {
+                  "id": "line_inv_letter",
+                  "type": "dialogue",
+                  "speakerId": "char_protagonist",
+                  "text": "这个封口，像是被人重新粘过。",
+                  "expression": "疑惑",
+                  "action": "举起信封",
+                  "options": []
+                }
+              ]
+            },
+            {
+              "id": "object_door",
+              "name": "房门",
+              "notes": "门外隐约传来脚步声。",
+              "rows": [
+                {
+                  "id": "line_inv_door",
+                  "type": "dialogue",
+                  "speakerId": "char_lin",
+                  "text": "你确定要打开吗？",
+                  "expression": "严肃",
+                  "action": "挡在门前",
+                  "options": []
+                },
+                {
+                  "id": "line_inv_choice",
+                  "type": "branch",
+                  "speakerId": "",
+                  "text": "现在怎么办？",
+                  "expression": "",
+                  "action": "",
+                  "options": [
+                    {
+                      "id": "option_inv_stay",
+                      "text": "再等一会儿",
+                      "mode": "continue",
+                      "chapterId": "",
+                      "stageId": "",
+                      "rows": [
+                        {
+                          "id": "line_inv_continue",
+                          "type": "dialogue",
+                          "speakerId": "char_protagonist",
+                          "text": "再观察一下。",
+                          "expression": "平静",
+                          "action": "看向门缝",
+                          "options": []
+                        }
+                      ]
+                    },
+                    {
+                      "id": "option_inv_open",
+                      "text": "推门出去",
+                      "mode": "jump",
+                      "chapterId": "chapter_a2",
+                      "stageId": "stage_a2_1",
+                      "rows": [
+                        {
+                          "id": "line_inv_jump",
+                          "type": "dialogue",
+                          "speakerId": "char_protagonist",
+                          "text": "我去看看。",
+                          "expression": "坚定",
+                          "action": "握住门把手",
+                          "options": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chapter_a2",
+      "routeId": "route_a",
+      "title": "中止的讯号",
+      "summary": "",
+      "y": 330,
+      "ending": "pause",
+      "unlock": {
+        "mode": "all",
+        "rules": [
+          {
+            "id": "rule_1",
+            "type": "chapter",
+            "targetId": "chapter_a1",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_a2_1",
+          "title": "失去连接",
+          "notes": "在这里截断本条路线。等待其他路线提供验证。",
+          "rows": [
+            {
+              "id": "line_10",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "等一下，最后一句话还没有说完。",
+              "expression": "惊讶",
+              "action": "按住耳机",
+              "options": []
+            },
+            {
+              "id": "line_11",
+              "type": "dialogue",
+              "speakerId": "",
+              "text": "连接中断。",
+              "expression": "",
+              "action": "",
+              "options": []
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_a2_2",
+          "title": "暂时搁置",
+          "notes": "以未完待续收束；不立刻解释。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_a3",
+      "routeId": "route_a",
+      "title": "双向回声",
+      "summary": "",
+      "y": 548,
+      "ending": "end",
+      "unlock": {
+        "mode": "all",
+        "rules": [
+          {
+            "id": "rule_2",
+            "type": "chapter",
+            "targetId": "chapter_a2",
+            "expected": true
+          },
+          {
+            "id": "rule_3",
+            "type": "chapter",
+            "targetId": "chapter_b2",
+            "expected": true
+          },
+          {
+            "id": "rule_4",
+            "type": "flag",
+            "targetId": "flag_log",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_a3_1",
+          "title": "重新连线",
+          "notes": "满足跨路线条件后，回到这里继续。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_a3_2",
+          "title": "对上时间",
+          "notes": "将前两条线的证言放在一起。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_b1",
+      "routeId": "route_b",
+      "title": "封存的记录",
+      "summary": "",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_b1_1",
+          "title": "旧笔记",
+          "notes": "同一个夜晚，从另一人的记忆开始。",
+          "rows": [
+            {
+              "id": "line_12",
+              "type": "dialogue",
+              "speakerId": "char_lin",
+              "text": "我记得那天没有下雨。",
+              "expression": "平静",
+              "action": "翻开笔记",
+              "options": []
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_b1_2",
+          "title": "缺失的一页",
+          "notes": "留意被撕去的日期。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_b2",
+      "routeId": "route_b",
+      "title": "另一份证言",
+      "summary": "",
+      "y": 330,
+      "ending": "pause",
+      "unlock": {
+        "mode": "all",
+        "rules": [
+          {
+            "id": "rule_5",
+            "type": "chapter",
+            "targetId": "chapter_b1",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_b2_1",
+          "title": "相同的问题",
+          "notes": "用同一个问题，得到不同答案。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_b2_2",
+          "title": "等待核对",
+          "notes": "完成此章，调查线的一个前置条件达成。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_b3",
+      "routeId": "route_b",
+      "title": "拼合",
+      "summary": "",
+      "y": 548,
+      "ending": "end",
+      "unlock": {
+        "mode": "all",
+        "rules": [
+          {
+            "id": "rule_6",
+            "type": "chapter",
+            "targetId": "chapter_b2",
+            "expected": true
+          },
+          {
+            "id": "rule_7",
+            "type": "chapter",
+            "targetId": "chapter_c2",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_b3_1",
+          "title": "两份记录",
+          "notes": "决定哪些记忆可以互相印证。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_c1",
+      "routeId": "route_c",
+      "title": "边界",
+      "summary": "",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_c1_1",
+          "title": "另一端",
+          "notes": "从地点和空间关系切入。",
+          "rows": [
+            {
+              "id": "line_13",
+              "type": "dialogue",
+              "speakerId": "char_yao",
+              "text": "我能看到你们那里的灯。",
+              "expression": "冷静",
+              "action": "看向远处",
+              "options": []
+            },
+            {
+              "id": "line_14",
+              "type": "dialogue",
+              "speakerId": "char_protagonist",
+              "text": "哪一盏？",
+              "expression": "疑惑",
+              "action": "走到窗边",
+              "options": []
+            }
+          ],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_c1_2",
+          "title": "测量距离",
+          "notes": "建立之后可以验证的空间线索。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_c2",
+      "routeId": "route_c",
+      "title": "错位坐标",
+      "summary": "",
+      "y": 330,
+      "ending": "pause",
+      "unlock": {
+        "mode": "all",
+        "rules": [
+          {
+            "id": "rule_8",
+            "type": "chapter",
+            "targetId": "chapter_c1",
+            "expected": true
+          },
+          {
+            "id": "rule_9",
+            "type": "stage",
+            "targetId": "stage_a2_1",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_c2_1",
+          "title": "收到残响",
+          "notes": "依赖调查线的一个阶段，而不是整章完成。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        },
+        {
+          "id": "stage_c2_2",
+          "title": "最后的读数",
+          "notes": "补上追忆线所缺的验证。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_c3",
+      "routeId": "route_c",
+      "title": "交汇",
+      "summary": "",
+      "y": 548,
+      "ending": "end",
+      "unlock": {
+        "mode": "any",
+        "rules": [
+          {
+            "id": "rule_10",
+            "type": "chapter",
+            "targetId": "chapter_a3",
+            "expected": true
+          },
+          {
+            "id": "rule_11",
+            "type": "chapter",
+            "targetId": "chapter_b3",
+            "expected": true
+          }
+        ]
+      },
+      "stages": [
+        {
+          "id": "stage_c3_1",
+          "title": "选择入口",
+          "notes": "两条线中任意一条先抵达，都可以解锁这里。",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    }
+  ]
+}

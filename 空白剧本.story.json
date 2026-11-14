@@ -1,0 +1,95 @@
+{
+  "format": "xuxian.story",
+  "version": 3,
+  "createdAt": "2026-11-12T06:00:00.000Z",
+  "updatedAt": "2026-11-12T06:00:00.000Z",
+  "id": "project_blank_01",
+  "title": "我的剧本",
+  "routes": [
+    {
+      "id": "route_0",
+      "name": "路线 A",
+      "color": "#79929d"
+    },
+    {
+      "id": "route_1",
+      "name": "路线 B",
+      "color": "#9b8da8"
+    },
+    {
+      "id": "route_2",
+      "name": "路线 C",
+      "color": "#809b8e"
+    }
+  ],
+  "characters": [],
+  "flags": [],
+  "chapters": [
+    {
+      "id": "chapter_0",
+      "routeId": "route_0",
+      "title": "第一章",
+      "summary": "",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_0_1",
+          "title": "阶段 01",
+          "notes": "",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_1",
+      "routeId": "route_1",
+      "title": "第一章",
+      "summary": "",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_1_1",
+          "title": "阶段 01",
+          "notes": "",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    },
+    {
+      "id": "chapter_2",
+      "routeId": "route_2",
+      "title": "第一章",
+      "summary": "",
+      "y": 112,
+      "ending": "continue",
+      "unlock": {
+        "mode": "all",
+        "rules": []
+      },
+      "stages": [
+        {
+          "id": "stage_2_1",
+          "title": "阶段 01",
+          "notes": "",
+          "rows": [],
+          "kind": "story",
+          "objects": []
+        }
+      ]
+    }
+  ]
+}

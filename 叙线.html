@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>叙线 · 剧情编辑器 1.8</title>
+<!-- 叙线 1.8 | Copyright (c) 2026 | MIT License. No third-party libraries, fonts, analytics, or network requests. -->
+<style>:root{--paper:#fcfcfb;--bg:#f4f5f5;--ink:#252a2e;--muted:#90969a;--line:#e5e8e9;--soft:#f1f3f3;--accent:#303d43;--radius:14px;--green:#457867;--red:#b85c5c;--shadow:0 18px 65px #15222d18;--font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{font-family:var(--font);font-size:13px;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;touch-action:manipulation}button:disabled{opacity:.35;cursor:default}button,input,textarea,select{outline:none}button:focus-visible,a:focus-visible{outline:2px solid #779caa;outline-offset:3px}input:focus,textarea:focus,select:focus{border-color:#8b9fa8!important}button{border:0;background:transparent}svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex-shrink:0}a{color:inherit}textarea{resize:vertical;line-height:1.8}::selection{background:#dce7e7}.hidden{display:none!important}.app{height:100%;display:flex;flex-direction:column}.topbar{height:70px;padding:0 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:24px;background:#fcfcfb;z-index:10;flex-shrink:0}.brand{display:flex;gap:10px;align-items:center;letter-spacing:3px;font-size:17px;font-weight:650;white-space:nowrap}.brand svg{width:25px;height:25px;stroke-width:1.4}.divider{width:1px;height:22px;background:var(--line);flex-shrink:0}.project-name{border:0;background:transparent;font-size:13px;width:180px;min-width:50px;text-overflow:ellipsis;padding:8px 0}.project-zone{display:flex;align-items:center;gap:12px;min-width:100px}.state-dot{width:6px;height:6px;border-radius:100%;background:#9fa5a7;display:inline-block;flex-shrink:0}.state-dot.dirty{background:#b99c64}.state-dot.saved{background:#6c8c7d}.state-label{font-size:11px;color:var(--muted);white-space:nowrap}.save-state{display:flex;gap:6px;align-items:center}.top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}.icon-btn{display:inline-flex;justify-content:center;align-items:center;width:34px;height:34px;border-radius:8px;color:#727b80;flex-shrink:0}.icon-btn:hover{background:#edf0f0;color:var(--ink)}.btn{display:inline-flex;gap:7px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;padding:8px 14px;min-height:34px;background:#fff;line-height:1.3;white-space:nowrap}.btn:hover{background:#f2f4f4}.btn.primary{background:#303b40;color:#fff;border-color:#303b40}.btn.primary:hover{background:#18292e}.btn.ghost{border-color:transparent;background:transparent}.btn.ghost:hover{background:#edf0f0}.btn.danger{color:var(--red);border-color:#eedbdb}.btn.small{padding:6px 10px;min-height:29px;font-size:12px}.btn.active{background:#e8eeee;border-color:#ccd8d7;color:#375951}.tiny{font-size:11px;color:var(--muted)}.muted{color:var(--muted)}.spacer{flex:1}.view{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}.view-head{display:flex;align-items:center;gap:16px;padding:24px 34px 20px;min-height:93px;background:var(--paper);flex-shrink:0}.view-head h1{font-size:23px;letter-spacing:-.6px;font-weight:600;margin:0}.view-title{display:flex;align-items:center;gap:14px}.view-actions{margin-left:auto;display:flex;gap:8px;align-items:center}.count{font-size:11px;color:#9a9fa2;font-variant-numeric:tabular-nums}.graph-viewport{position:relative;flex:1;overflow:auto;background-color:#f3f5f5;background-image:radial-gradient(#dce1e2 .7px,transparent .7px);background-size:20px 20px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cbd2d4 transparent;touch-action:pan-x pan-y}.graph-viewport.connecting{cursor:crosshair}.board-wrap{position:relative;min-width:100%;min-height:100%;}.board{transform-origin:top left;position:relative}.route-lane{position:absolute;top:26px;bottom:22px;width:306px;border-radius:18px;border:1px solid #e8ebebaa;background:#ffffff35;pointer-events:none}.lane-head{position:absolute;top:35px;width:276px;display:flex;align-items:center;gap:9px;padding:0 2px;z-index:3;height:32px}.route-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.lane-name{font-size:13px;font-weight:600;letter-spacing:.4px;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lane-head .icon-btn{margin-left:auto;width:27px;height:27px;opacity:.4}.lane-head:hover .icon-btn{opacity:1}.lane-add{position:absolute;width:276px;z-index:3;border:1px dashed #d8dfe0;border-radius:10px;height:40px;color:#939da1;background:#ffffff30}.lane-add:hover{background:#fff;color:var(--ink);border-color:#adbcc2}.chapter-card{position:absolute;width:276px;min-height:136px;background:#fff;border:1px solid #dde3e5;border-radius:12px;padding:17px 18px 14px;z-index:3;box-shadow:0 3px 7px #18344304;cursor:grab;user-select:none;touch-action:none;transition:box-shadow .12s,border .12s}.chapter-card:hover{box-shadow:0 8px 25px #1f35420c;border-color:#aebfc6;z-index:5}.chapter-card.dragging{box-shadow:0 12px 36px #18344320;z-index:20;cursor:grabbing;opacity:.96}.chapter-card.completed{border-color:#93b1a5;background:#fafffc}.chapter-card.blocked{background:#fafbfb;border-color:#e1e6e7}.chapter-card.blocked .card-title{color:#7b858a}.card-top{display:flex;align-items:center;gap:6px;font-size:10px;color:#a0a9ad;letter-spacing:.7px;margin-bottom:12px}.card-top .icon-btn{margin-left:auto;width:22px;height:20px;opacity:0}.chapter-card:hover .card-top .icon-btn,.chapter-card:focus-within .card-top .icon-btn{opacity:1}.card-title{font-size:15px;line-height:1.5;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:11px;cursor:pointer}.card-footer{display:flex;align-items:center;gap:7px;font-size:10px;color:#9ba3a7}.card-footer .rule-chip{margin-left:auto}.pause-pill{background:#f4f1eb;color:#9b8c73;border-radius:4px;font-size:10px;padding:2px 5px;letter-spacing:0}.end-pill{background:#edf1f5;color:#8293a0}.rule-chip{display:flex;align-items:center;gap:4px;color:#879499;border-radius:5px;font-size:10px;padding:4px 5px;background:#f5f7f7;max-width:120px;overflow:hidden;white-space:nowrap}.rule-chip svg{width:12px;height:12px}.rule-chip:hover{color:#365d68;background:#e9eff0}.port{position:absolute;width:14px;height:14px;background:#fcfdfd;border:2px solid #c0cdd1;border-radius:50%;padding:0;left:calc(50% - 7px);z-index:6;cursor:crosshair;opacity:0;transition:opacity .12s}.port.in{top:-8px}.port.out{bottom:-8px}.chapter-card:hover .port,.connecting .port{opacity:1}.port:hover,.port.armed{background:#5c7b84;border-color:#5c7b84;opacity:1;box-shadow:0 0 0 5px #758e981c}.edge-layer{position:absolute;left:0;top:0;overflow:visible;width:100%;height:100%;pointer-events:none;stroke-width:1.3}.edge-line{fill:none;stroke:#bdcbd0;pointer-events:none}.edge-line.branch{stroke:#99b0b1;stroke-dasharray:4 5}.edge-hit{fill:none;stroke:transparent;stroke-width:13px;pointer-events:stroke;cursor:pointer}.edge-group:hover .edge-line{stroke:#4c7383;stroke-width:2}.edge-group:hover{filter:drop-shadow(0 1px 3px #597b8333)}.sim-check{width:17px;height:17px;display:flex;align-items:center;justify-content:center;border:1px solid #b7c9cb;border-radius:50%;padding:0;color:#477b68;cursor:pointer}.sim-check svg{width:11px;height:11px}.sim-check.done{background:#538572;color:#fff;border-color:#538572}.sim-check.locked{border:0;color:#9eaaaf}.board-tools{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:2px;align-items:center;background:#fffffff2;border:1px solid #e1e7e7;border-radius:11px;padding:4px;box-shadow:0 5px 20px #253c4010;z-index:7;backdrop-filter:blur(8px)}.zoom-value{min-width:44px;text-align:center;font-size:11px;color:#7b898f}.board-tools .icon-btn{width:30px;height:30px}.board-tools .divider{height:17px;margin:0 5px}.sim-controls{display:flex;gap:6px}.sim-indicator{color:#56816f;font-size:11px}.crumbs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:23px 36px 0;color:#9ca4a7;font-size:12px}.crumbs button{padding:2px 0}.crumbs button:hover{color:#354a54}.crumbs svg{width:12px;height:12px;color:#b6bfc2}.crumbs .current{color:#536268}.page-scroll{overflow:auto;flex:1;min-height:0;background:#fafbfa}.chapter-header,.stage-header{display:flex;align-items:center;gap:14px;padding:19px 36px 23px;flex-shrink:0}.title-edit{border:0;background:transparent;font-weight:550;font-size:25px;min-width:80px;max-width:70%;padding:4px 0;flex:1;letter-spacing:-.7px}.stage-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding:12px 36px 40px;max-width:1400px}.stage-card{border:1px solid #e2e6e6;border-radius:13px;background:#fff;min-height:184px;padding:22px;position:relative;display:flex;flex-direction:column;cursor:pointer}.stage-card:hover{border-color:#afc1c8;box-shadow:0 5px 25px #23384008}.stage-order{font-size:11px;letter-spacing:1px;color:#9ba8ad;display:flex;gap:8px;align-items:center}.stage-order .icon-btn{position:absolute;right:12px;top:13px;width:27px;height:27px}.stage-card h2{margin:18px 0 10px;font-weight:550;font-size:16px;line-height:1.5;overflow-wrap:anywhere}.stage-card p{font-size:12px;line-height:1.8;color:#9ca4a7;margin:0 0 18px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:pre-line}.stage-card .stage-foot{margin-top:auto;display:flex;gap:8px;align-items:center;color:#9aa6ab;font-size:11px}.stage-add{border:1px dashed #d8dfe0;border-radius:13px;min-height:184px;color:#a3adb1;background:#f7f9f8;display:flex;align-items:center;justify-content:center;gap:9px}.stage-add:hover{background:#f0f4f3;color:#5b747b}.stage-add svg{width:19px;height:19px}.stage-switcher{display:flex;align-items:center;gap:9px}.stage-tabs{display:flex;gap:5px;overflow:auto;padding:0 36px 14px;flex-shrink:0;scrollbar-width:thin}.stage-tab{white-space:nowrap;color:#9ca5a9;border:1px solid transparent;border-radius:6px;padding:6px 12px;font-size:12px;max-width:250px;overflow:hidden;text-overflow:ellipsis}.stage-tab:hover{color:#52656e;background:#f3f5f5}.stage-tab.active{background:#edf1f1;border-color:#e0e6e6;color:#536a73}.script-scroll{overflow:auto;flex:1;min-height:0;background:#fff;padding:0 32px 60px}.script-table{min-width:780px;max-width:1600px;margin:0 auto}.script-table-head,.script-row{display:grid;grid-template-columns:42px 125px minmax(240px,1fr) 124px 170px 34px;gap:14px;align-items:start}.script-table-head{position:sticky;top:0;background:#fff;z-index:2;padding:15px 0;border-bottom:1px solid #dfe6e7;font-size:11px;color:#9aa5a9}.script-row{padding:17px 0;border-bottom:1px solid #edf0f0;position:relative;transition:background .12s}.script-row:focus-within{background:#fafcfb}.script-row:hover{background:#fbfcfc}.row-number{font-size:10px;color:#bdc5c9;display:flex;gap:3px;align-items:center;padding-top:10px;font-variant-numeric:tabular-nums}.row-number .drag-handle{width:12px;height:14px;cursor:grab;opacity:0}.script-row:hover .drag-handle{opacity:1}.cell{border:1px solid transparent;border-radius:5px;background:transparent;width:100%;padding:6px 8px;min-height:35px;font-size:13px;line-height:1.75;box-shadow:none}.cell:hover{background:#f6f8f8}.cell:focus{background:#fff}.cell::placeholder{color:#c3cacc;font-size:12px}.script-row textarea.cell{resize:none;overflow:hidden;display:block;min-height:40px}.speaker-wrap{display:flex;align-items:center;position:relative}.speaker-wrap select{padding-left:16px;font-size:12px;appearance:none;cursor:pointer}.speaker-swatch{position:absolute;left:5px;top:18px;width:5px;height:5px;border-radius:50%;pointer-events:none}.script-row .icon-btn{width:28px;height:32px;opacity:0;margin-top:3px}.script-row:hover .icon-btn,.script-row:focus-within .icon-btn{opacity:1}.expression-cell,.action-cell{font-size:12px;color:#78868c}.row-add{display:flex;align-items:center;justify-content:center;gap:8px;height:46px;width:100%;margin-top:14px;border:1px dashed #e2e8e8;border-radius:8px;color:#a0adb3;font-size:12px}.row-add:hover{background:#f6f9f8;color:#617b85}.note-row{grid-template-columns:42px 1fr 34px;background:#fafaf8}.note-row textarea{color:#94978b;font-size:12px}.choice-row{grid-template-columns:42px 1fr 34px;background:#fcfdfd}.choice-body{border-left:2px solid #c9d9d8;padding-left:14px}.choice-body>input{font-weight:500}.choice-option{display:grid;grid-template-columns:minmax(160px,1fr) 190px 150px 28px;gap:9px;margin-top:5px;align-items:center}.choice-option select{font-size:11px;color:#88999e}.choice-option .icon-btn{opacity:.45}.choice-actions{margin-top:8px}.flash-row{animation:flash 1.8s}@keyframes flash{0%,50%{background:#edf4df}100%{background:transparent}}.characters-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px;padding:6px 34px 35px;max-width:1400px}.character-card{background:#fff;border:1px solid #e1e7e7;border-radius:13px;padding:24px;cursor:pointer;min-height:180px}.character-card:hover{border-color:#afc0c6;box-shadow:0 6px 25px #17303708}.avatar{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:16px;letter-spacing:0;background:#eff2f3;font-weight:500}.character-head{display:flex;gap:14px;align-items:center}.character-head h2{font-size:16px;font-weight:550;margin:0}.character-tags{display:flex;gap:5px;flex-wrap:wrap;margin:23px 0 0}.tag{font-size:10px;color:#8b989e;background:#f3f5f5;padding:3px 7px;border-radius:4px}.character-card p{font-size:12px;color:#9da5a8;line-height:1.8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.menu{position:fixed;z-index:1000;min-width:184px;max-height:90vh;overflow:auto;padding:6px;border:1px solid #dfe6e7;background:#fffffff9;backdrop-filter:blur(12px);box-shadow:var(--shadow);border-radius:11px}.menu-item{width:100%;display:flex;gap:9px;text-align:left;align-items:center;min-height:36px;padding:8px 10px;border-radius:6px;font-size:12px}.menu-item:hover{background:#f0f4f4}.menu-item svg{width:15px;height:15px;color:#8b9a9f}.menu-item .shortcut{margin-left:auto;padding-left:16px;color:#a9b2b6;font-size:10px}.menu-item.danger{color:#b86666}.menu-sep{height:1px;background:var(--line);margin:5px}.overlay{position:fixed;inset:0;z-index:100;background:#1b2d3a28;display:flex;align-items:center;justify-content:center;padding:26px;backdrop-filter:blur(4px)}.modal{width:550px;max-width:100%;max-height:calc(100dvh - 52px);display:flex;flex-direction:column;background:#fcfcfb;border:1px solid #fff;border-radius:17px;box-shadow:var(--shadow);overflow:hidden}.modal.wide{width:760px}.modal.narrow{width:420px}.modal-head{display:flex;align-items:center;padding:22px 25px 17px;gap:12px;flex-shrink:0}.modal-head h2{margin:0;font-size:17px;font-weight:550}.modal-head .icon-btn{margin-left:auto}.modal-body{padding:5px 26px 25px;overflow:auto;min-height:0}.modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:17px 25px;border-top:1px solid var(--line);flex-shrink:0}.field{display:flex;flex-direction:column;gap:9px;margin:17px 0}.field>label{font-size:11px;color:#8d999f}.input{border:1px solid #dfe5e6;border-radius:8px;padding:10px 12px;background:#fff;width:100%;line-height:1.6}.input::placeholder{color:#b9c1c4}.field-row{display:flex;gap:15px}.field-row>.field{flex:1;min-width:0}.color-picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.color-dot{width:25px;height:25px;border-radius:50%;border:3px solid #fcfcfb;box-shadow:0 0 0 1px transparent}.color-dot.selected{box-shadow:0 0 0 1px #8a9b9f}.char-note{min-height:90px}.rule-row{display:grid;grid-template-columns:104px minmax(150px,1fr) 90px 31px;gap:8px;align-items:center;margin:10px 0}.rule-row select{padding:9px 7px;font-size:12px}.rule-row .rule-state{font-size:11px;color:#92a19e;text-align:center}.rule-mode{display:flex;gap:5px;background:#eef2f2;padding:4px;border-radius:8px;margin-bottom:24px;width:max-content}.rule-mode button{padding:7px 17px;font-size:12px;border-radius:6px;color:#97a4a8}.rule-mode .selected{background:white;box-shadow:0 2px 5px #22313a0a;color:#536d77}.rule-empty{display:flex;align-items:center;justify-content:center;min-height:100px;color:#aab4b7;gap:8px;font-size:12px}.flag-row{display:flex;align-items:center;gap:8px;padding:13px 0;border-bottom:1px solid #ebeeee}.flag-row .flag-title{flex:1;min-width:0;overflow-wrap:anywhere}.toggle{width:33px;height:19px;padding:2px;border-radius:20px;background:#dce2e3;display:flex;align-items:center;transition:.15s}.toggle:before{content:"";width:15px;height:15px;border-radius:50%;background:white;box-shadow:0 1px 4px #18344316;transition:.15s}.toggle.on{background:#668c7c}.toggle.on:before{transform:translateX(14px)}.help h3{font-size:13px;font-weight:600;margin:25px 0 9px}.help p,.help li{font-size:12px;line-height:1.9;color:#819097}.help p{margin:8px 0}.help code,.help kbd{font-family:inherit;background:#edf1f1;padding:2px 5px;border-radius:4px;font-size:11px;color:#627b85}.help .help-rule{border:0;border-top:1px solid #e3e9e9;margin:25px 0}.help a{color:#5b7b87}.toast{position:fixed;bottom:28px;left:50%;transform:translate(-50%,15px);background:#2d3c43;color:#fff;padding:12px 19px;border-radius:9px;font-size:12px;z-index:2000;opacity:0;transition:.2s;box-shadow:0 5px 25px #2b3b4320;pointer-events:none;max-width:90vw;line-height:1.6}.toast.show{opacity:1;transform:translate(-50%,0)}.toast.error{background:#805b59}.search-input{font-size:17px;padding:12px 0;border:0;border-bottom:1px solid #dfe6e7;background:transparent;width:100%;border-radius:0}.search-results{max-height:48vh;overflow:auto;margin-top:12px}.search-item{display:flex;flex-direction:column;gap:7px;padding:14px 10px;border-bottom:1px solid #edf1f1;width:100%;text-align:left;border-radius:7px}.search-item:hover{background:#f0f4f4}.search-item strong{font-size:13px;font-weight:500}.search-item small{font-size:10px;color:#a1afb3}.search-item span{font-size:12px;color:#8b9ba2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}.diagnostic{padding:12px 2px;border-bottom:1px solid #e6ebeb;font-size:12px;line-height:1.8;color:#7b8d96}.diagnostic button{font-size:12px;color:#4d7c8a;padding:0;text-align:left}.diagnostic .kind{font-size:10px;margin-right:9px;color:#ba9477}.empty-centered{padding:50px 20px;display:flex;justify-content:center;color:#9dabad;font-size:12px}.readable-preview{padding:8px 6px}.preview-dialogue{padding:16px 0;border-bottom:1px solid #edf0ee}.preview-dialogue strong{font-size:12px;color:#607e89;font-weight:550}.preview-dialogue p{font-size:14px;line-height:1.9;white-space:pre-wrap;margin:8px 0;color:#45555d}.preview-dialogue small{font-size:11px;line-height:1.8;color:#a3acb0;white-space:pre-wrap}.preview-note{font-size:12px;color:#99a29d;white-space:pre-wrap;line-height:1.8;padding:12px 0}.danger-zone{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:15px;border-top:1px solid #e5e9e9}.source-name{font-size:11px;color:#9eacb2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dragover{outline:2px solid #75959f;outline-offset:3px}.desktop-only{display:inline-flex}.kbd{font-size:10px;color:#b4bec2;padding-left:8px}.warning-text{font-size:12px;line-height:1.9;color:#9a8172}.mini-rule-list{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}.mini-rule-list .tag{padding:5px 9px}.stage-summary{padding:0 36px 20px;font-size:12px;color:#9da7a9;line-height:1.9;white-space:pre-wrap;max-height:100px;overflow:auto}.shortcut-note{font-size:11px;color:#adb6b9;text-align:center;padding:18px 0}.file-drop-overlay{position:fixed;inset:10px;border:2px dashed #658992;background:#f4f9f8ee;z-index:300;display:flex;align-items:center;justify-content:center;gap:12px;font-size:20px;border-radius:14px;pointer-events:none}
+@media(min-width:1600px){.script-table-head,.script-row:not(.note-row):not(.choice-row):not(.local-choice-row){grid-template-columns:48px 140px minmax(300px,1fr) 160px 230px 34px;gap:20px}}
+@media(max-width:1000px){.topbar{padding:0 18px;gap:16px}.project-name{width:125px}.state-label{display:none}.view-head{padding:22px 24px}.stage-grid,.characters-grid{padding-left:24px;padding-right:24px}.crumbs{padding-left:24px;padding-right:24px}.chapter-header,.stage-header{padding-left:24px;padding-right:24px}.script-scroll{padding-left:18px;padding-right:18px}.stage-tabs{padding-left:24px;padding-right:24px}.stage-summary{padding-left:24px;padding-right:24px}}
+@media(max-width:700px){.topbar{height:60px;padding:0 12px;gap:11px}.brand{font-size:15px;letter-spacing:1px}.brand svg{width:21px;height:21px}.topbar>.divider{display:none}.project-zone{gap:3px;min-width:30px}.project-name{width:95px;font-size:12px}.top-actions{gap:3px}.top-actions .btn{padding:7px 9px}.top-actions .btn svg{display:none}.desktop-only{display:none!important}.save-state{display:none}.view-head{padding:19px 16px;min-height:83px;gap:8px;flex-wrap:wrap}.view-head h1{font-size:20px}.view-actions{gap:4px}.view-actions .btn{padding:7px 9px;font-size:11px}.view-actions .btn svg{width:14px;height:14px}.view-title{gap:9px}.view-title .count{display:none}.sim-controls .btn{font-size:10px}.stage-grid{grid-template-columns:1fr;padding:6px 18px 25px}.stage-card,.stage-add{min-height:140px}.stage-card{padding:18px}.stage-card h2{margin-top:12px}.crumbs{padding:19px 18px 0;font-size:11px}.chapter-header,.stage-header{padding:12px 18px 18px;gap:8px;flex-wrap:wrap}.title-edit{font-size:22px;max-width:none}.chapter-header>.view-actions{width:100%;margin-left:0}.stage-header>.view-actions{margin-left:0}.stage-tabs{padding:0 18px 12px}.stage-summary{padding:0 18px 18px}.characters-grid{padding:4px 18px 24px;grid-template-columns:1fr}.script-scroll{padding:0 14px 40px}.script-table{min-width:0}.script-table-head{display:none}.script-row{grid-template-columns:25px minmax(90px,1fr) minmax(100px,1fr) 27px;gap:7px;padding:17px 0}.script-row .row-number{grid-column:1;grid-row:1}.script-row .speaker-wrap{grid-column:2;grid-row:1}.script-row .dialogue-cell{grid-column:2/4;grid-row:2}.script-row .expression-wrap{grid-column:3;grid-row:1}.script-row .action-wrap{grid-column:2/4;grid-row:3}.script-row>.row-menu{grid-column:4;grid-row:1;opacity:.5}.script-row .action-cell{background:#f9fbfa;min-height:32px}.script-row .icon-btn{opacity:.5}.script-row.note-row,.script-row.choice-row{grid-template-columns:25px 1fr 27px;gap:7px}.note-row>.cell,.choice-row>.choice-body{grid-column:2;grid-row:auto}.note-row>.row-menu,.choice-row>.row-menu{grid-column:3}.choice-option{grid-template-columns:1fr 28px;gap:4px}.choice-option input{grid-column:1}.choice-option select{grid-column:1}.choice-option .icon-btn{grid-column:2;grid-row:1}.choice-option{padding-bottom:8px;border-bottom:1px solid #e8eeee}.overlay{padding:12px}.modal{max-height:calc(100dvh - 24px);border-radius:13px}.modal-head{padding:18px 18px 12px}.modal-body{padding:4px 18px 22px}.modal-foot{padding:14px 18px}.rule-row{grid-template-columns:84px minmax(100px,1fr) 28px;gap:6px}.rule-row select{font-size:11px}.rule-row .rule-state{grid-column:2;grid-row:auto;text-align:left}.rule-row>.icon-btn{grid-column:3;grid-row:1}.field-row{flex-direction:column;gap:0}.rule-row{position:relative}.rule-row>.icon-btn{position:absolute;right:0;top:2px}.rule-row .expected-select{grid-column:2}.board-tools{bottom:16px}.port,.card-top .icon-btn{opacity:1}.card-top .icon-btn{opacity:.45}.character-tags{margin-top:18px}.row-number .drag-handle{opacity:.4}.stage-order .icon-btn{opacity:1}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.action-wrap{position:relative}.action-wrap:has(.field-preset) .action-cell{padding-right:23px}.field-preset{position:absolute;right:2px;top:9px;width:19px;height:22px;padding:0;color:#a5b3b8;border-radius:4px;opacity:0}.field-preset svg{width:13px;height:13px}.action-wrap:hover .field-preset,.action-wrap:focus-within .field-preset{opacity:1}.field-preset:hover{background:#e9eeee}@media(hover:none){.field-preset{opacity:.6}.port{opacity:1}.card-top .icon-btn,.script-row .icon-btn{opacity:.5}}
+
+/* v1.2: accessible multi-row selection and smoother, accurate diagram connectors. */
+.edge-layer{stroke-width:1.55;overflow:visible;}
+.edge-line{stroke:#a1b7c0;stroke-linejoin:round;stroke-linecap:round;}
+.edge-line.branch{stroke:#8fa9aa;stroke-dasharray:5 5;stroke-linejoin:round;stroke-linecap:round;}
+.edge-group:hover .edge-line{stroke:#567e8d;stroke-width:2.1;}
+.edge-hit{stroke-width:16;}
+.row-number{gap:1px;}
+.row-select{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:25px;height:27px;border-radius:6px;cursor:pointer;color:#aeb8be;font-size:10px;font-variant-numeric:tabular-nums;transition:background .12s,color .12s;}
+.row-select:hover,.row-select:focus-visible{background:#e8f0f1;color:#577783;outline:none;}
+.script-row.selected,.script-row.selected:hover,.script-row.selected:focus-within{background:#eff6f6;box-shadow:inset 3px 0 0 #7b9ca5;}
+.script-row.selected .row-select{background:#dae9ec;color:#4b7684;font-weight:700;}
+.script-row.selected .row-menu,.script-row.selected .drag-handle{opacity:.8;}
+.selection-toolbar{display:flex;align-items:center;justify-content:flex-start;gap:12px;flex-shrink:0;background:#f7faf9;border-bottom:1px solid #e3eded;padding:6px 36px;min-height:40px;color:#627c85;}
+.selection-toolbar[hidden]{display:none!important;}
+.selected-count{font-size:11px;font-weight:650;letter-spacing:.015em;padding-right:5px;white-space:nowrap;}
+.selection-action,.selection-clear{background:transparent;border:0;display:flex;align-items:center;gap:5px;border-radius:6px;color:#617c84;font-size:11px;cursor:pointer;padding:5px 7px;}
+.selection-action svg,.selection-clear svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.selection-action:hover,.selection-clear:hover{background:#e5eeef;color:#315e6d;}
+.selection-clear{margin-left:auto;}
+@media(max-width:700px){.row-number .row-select{min-width:20px;height:24px}.selection-toolbar{padding:6px 15px;min-height:35px;gap:9px}}
+
+/* v1.4: in-place choice groups: branches contain dialogue and merge at the next row. */
+.script-row.local-choice-row{grid-template-columns:42px minmax(0,1fr) 34px;gap:14px;background:#fbfcfc;width:100%;}
+.script-row.local-choice-row>.row-number{grid-column:1;grid-row:1;}
+.script-row.local-choice-row>.local-choice-body{grid-column:2;grid-row:1;min-width:0;width:100%;}
+.script-row.local-choice-row>.row-menu{grid-column:3;grid-row:1;}
+
+.local-choice-body{min-width:0;border-left:2px solid #b4cbd0;padding:0 3px 1px 16px;}
+.local-choice-top{display:flex;align-items:center;gap:8px;margin-bottom:11px;}
+.local-choice-top>svg{width:15px;height:15px;color:#879ca4;}
+.local-question{font-weight:550;flex:1;min-width:50px;}
+.local-status{font-size:10px;color:#91a3a7;padding:2px 7px;border-radius:5px;background:#eef3f3;white-space:nowrap;}
+.local-choice-options{display:flex;flex-direction:column;gap:10px;}
+.local-option{border:1px solid #e4ebed;background:#fff;border-radius:10px;min-width:0;overflow:hidden;}
+.local-option-title{display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;min-height:43px;border-bottom:1px solid #f0f2f3;}
+.local-option-title input{font-weight:550;min-width:0;flex:1;}
+.local-option-title .icon-btn{opacity:.55;margin:0;}
+.local-branch-label{color:#889ca4;font-size:11px;font-weight:650;min-width:15px;text-align:center;}
+.local-fold{display:flex;justify-content:center;align-items:center;width:20px;height:24px;border-radius:5px;color:#93a2a9;flex-shrink:0;}
+.local-fold svg{width:13px;height:13px;transition:transform .15s;}
+.local-option.collapsed .local-fold svg{transform:rotate(-90deg)}
+.local-option.collapsed .local-option-content{display:none;}
+.local-option-content{padding:2px 11px 9px;}
+.local-option-lines{display:flex;flex-direction:column;}
+.branch-script-row{display:grid;grid-template-columns:28px 125px minmax(180px,1fr) 124px 170px 25px;gap:14px;align-items:start;border-bottom:1px solid #f0f3f3;padding:7px 0;min-width:0;width:100%;}
+.branch-script-row .cell{font-size:12px;padding:5px 6px;min-height:30px;}
+.branch-script-row .speaker-wrap,.branch-script-row .expression-wrap,.branch-script-row .action-wrap{min-width:0;}
+.branch-script-row .dialogue-cell{min-width:0;}
+.branch-script-row textarea.cell{resize:none;overflow:hidden;min-height:32px;}
+.branch-script-row .speaker-wrap select{padding-left:14px;font-size:11px;}
+.branch-script-row .speaker-swatch{top:15px;left:3px;}
+.branch-script-row .row-select{min-width:24px;height:24px;}
+.branch-script-row .branch-gutter{display:flex;align-items:center;}
+.branch-script-row .branch-row-menu{width:25px;height:29px;opacity:0;margin:0;}
+.branch-script-row:hover .branch-row-menu,.branch-script-row:focus-within .branch-row-menu{opacity:.65;}
+.branch-script-row.selected{background:#eff6f6;box-shadow:inset 3px 0 0 #7b9ca5;}
+.branch-script-row.selected .row-select{background:#dae9ec;color:#4b7684;font-weight:700;}
+.branch-script-row.branch-note{grid-template-columns:28px minmax(0,1fr) 25px;}
+.branch-script-row.branch-note textarea{color:#919b9e;background:#fafbfb;}
+.local-add-line,.local-add-option{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;border-radius:6px;color:#8b9ca2;}
+.local-add-line{margin-top:6px;}
+.local-add-line:hover,.local-add-option:hover{color:#4c6d77;background:#f0f5f5;}
+.local-add-line svg,.local-add-option svg{width:14px;height:14px;}
+.local-choice-footer{display:flex;justify-content:space-between;align-items:center;padding:9px 1px 0;}
+.local-converge{font-size:10px;color:#91a3a7;display:inline-flex;gap:5px;align-items:center;}
+.local-converge svg{width:12px;height:12px;transform:rotate(90deg)}
+@media(min-width:1600px){.branch-script-row{grid-template-columns:28px 140px minmax(180px,1fr) 160px 230px 25px;gap:20px}}
+@media(max-width:1150px){.branch-script-row{grid-template-columns:25px 105px minmax(90px,1fr) 95px 104px 25px;gap:5px}}
+@media(max-width:700px){.script-row.local-choice-row{grid-template-columns:25px minmax(0,1fr) 27px;gap:7px;}.local-choice-body{grid-column:2;grid-row:1;min-width:0;padding-left:8px;}.script-row.local-choice-row>.row-menu{grid-column:3;grid-row:1;}.local-option-title{padding:4px 5px;}.local-option-content{padding:2px 5px 7px;}.branch-script-row{grid-template-columns:22px minmax(75px,1fr) minmax(65px,1fr) 20px;gap:4px;}.branch-script-row .branch-gutter{grid-column:1;grid-row:1;}.branch-script-row .speaker-wrap{grid-column:2;grid-row:1;}.branch-script-row .expression-wrap{grid-column:3;grid-row:1;}.branch-script-row .dialogue-cell{grid-column:2/4;grid-row:2;}.branch-script-row .action-wrap{grid-column:2/4;grid-row:3;}.branch-script-row .branch-row-menu{grid-column:4;grid-row:1;opacity:.65;width:20px;}.branch-script-row.branch-note{grid-template-columns:22px 1fr 20px;}.branch-script-row.branch-note textarea{grid-column:2;grid-row:1;}.branch-script-row.branch-note .branch-row-menu{grid-column:3;grid-row:1;}.local-status{display:none;}.local-question{font-size:12px;}}
+.read-local-options{display:flex;flex-direction:column;gap:12px;margin:12px 0}
+.read-local-option{padding:10px;border-left:2px solid #c7d8dc;background:#fafcfc;border-radius:5px}
+.read-local-option>strong{font-size:12px;color:#526b74}
+.read-local-option .preview-dialogue{border:0;margin:5px 0;padding:6px 0;background:transparent}
+
+/* v1.5: multi-paragraph dialogue in both stage and local-choice rows. */
+.script-row textarea.dialogue-cell,.branch-script-row textarea.dialogue-cell{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-height:1.75;resize:none;overflow:hidden;min-height:40px;}
+.preview-dialogue p{white-space:pre-wrap;overflow-wrap:anywhere;}
+
+/* Project library / startup workspace */
+.project-library{position:fixed;inset:0;z-index:25;background:#fafbfa;color:var(--ink);overflow:auto;display:flex;flex-direction:column}
+.project-library.hidden{display:none!important}
+.library-top{height:72px;padding:0 clamp(22px,4.8vw,78px);border-bottom:1px solid #e8ebeb;display:flex;align-items:center;gap:14px;flex-shrink:0;background:#fcfcfb}
+.library-logo{font-weight:670;font-size:18px;letter-spacing:3px}
+.library-sep{height:17px;width:1px;background:#dce2e2}
+.library-top-meta{color:#a2aaae;font-size:12px;letter-spacing:.7px}
+.library-toolbar{margin-left:auto;display:flex;align-items:center;gap:8px}
+.library-main{width:min(1130px,calc(100% - 72px));margin:0 auto;padding:clamp(46px,7vh,88px) 0 80px}
+.library-heading{display:flex;align-items:baseline;justify-content:space-between;gap:18px;margin:0 0 30px}
+.library-heading h1{margin:0;font-weight:570;font-size:29px;letter-spacing:-1px}
+.library-count{font-size:11px;color:#a0a8ac}
+.library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:18px;align-items:stretch}
+.library-card{border:1px solid #e0e6e6;background:white;border-radius:14px;position:relative;min-height:176px;padding:26px 24px 19px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s,box-shadow .15s}
+.library-card:hover{border-color:#adbfc3;box-shadow:0 10px 35px #223e4409}
+.library-card .library-open{display:block;width:100%;padding:0;margin:0;text-align:left;cursor:pointer;flex:1;min-height:77px}
+.library-card .library-title{font-size:17px;font-weight:565;line-height:1.55;display:block;word-break:break-word;max-width:calc(100% - 25px)}
+.library-card .library-file{color:#a4adb1;font-size:11px;line-height:1.8;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:8px;max-width:100%}
+.library-card .library-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9da7ab;font-size:11px;border-top:1px solid #f0f2f2;padding-top:13px}
+.library-card .library-actions{position:absolute;top:16px;right:13px}
+.library-card .library-actions .icon-btn{width:27px;height:27px}
+.library-new{border:1px dashed #d7e0e1;background:transparent;border-radius:14px;min-height:176px;display:flex;align-items:center;justify-content:center;gap:8px;color:#88969c}
+.library-new:hover{border-color:#91aab0;background:white;color:#334850}
+.library-empty{border:1px dashed #dce4e4;border-radius:14px;min-height:190px;color:#8c9699;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:13px;grid-column:1 / -1}
+.library-empty small{font-size:11px;color:#a1adb0}
+.library-status{margin:22px 0 0;text-align:center;color:#a2adb0;font-size:11px}
+@media (max-width:720px){.library-top{padding:0 15px;height:65px;gap:8px}.library-main{width:calc(100% - 32px);padding:40px 0}.library-toolbar{gap:4px}.library-toolbar .btn{padding:7px 9px;font-size:11px;min-height:31px}.library-heading h1{font-size:24px}.library-grid{grid-template-columns:1fr}.library-card{min-height:155px}.library-top-meta{display:none}}
+
+/* v1.7 — compact, unnumbered full-width screen-direction rows. */
+.script-row.effect-row{display:grid;grid-template-columns:42px minmax(0,1fr) 34px!important;gap:14px!important;align-items:center;min-height:39px;padding:4px 0 4px 0;background:#fafcfc;}
+.script-row.effect-row>.effect-gutter{grid-column:1;display:flex;align-items:center;justify-content:center;}
+.script-row.effect-row>.effect-text{grid-column:2;grid-row:1;width:100%;min-width:0;min-height:27px!important;max-height:none;padding:3px 7px;font-size:12px;color:#5d737b;line-height:1.55;resize:none;overflow:hidden;white-space:pre-wrap;background:transparent;border:0;}
+.script-row.effect-row>.row-menu{grid-column:3;grid-row:1;}
+.effect-select{width:24px;height:24px;min-width:24px;border-radius:6px;line-height:1;font-size:17px;color:#b0c2c6;}
+.branch-script-row.branch-effect{display:grid;grid-template-columns:28px minmax(0,1fr) 25px!important;gap:10px!important;align-items:center;min-height:34px;padding:3px 0;background:#fbfcfc;}
+.branch-script-row.branch-effect>.branch-gutter{grid-column:1;grid-row:1;}
+.branch-script-row.branch-effect>.effect-text{grid-column:2;grid-row:1;display:block;width:100%;min-width:0;min-height:27px!important;padding:3px 6px;line-height:1.5;color:#5d737b;border:0;background:transparent;font-size:11px;white-space:pre-wrap;}
+.branch-script-row.branch-effect>.branch-row-menu{grid-column:3;grid-row:1;opacity:.5;}
+.row-add-pair,.local-add-pair{display:flex;gap:9px;width:100%;min-width:0;align-items:stretch;}
+.row-add-pair .row-add{width:auto;min-width:0;flex:1;margin-top:14px;}
+.local-add-pair{margin-top:6px;}
+.local-add-pair .local-add-line{flex:1;min-width:0;justify-content:center;margin:0;border:1px dashed #e2e9e9;border-radius:6px;}
+.local-option-title .local-option-mode{flex:0 0 88px;width:88px;min-width:0;font-size:11px;color:#667f87;background:#f4f8f8;border-radius:5px;padding:5px 6px;height:29px;}
+.local-option-target{display:flex;align-items:center;gap:9px;padding:7px 0 9px;border-bottom:1px solid #edf2f2;min-width:0;}
+.local-option-target select{min-width:0;flex:1;padding:5px 7px;font-size:11px;background:#fafbfb;color:#5e747b;}
+.local-option-target select:first-child{flex:1.6;}
+.preview-effect{padding:4px 10px;border-left:2px solid #cfdddf;color:#7d949b;font-size:12px;line-height:1.6;white-space:pre-wrap;margin:5px 0;}
+.selection-action.delete-action{color:#a96c6c;}
+.selection-action.delete-action:hover{background:#f6e9e9;color:#a34a4a;}
+@media(max-width:700px){
+.script-row.effect-row{grid-template-columns:25px minmax(0,1fr) 27px!important;gap:7px!important;}
+.local-option-title .local-option-mode{flex-basis:67px;width:67px;font-size:10px;padding:4px 3px;}
+.local-option-target{flex-direction:column;align-items:stretch;gap:5px;}
+.local-option-target select{width:100%;flex:auto!important;}
+.branch-script-row.branch-effect{grid-template-columns:22px minmax(0,1fr) 20px!important;gap:4px!important;}
+.branch-script-row.branch-effect>.effect-text{grid-column:2;grid-row:1;}
+.branch-script-row.branch-effect>.branch-row-menu{grid-column:3;grid-row:1;}
+}
+
+/* v1.7: investigation objects, each expands into its own script */
+.investigation-scroll{padding-top:2px;}
+.inspect-stack{display:flex;flex-direction:column;gap:12px;width:100%;padding:4px 0 36px;}
+.inspect-card{border:1px solid #e2e9e9;border-radius:12px;overflow:hidden;background:#fff;}
+.inspect-card.is-open{border-color:#c8d9dd;box-shadow:0 4px 16px rgba(58,88,102,.045);}
+.inspect-head{display:flex;align-items:stretch;min-height:66px;gap:4px;padding:0 11px 0 3px;}
+.inspect-open{flex:1;min-width:0;display:flex;align-items:center;gap:15px;text-align:left;border:0;background:transparent;color:#273640;padding:15px;cursor:pointer;}
+.inspect-open>svg{width:16px;height:16px;color:#9bb0b7;margin-left:10px;transition:transform .18s;}
+.inspect-card.is-open .inspect-open>svg{transform:rotate(180deg);}
+.inspect-order{font-size:11px;color:#9bafb6;letter-spacing:.1em;font-variant-numeric:tabular-nums;}
+.inspect-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.inspect-count{font-size:11px;color:#9fb2b6;margin-left:auto;flex-shrink:0;}
+.inspect-head>.icon-btn{align-self:center;opacity:.56;}
+.inspect-details{padding:4px 18px 16px;border-top:1px solid #ecf0f1;}
+.inspect-details .script-table{width:100%;}
+.inspect-details .row-add-pair .row-add{margin-top:10px;}
+.inspect-notes{margin:13px 0 4px;font-size:12px;color:#7b949a;white-space:pre-wrap;line-height:1.7;}
+.inspect-add{width:100%;border:1px dashed #d6e2e3;background:#fcfdfd;border-radius:9px;min-height:56px;display:flex;align-items:center;justify-content:center;gap:8px;color:#8ca6ae;cursor:pointer;font-size:12px;}
+.inspect-add:hover{border-color:#acc5cb;color:#527582;background:#f7fbfb;}
+@media(max-width:700px){.inspect-stack{gap:8px;padding-bottom:20px}.inspect-head{min-height:55px;padding-right:4px}.inspect-open{gap:9px;padding:12px 9px}.inspect-details{padding:4px 10px 14px}.inspect-name{font-size:12px}.inspect-count{font-size:10px}.inspect-head>.icon-btn{opacity:.8}.inspect-open>svg{margin-left:4px;}}
+/* v1.8: spatial line sorting; all unedited row surfaces are draggable. */
+.script-row,.branch-script-row{--row-lift:#779ca5;touch-action:pan-y;}
+.script-row:not(:has(input:hover,textarea:hover,select:hover,button:hover)),
+.branch-script-row:not(:has(input:hover,textarea:hover,select:hover,button:hover)){cursor:grab;}
+.script-row :is(input,textarea,select),.branch-script-row :is(input,textarea,select){cursor:text;}
+.script-row select,.branch-script-row select{cursor:pointer;}
+.script-row .row-select,.branch-script-row .row-select{cursor:pointer;}
+.row-number .drag-handle{opacity:.28;pointer-events:none;cursor:grab;}
+.script-row:hover .drag-handle,.script-row.selected .drag-handle{opacity:.62;}
+.script-row.effect-row{grid-template-columns:54px minmax(0,1fr) 34px!important;}
+.script-row.effect-row>.effect-gutter{min-height:34px;cursor:grab;justify-content:flex-start;padding-left:10px;}
+.script-row.effect-row .effect-select{min-width:30px;min-height:28px;}
+.branch-script-row.branch-effect{grid-template-columns:36px minmax(0,1fr) 25px!important;}
+.branch-script-row.branch-effect>.branch-gutter{min-height:29px;cursor:grab;justify-content:center;}
+.row-sort-active,.row-sort-active *{user-select:none!important;-webkit-user-select:none!important;cursor:grabbing!important;}
+.script-row.drag-pending,.branch-script-row.drag-pending{background:linear-gradient(90deg,#f8fbfb,#fff);transition:background .17s ease;}
+.script-row.drag-origin,.branch-script-row.drag-origin{opacity:.27!important;background:#e8f0f2!important;box-shadow:inset 0 0 0 1px #b4cad0!important;border-radius:8px;filter:saturate(.65);}
+.script-row.drag-origin::before,.branch-script-row.drag-origin::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:#9fbec5;opacity:.8;pointer-events:none;}
+.branch-script-row.drag-origin{position:relative;}
+.row-drag-ghost{position:fixed;z-index:200;pointer-events:none;display:flex;align-items:center;gap:12px;min-height:54px;max-height:88px;overflow:hidden;padding:12px 16px;background:rgba(255,255,255,.98);border:1px solid #d9e3e5;border-radius:11px;box-shadow:0 17px 42px #223d4826,0 2px 10px #283c440e;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);animation:row-raise .18s cubic-bezier(.15,.85,.25,1) both;transition:opacity .16s ease,transform .16s ease;}
+.row-drag-mark{width:23px;height:23px;flex:none;display:flex;align-items:center;justify-content:center;background:#eef4f5;border-radius:7px;color:#668e98;font-size:13px;font-weight:600;}
+.row-drag-content{min-width:0;display:flex;flex-direction:column;gap:3px;}
+.row-drag-label{font-size:11px;font-weight:600;color:#47626c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.row-drag-excerpt{font-size:12px;font-weight:400;color:#829199;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@keyframes row-raise{from{opacity:.73;transform:translateY(5px) scale(.977)}to{opacity:1;transform:translateY(0) scale(1)}}
+.row-dropped{animation:row-land .32s cubic-bezier(.2,.8,.2,1);}
+@keyframes row-land{0%{background:#eaf3f4;box-shadow:inset 3px 0 0 #91b3bb}100%{background:transparent;box-shadow:inset 0 0 0 transparent}}
+@media(max-width:700px){.script-row.effect-row{grid-template-columns:42px minmax(0,1fr) 27px!important;}.script-row.effect-row>.effect-gutter{padding-left:4px;}.branch-script-row.branch-effect{grid-template-columns:30px minmax(0,1fr) 20px!important;}}
+@media(prefers-reduced-motion:reduce){.row-drag-ghost,.row-dropped{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+<button class="brand" id="brand" title="返回路线图" aria-label="返回路线图"></button>
+<span class="divider"></span>
+<div class="project-zone"><input class="project-name" id="project-name" aria-label="剧本名称" title="剧本名称" maxlength="200"><span class="save-state" id="save-state"><i class="state-dot dirty"></i><span class="state-label">本地草稿</span></span></div>
+<div class="top-actions">
+<button class="icon-btn desktop-only" id="undo-btn" title="撤销 · Ctrl Z" aria-label="撤销"></button>
+<button class="icon-btn" id="search-btn" title="搜索 · Ctrl K" aria-label="搜索"></button>
+<span class="divider desktop-only"></span>
+<button class="btn ghost" id="open-btn" title="选择剧本项目 · Ctrl O">打开</button>
+<button class="btn primary" id="save-btn" title="保存源文件 · Ctrl S">保存</button>
+<button class="icon-btn" id="menu-btn" title="更多" aria-label="更多"></button>
+</div>
+</header>
+<main class="view" id="view"></main>
+</div>
+
+<section id="project-library" class="project-library hidden" aria-label="剧本项目">
+ <div class="library-top"><span class="library-logo">叙线</span><span class="library-sep"></span><span class="library-top-meta">项目</span>
+  <div class="library-toolbar"><button class="icon-btn" id="library-refresh" title="刷新项目列表" aria-label="刷新项目列表">↻</button><button class="icon-btn" id="library-folder" title="打开项目文件夹" aria-label="打开项目文件夹"></button><button class="btn ghost" id="library-import" title="导入已有 JSON 剧本">导入</button><button class="btn primary" id="library-create">+ 新建</button><button class="icon-btn" id="library-close" title="返回编辑器" aria-label="返回编辑器">×</button></div>
+ </div>
+ <div class="library-main"><div class="library-heading"><h1>项目</h1><span class="library-count" id="library-count"></span></div><div class="library-grid" id="library-grid"></div><div class="library-status" id="library-status"></div></div>
+</section>
+<div id="modal-root"></div><div id="menu-root"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input id="file-input" type="file" accept=".json,application/json" hidden>
+<script>/* 叙线 1.8 — MIT License. Standalone, local-first AVG writing notebook. */
+'use strict';
+(() => {
+const VERSION = '1.8.0', FORMAT = 'xuxian.story', STORAGE = 'xuxian.draft.v1', BACKUPS = 'xuxian.backups.v1';
+const PALETTE=['#79929d','#9b8da8','#809b8e','#b39b7d','#a18d8d','#7f99a8','#969d7d','#909598'];
+const ICONS={
+ logo:'<path d="M4 4v5a3 3 0 0 0 3 3h10a3 3 0 0 1 3 3v5M4 20v-5a3 3 0 0 1 3-3h10a3 3 0 0 0 3-3V4"/><circle cx="4" cy="3" r="1.5"/><circle cx="20" cy="3" r="1.5"/><circle cx="4" cy="21" r="1.5"/><circle cx="20" cy="21" r="1.5"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>', minus:'<path d="M5 12h14"/>',dots:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/>',back:'<path d="m14 6-6 6 6 6"/>',next:'<path d="m9 6 6 6-6 6"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',
+ users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/>',
+ map:'<rect x="3" y="3" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><path d="M6 8v8M6 12h12v4"/>',
+ lock:'<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',link:'<path d="m9 15 6-6M7 13l-2 2a4 4 0 0 0 6 6l2-2M11 5l2-2a4 4 0 0 1 6 6l-2 2"/>',
+ flag:'<path d="M5 22V3h13l-2 4 2 4H5"/>',play:'<path d="m8 4 12 8-12 8Z"/>',stop:'<rect x="6" y="6" width="12" height="12" rx="1"/>',
+ check:'<path d="m5 12 4 4L19 6"/>',trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/>',
+ undo:'<path d="m8 4-5 5 5 5M3 9h11a7 7 0 0 1 0 14"/>',redo:'<path d="m16 4 5 5-5 5M21 9H10a7 7 0 0 0 0 14"/>',
+ file:'<path d="M14 2H5v20h14V7ZM14 2v5h5M8 12h8M8 16h6"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',save:'<path d="M4 3h14l3 3v15H3V3h1ZM7 3v6h10V3M7 21v-8h10v8"/>',
+ settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/>',
+ help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 8a2.5 2.5 0 1 1 4 2c-1 .5-1.5 1-1.5 3M12 17h.01"/>',
+ fit:'<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+ edit:'<path d="m16 3 5 5-12 12-6 1 1-6Z M13 6l5 5"/>',up:'<path d="m6 14 6-6 6 6"/>',down:'<path d="m6 10 6 6 6-6"/>',note:'<path d="M5 3h14v18H5ZM8 8h8M8 12h8M8 16h5"/>',
+ branch:'<path d="M5 3v11a5 5 0 0 0 5 5h7M5 10h8a5 5 0 0 0 5-5V3M14 16l3 3-3 3"/>',reset:'<path d="M3 10a9 9 0 1 1 2 8M3 3v7h7"/>',grip:'<path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01" stroke-width="3"/>',
+ audit:'<path d="M12 3 2 21h20Z M12 9v5M12 17h.01"/>',folder:'<path d="M3 6V4h7l2 3h9v13H3Z"/>',layers:'<path d="m12 3 10 5-10 5L2 8ZM2 12l10 5 10-5M2 16l10 5 10-5"/>'
+};
+const ico=(name)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]||ICONS.note}</svg>`;
+const $=(sel,root=document)=>root.querySelector(sel), $$=(sel,root=document)=>[...root.querySelectorAll(sel)];
+const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const attr=esc, uid=(p='id')=>p+'_'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2));
+const clone=(x)=>JSON.parse(JSON.stringify(x));
+const safeColor=(c)=>/^#[0-9a-f]{6}$/i.test(c||'')?c:PALETTE[0];
+const btn=(label,icon,action,cls='',title='')=>`<button class="btn ${cls}" data-act="${action}" title="${attr(title||label)}">${icon?ico(icon):''}${esc(label)}</button>`;
+const ib=(icon,action,title,extra='')=>`<button class="icon-btn" data-act="${action}" title="${attr(title)}" aria-label="${attr(title)}" ${extra}>${ico(icon)}</button>`;
+const option=(v,label,current)=>`<option value="${attr(v)}"${v===current?' selected':''}>${esc(label)}</option>`;
+const now=()=>new Date().toISOString();
+function line(type='dialogue'){
+ return {id:uid('line'),type,speakerId:'',text:'',expression:'',action:'',options:
+  type==='branch'?[{id:uid('opt'),text:'选项 A',mode:'continue',chapterId:'',stageId:'',rows:[line()]},{id:uid('opt'),text:'选项 B',mode:'continue',chapterId:'',stageId:'',rows:[line()]}]:[]};
+}
+function flattenRows(rows){return rows.flatMap(r=>r.type==='branch'?[r,...(r.options||[]).flatMap(o=>o.rows||[])]:[r]);}
+function regenRowIds(r){r.id=uid('line');if(!Array.isArray(r.options))r.options=[];for(const op of r.options){op.id=uid('opt');for(const sub of op.rows||[])regenRowIds(sub);}return r;}
+function rowLocation(id){const rows=currentRows();if(!rows)return null;for(const row of rows){if(row.id===id)return {row,rows};if(row.type==='branch')for(const opt of row.options)for(const sub of opt.rows||[])if(sub.id===id)return {row:sub,rows:opt.rows,parent:row,opt};}return null;}
+function selectableRows(){return flattenRows(currentRows()||[]);}
+function stageRootRows(s){return s.kind==='investigation'?(s.objects||[]).flatMap(item=>item.rows||[]):s.rows;}
+function stageRowsGroups(s){return s.kind==='investigation'?(s.objects||[]).map(o=>o.rows||[]):[s.rows];}
+function branchRowCount(s){return flattenRows(stageRootRows(s)).length;}
+function investigationObject(name='新调查物品'){return {id:uid('object'),name,notes:'',rows:[]};}
+let activeInspectObjectId=null;
+function currentInvestigationItem(){const s=currentStage();if(s?.kind!=='investigation')return null;const o=(s.objects||[]).find(x=>x.id===activeInspectObjectId)||s.objects?.[0]||null;if(o)activeInspectObjectId=o.id;return o;}
+function currentRows(){const s=currentStage();if(!s)return null;return s.kind==='investigation'?(currentInvestigationItem()?.rows||null):s.rows;}
+function stage(title='阶段 01'){return {id:uid('stage'),title,notes:'',kind:'story',rows:[],objects:[]};}
+function chapter(routeId,title='新章节',y=112){return {id:uid('chapter'),routeId,title,summary:'',y,ending:'continue',unlock:{mode:'all',rules:[]},stages:[stage()]};}
+function newProject(title='未命名剧本'){const p={format:FORMAT,version:3,id:uid('project'),title,createdAt:now(),updatedAt:now(),routes:[],characters:[],flags:[],chapters:[]};for(let i=0;i<3;i++){const r={id:uid('route'),name:'路线 '+String.fromCharCode(65+i),color:PALETTE[i]};p.routes.push(r);p.chapters.push(chapter(r.id,'第一章'));}return p;}
+const DEMO={"format":"xuxian.story","version":2,"id":"project_demo_01","title":"三线交汇 · 示例","createdAt":"2026-11-12T06:00:00.000Z","updatedAt":"2026-11-12T06:00:00.000Z","routes":[{"id":"route_a","name":"调查线","color":"#79929d"},{"id":"route_b","name":"追忆线","color":"#9b8da8"},{"id":"route_c","name":"外侧线","color":"#809b8e"}],"characters":[{"id":"char_protagonist","name":"主角","color":"#79929d","notes":"记录在不同路线中逐步改变的判断。","expressions":["平静","迟疑","疑惑","惊讶","坚定"],"actions":["抬头","停下脚步","看向窗外","翻开笔记"]},{"id":"char_lin","name":"凛","color":"#9b8da8","notes":"同一条线索，在她的讲述里似乎有另一层含义。","expressions":["平静","微笑","回避","严肃"],"actions":["转过身","握住信封","移开视线"]},{"id":"char_yao","name":"遥","color":"#809b8e","notes":"负责外侧线的调查。","expressions":["冷静","困惑","惊讶"],"actions":["放下耳机","指向屏幕","打开门"]}],"flags":[{"id":"flag_log","name":"已读出旧日志","notes":"演练时在“条件”中手动切换。"}],"chapters":[{"id":"chapter_a1","routeId":"route_a","title":"雨夜来信","summary":"在同一场雨中，三条路线开始出现不一致的时间记录。","y":112,"ending":"continue","unlock":{"mode":"all","rules":[]},"stages":[{"id":"stage_a1_1","title":"没有署名的信","notes":"场景起点。先用一段平静对话，留下时间上的细微矛盾。","rows":[{"id":"line_1","type":"dialogue","speakerId":"","text":"雨声沿着玻璃缓缓滑落。桌上的信封没有署名。","expression":"","action":"","options":[]},{"id":"line_2","type":"dialogue","speakerId":"char_protagonist","text":"这封信，是什么时候送到的？","expression":"疑惑","action":"拿起信封，翻到背面","options":[]},{"id":"line_3","type":"dialogue","speakerId":"char_lin","text":"你离开以后。大概……十分钟。","expression":"回避","action":"把视线移向窗外","options":[]},{"id":"line_4","type":"dialogue","speakerId":"char_protagonist","text":"可我没有离开过。","expression":"平静","action":"放下信封","options":[]},{"id":"line_5","type":"dialogue","speakerId":"char_lin","text":"那就先别拆开。","expression":"严肃","action":"按住信封的一角","options":[]},{"id":"line_6","type":"note","speakerId":"","text":"此处留下时间矛盾，后续追忆线回收。","expression":"","action":"","options":[]}]},{"id":"stage_a1_2","title":"门外的脚步","notes":"把第一次选择放在对话自然中断之后。","rows":[{"id":"line_7","type":"dialogue","speakerId":"char_protagonist","text":"门外有人。","expression":"平静","action":"转向玄关","options":[]},{"id":"line_8","type":"choice","speakerId":"","text":"先调查哪里？","expression":"","action":"","options":[{"id":"opt_a1_1","text":"留在房间检查信封","chapterId":"chapter_a1","stageId":"stage_a1_3"},{"id":"opt_a1_2","text":"跟随声音来到走廊","chapterId":"chapter_a2","stageId":"stage_a2_1"}]}]},{"id":"stage_a1_3","title":"第一处矛盾","notes":"记录信封上的日期，但暂时不解释。","rows":[{"id":"line_9","type":"dialogue","speakerId":"char_protagonist","text":"这个日期，不是今天。","expression":"迟疑","action":"将信封放到灯下","options":[]}]}]},{"id":"chapter_a2","routeId":"route_a","title":"中止的讯号","summary":"","y":330,"ending":"pause","unlock":{"mode":"all","rules":[{"id":"rule_1","type":"chapter","targetId":"chapter_a1","expected":true}]},"stages":[{"id":"stage_a2_1","title":"失去连接","notes":"在这里截断本条路线。等待其他路线提供验证。","rows":[{"id":"line_10","type":"dialogue","speakerId":"char_protagonist","text":"等一下，最后一句话还没有说完。","expression":"惊讶","action":"按住耳机","options":[]},{"id":"line_11","type":"dialogue","speakerId":"","text":"连接中断。","expression":"","action":"","options":[]}]},{"id":"stage_a2_2","title":"暂时搁置","notes":"以未完待续收束；不立刻解释。","rows":[]}]},{"id":"chapter_a3","routeId":"route_a","title":"双向回声","summary":"","y":548,"ending":"end","unlock":{"mode":"all","rules":[{"id":"rule_2","type":"chapter","targetId":"chapter_a2","expected":true},{"id":"rule_3","type":"chapter","targetId":"chapter_b2","expected":true},{"id":"rule_4","type":"flag","targetId":"flag_log","expected":true}]},"stages":[{"id":"stage_a3_1","title":"重新连线","notes":"满足跨路线条件后，回到这里继续。","rows":[]},{"id":"stage_a3_2","title":"对上时间","notes":"将前两条线的证言放在一起。","rows":[]}]},{"id":"chapter_b1","routeId":"route_b","title":"封存的记录","summary":"","y":112,"ending":"continue","unlock":{"mode":"all","rules":[]},"stages":[{"id":"stage_b1_1","title":"旧笔记","notes":"同一个夜晚，从另一人的记忆开始。","rows":[{"id":"line_12","type":"dialogue","speakerId":"char_lin","text":"我记得那天没有下雨。","expression":"平静","action":"翻开笔记","options":[]}]},{"id":"stage_b1_2","title":"缺失的一页","notes":"留意被撕去的日期。","rows":[]}]},{"id":"chapter_b2","routeId":"route_b","title":"另一份证言","summary":"","y":330,"ending":"pause","unlock":{"mode":"all","rules":[{"id":"rule_5","type":"chapter","targetId":"chapter_b1","expected":true}]},"stages":[{"id":"stage_b2_1","title":"相同的问题","notes":"用同一个问题，得到不同答案。","rows":[]},{"id":"stage_b2_2","title":"等待核对","notes":"完成此章，调查线的一个前置条件达成。","rows":[]}]},{"id":"chapter_b3","routeId":"route_b","title":"拼合","summary":"","y":548,"ending":"end","unlock":{"mode":"all","rules":[{"id":"rule_6","type":"chapter","targetId":"chapter_b2","expected":true},{"id":"rule_7","type":"chapter","targetId":"chapter_c2","expected":true}]},"stages":[{"id":"stage_b3_1","title":"两份记录","notes":"决定哪些记忆可以互相印证。","rows":[]}]},{"id":"chapter_c1","routeId":"route_c","title":"边界","summary":"","y":112,"ending":"continue","unlock":{"mode":"all","rules":[]},"stages":[{"id":"stage_c1_1","title":"另一端","notes":"从地点和空间关系切入。","rows":[{"id":"line_13","type":"dialogue","speakerId":"char_yao","text":"我能看到你们那里的灯。","expression":"冷静","action":"看向远处","options":[]},{"id":"line_14","type":"dialogue","speakerId":"char_protagonist","text":"哪一盏？","expression":"疑惑","action":"走到窗边","options":[]}]},{"id":"stage_c1_2","title":"测量距离","notes":"建立之后可以验证的空间线索。","rows":[]}]},{"id":"chapter_c2","routeId":"route_c","title":"错位坐标","summary":"","y":330,"ending":"pause","unlock":{"mode":"all","rules":[{"id":"rule_8","type":"chapter","targetId":"chapter_c1","expected":true},{"id":"rule_9","type":"stage","targetId":"stage_a2_1","expected":true}]},"stages":[{"id":"stage_c2_1","title":"收到残响","notes":"依赖调查线的一个阶段，而不是整章完成。","rows":[]},{"id":"stage_c2_2","title":"最后的读数","notes":"补上追忆线所缺的验证。","rows":[]}]},{"id":"chapter_c3","routeId":"route_c","title":"交汇","summary":"","y":548,"ending":"end","unlock":{"mode":"any","rules":[{"id":"rule_10","type":"chapter","targetId":"chapter_a3","expected":true},{"id":"rule_11","type":"chapter","targetId":"chapter_b3","expected":true}]},"stages":[{"id":"stage_c3_1","title":"选择入口","notes":"两条线中任意一条先抵达，都可以解锁这里。","rows":[]}]}]};
+// A short in-place choice example. Neither option creates a route or chapter edge.
+DEMO.chapters[0].stages[0].rows.splice(4,0,{
+ id:'line_local_demo',type:'localChoice',speakerId:'',text:'信封该怎么办？',expression:'',action:'',options:[
+  {id:'opt_local_1',text:'先打开信封',rows:[
+   {id:'line_local_a1',type:'dialogue',speakerId:'char_protagonist',text:'我现在就拆开。',expression:'坚定',action:'撕开封口',options:[]},
+   {id:'line_local_a2',type:'dialogue',speakerId:'char_lin',text:'等等，里面可能不是信。',expression:'惊讶',action:'伸手阻止',options:[]}]},
+  {id:'opt_local_2',text:'先询问凛',rows:[
+   {id:'line_local_b1',type:'dialogue',speakerId:'char_protagonist',text:'你是不是知道这封信的来历？',expression:'疑惑',action:'放下信封',options:[]},
+   {id:'line_local_b2',type:'dialogue',speakerId:'char_lin',text:'……我只知道它不该出现在这里。',expression:'回避',action:'移开视线',options:[]}]}
+ ]
+});
+DEMO.chapters[0].stages.push({id:'stage_a1_investigation',title:'房间调查',notes:'点击物品展开独立的对白脚本。',kind:'investigation',rows:[],objects:[
+ {id:'object_demo_letter',name:'信封',notes:'放在书桌中央。',rows:[{id:'line_demo_effect',type:'effect',speakerId:'',text:'镜头推近信封，雨声渐弱。',expression:'',action:'',options:[]},{id:'line_demo_letter',type:'dialogue',speakerId:'char_protagonist',text:'封口像是被重新粘过。',expression:'疑惑',action:'举起信封',options:[]}]},
+ {id:'object_demo_door',name:'房门',notes:'门外隐约传来脚步声。',rows:[{id:'line_demo_door',type:'dialogue',speakerId:'char_lin',text:'你确定要打开吗？',expression:'严肃',action:'挡在门前',options:[]}]}
+]});
+const BRIDGE = location.hostname==='127.0.0.1' && typeof window.__XUXIAN_BRIDGE_TOKEN__==='string' ? window.__XUXIAN_BRIDGE_TOKEN__ : '';
+const HANDLE_DB='xuxian-sources-v1';
+let project, fileHandle=null, fileStamp=null, sourceName='', dirty=true, exported=false, cacheOK=true, bridgeBinding=null;
+let view={type:'board',chapterId:null,stageId:null}, zoom=1, boardScroll={x:0,y:0}, connectFrom=null;
+let history=[],future=[],lastEdit='',lastEditAt=0,cacheTimer=null,toastTimer=null,saving=false,composition=false;
+let sim={active:false,chapters:new Set(),stages:new Set(),flags:new Set()};
+let previousFocus=null, modalClose=null, suppressUnload=false;
+let renderedKey='',skipBoardCapture=false;
+// View-local row selection includes local choice dialogue; clipboard survives chapters.
+let selectedRowIds=new Set(),selectionAnchor=null,rowClipboard=null,edgeFrame=0,collapsedOptionIds=new Set();
+const ROW_MIME='application/x-xuxian-rows+json';
+
+const C=(id)=>project.chapters.find(c=>c.id===id),R=(id)=>project.routes.find(r=>r.id===id),P=(id)=>project.characters.find(c=>c.id===id),F=(id)=>project.flags.find(f=>f.id===id);
+const S=(id)=>{for(const c of project.chapters){const s=c.stages.find(s=>s.id===id);if(s)return {chapter:c,stage:s};}return null;};
+const currentChapter=()=>C(view.chapterId),currentStage=()=>currentChapter()?.stages.find(s=>s.id===view.stageId);
+const linesOf=(c)=>c.stages.reduce((n,s)=>n+branchRowCount(s),0), textCount=(s)=>flattenRows(stageRootRows(s)).reduce((n,r)=>n+(r.text||'').replace(/\s/g,'').length+(r.type==='branch'?r.options.reduce((a,o)=>a+(o.text||'').replace(/\s/g,'').length,0):0),0);
+const routeChapters=(id)=>project.chapters.filter(c=>c.routeId===id).sort((a,b)=>a.y-b.y);
+function toast(msg,error=false){const e=$('#toast');e.textContent=msg;e.classList.toggle('error',error);e.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),3200);}
+function pushHistory(){history.push(clone(project));if(history.length>60)history.shift();future=[];lastEdit='';}
+function rememberEdit(token){const t=Date.now();if(lastEdit!==token||t-lastEditAt>1200){pushHistory();lastEdit=token;}lastEditAt=t;}
+function changed(renderNow=false){project.updatedAt=now();dirty=true;exported=false;clearTimeout(cacheTimer);cacheTimer=setTimeout(persist,350);reconcileSimulation();updateTop();if(renderNow)render();}
+function mutate(fn,renderNow=true){pushHistory();fn();changed(renderNow);}
+function edit(token,fn){rememberEdit(token);fn();changed(false);}
+function undo(){if(!history.length)return;future.push(clone(project));project=history.pop();$('#project-name').value=project.title;lastEdit='';validateView();changed(true);}
+function redo(){if(!future.length)return;history.push(clone(project));project=future.pop();$('#project-name').value=project.title;lastEdit='';validateView();changed(true);}
+function persist(){try{localStorage.setItem(STORAGE,JSON.stringify({project,sourceName,view,zoom,savedAt:now()}));cacheOK=true;}catch(e){if(cacheOK)toast('浏览器暂存空间不足，请保存源文件',true);cacheOK=false;}updateTop();}
+function backup(){try{const arr=JSON.parse(localStorage.getItem(BACKUPS)||'[]');arr.unshift({title:project.title,at:now(),project:clone(project)});localStorage.setItem(BACKUPS,JSON.stringify(arr.slice(0,3)));}catch(e){/* Main draft is never removed to make room for optional backups. */}}
+function hasWritableSource(){return !!(fileHandle||bridgeBinding);}
+function updateTop(){if(document.activeElement!==$('#project-name'))$('#project-name').value=project.title;document.title=project.title+' · 叙线';const status=$('#save-state');status.innerHTML=`<i class="state-dot ${dirty?'dirty':'saved'}"></i><span class="state-label">${!cacheOK?'未暂存':dirty?(sourceName?'未保存':'本地草稿'):(exported?'已导出':'已保存')}</span>`;status.title=(hasWritableSource()?'已关联：'+sourceName:sourceName?'已导入（尚未关联写入）：'+sourceName:'尚未关联源文件')+'\n'+(dirty?'改动尚未保存到源文件。':'当前版本已'+(exported?'导出。':'保存。'))+(cacheOK?'浏览器暂存不能替代文件备份。':'浏览器暂存不可用。');$('#undo-btn').disabled=!history.length;const stageCount=$('.stage-header .count');if(stageCount&&currentStage())stageCount.textContent=branchRowCount(currentStage())+' 行 · '+textCount(currentStage())+' 字';}
+function validateView(){if(view.type==='chapter'&&!C(view.chapterId))view={type:'board'};if(view.type==='stage'&&!currentStage())view=C(view.chapterId)?{type:'chapter',chapterId:view.chapterId}:{type:'board'};}
+function go(type,chapterId=null,stageId=null){if(type!=='stage'||stageId!==view.stageId)activeInspectObjectId=null;if(view.type==='board'){const e=$('#graph-viewport');if(e)boardScroll={x:e.scrollLeft,y:e.scrollTop};}if(type!=='stage'||stageId!==view.stageId||chapterId!==view.chapterId){selectedRowIds.clear();selectionAnchor=null;}view={type,chapterId,stageId};connectFrom=null;closeMenu();render();persist();}
+function ruleTitle(r){if(r.type==='chapter'){const c=C(r.targetId);return c?`${R(c.routeId)?.name||''} / ${c.title}`:'[缺失章节]';}if(r.type==='stage'){const s=S(r.targetId);return s?`${s.chapter.title} / ${s.stage.title}`:'[缺失阶段]';}return F(r.targetId)?.name||'[缺失条件]';}
+function ruleSatisfied(r){if(r.type==='chapter')return sim.chapters.has(r.targetId);if(r.type==='stage'){const s=S(r.targetId);return !!s&&(sim.stages.has(r.targetId)||sim.chapters.has(s.chapter.id));}if(r.type==='flag')return !!F(r.targetId)&&(sim.flags.has(r.targetId)===(r.expected!==false));return false;}
+function isUnlocked(c){const rs=c.unlock.rules;if(!rs.length)return true;return c.unlock.mode==='any'?rs.some(ruleSatisfied):rs.every(ruleSatisfied);}
+function reconcileSimulation(){if(!sim.active)return;let change=true;while(change){change=false;for(const id of [...sim.chapters]){const c=C(id);if(!c||!isUnlocked(c)){sim.chapters.delete(id);if(c)c.stages.forEach(s=>sim.stages.delete(s.id));change=true;}}for(const id of [...sim.stages]){const obj=S(id);if(!obj||!isUnlocked(obj.chapter)){sim.stages.delete(id);change=true;}}}}
+function toggleChapter(id){const c=C(id);if(!c)return;if(!isUnlocked(c))return toast('前置条件尚未满足');if(sim.chapters.has(id)){sim.chapters.delete(id);c.stages.forEach(s=>sim.stages.delete(s.id));}else sim.chapters.add(id);reconcileSimulation();render();}
+function toggleStage(id){const obj=S(id);if(!obj)return;if(!isUnlocked(obj.chapter))return toast('章节尚未解锁');if(sim.chapters.has(obj.chapter.id)){sim.chapters.delete(obj.chapter.id);obj.chapter.stages.forEach(s=>sim.stages.add(s.id));}if(sim.stages.has(id))sim.stages.delete(id);else sim.stages.add(id);reconcileSimulation();render();}
+function render(){validateView();const key=view.type+':'+(view.chapterId||'')+':'+(view.stageId||'');const same=key===renderedKey;const scroll=same?($('.script-scroll')?.scrollTop??$('.page-scroll')?.scrollTop??0):0;const vp=$('#graph-viewport');if(same&&view.type==='board'&&vp&&!skipBoardCapture)boardScroll={x:vp.scrollLeft,y:vp.scrollTop};skipBoardCapture=false;renderedKey=key;updateTop();const e=$('#view');if(view.type==='board')renderBoard(e);else if(view.type==='chapter')renderChapter(e);else if(view.type==='stage')renderStage(e);else if(view.type==='characters')renderCharacters(e);requestAnimationFrame(()=>{$$('textarea.autosize').forEach(autoSize);const sc=$('.script-scroll')||$('.page-scroll');if(sc)sc.scrollTop=scroll;});}
+function boardGeometry(){const w=Math.max(420,project.routes.length*354+78),h=Math.max(620,...project.chapters.map(c=>c.y+290));return {w,h};}
+function nodePos(c){return {x:54+Math.max(0,project.routes.findIndex(r=>r.id===c.routeId))*354,y:c.y,w:276,h:136};}
+function ruleEdges(){const edges=[];for(const c of project.chapters){for(const r of c.unlock.rules){let from=r.type==='chapter'?C(r.targetId):r.type==='stage'?S(r.targetId)?.chapter:null;if(from)edges.push({from:from.id,to:c.id,ruleId:r.id,type:r.type});}for(const s of c.stages)for(const row of stageRootRows(s))if(row.type==='branch')for(const op of row.options){if(op.mode==='jump'&&C(op.chapterId)&&op.chapterId!==c.id)edges.push({from:c.id,to:op.chapterId,type:'choice',rowId:row.id,stageId:s.id,label:op.text});}}return edges;}
+function nodeRect(c){
+ const el=$(`.chapter-card[data-id="${c.id}"]`,$('#board'));
+ if(!el)return nodePos(c);
+ return {x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.offsetHeight};
+}
+// v1.4: obstacle-aware orthogonal edge routing, softly rounded at every bend.
+// The planner sees the actual card rectangles and routes already placed.
+function edgeSides(a,b,same){
+ if(same)return {from:'right',to:'top'};
+ const dx=(b.x+b.w/2)-(a.x+a.w/2);
+ const dy=(b.y+b.h/2)-(a.y+a.h/2);
+ if(Math.abs(dx)>Math.max(90,Math.min(a.w,b.w)*.40))return dx>=0?{from:'right',to:'left'}:{from:'left',to:'right'};
+ return dy>=0?{from:'bottom',to:'top'}:{from:'top',to:'bottom'};
+}
+function portPoint(rect,side,shift,escape=false){
+ const d=escape?20:3;
+ if(side==='left')return {x:rect.x-d,y:rect.y+rect.h/2+shift};
+ if(side==='right')return {x:rect.x+rect.w+d,y:rect.y+rect.h/2+shift};
+ if(side==='top')return {x:rect.x+rect.w/2+shift,y:rect.y-d};
+ return {x:rect.x+rect.w/2+shift,y:rect.y+rect.h+d};
+}
+function samePoint(a,b){return Math.abs(a.x-b.x)<.05&&Math.abs(a.y-b.y)<.05;}
+function compactPoints(raw){
+ const pts=[];
+ for(const p of raw){if(!pts.length||!samePoint(pts[pts.length-1],p))pts.push(p);}
+ for(let i=1;i+1<pts.length;){const a=pts[i-1],b=pts[i],c=pts[i+1];
+  if((Math.abs(a.x-b.x)<.05&&Math.abs(b.x-c.x)<.05)||(Math.abs(a.y-b.y)<.05&&Math.abs(b.y-c.y)<.05))pts.splice(i,1);else i++;
+ }
+ return pts;
+}
+function roundedEdgePath(points){
+ const p=compactPoints(points),fmt=n=>(Math.round(n*10)/10).toString();
+ if(p.length<2)return '';
+ let d=`M ${fmt(p[0].x)} ${fmt(p[0].y)}`;
+ for(let i=1;i<p.length-1;i++){
+  const a=p[i-1],b=p[i],c=p[i+1];
+  const u=Math.hypot(b.x-a.x,b.y-a.y),v=Math.hypot(c.x-b.x,c.y-b.y);
+  if(u<.01||v<.01)continue;
+  const radius=Math.min(17,u*.43,v*.43);
+  const pre={x:b.x-(b.x-a.x)/u*radius,y:b.y-(b.y-a.y)/u*radius};
+  const post={x:b.x+(c.x-b.x)/v*radius,y:b.y+(c.y-b.y)/v*radius};
+  d+=` L ${fmt(pre.x)} ${fmt(pre.y)} Q ${fmt(b.x)} ${fmt(b.y)} ${fmt(post.x)} ${fmt(post.y)}`;
+ }
+ const last=p[p.length-1];return d+` L ${fmt(last.x)} ${fmt(last.y)}`;
+}
+function edgeSegments(points){const pts=compactPoints(points);return pts.slice(1).map((b,i)=>({a:pts[i],b}));}
+function segmentPenalty(a,b,routed){
+ const horiz=Math.abs(a.y-b.y)<.05;
+ const lo1=horiz?Math.min(a.x,b.x):Math.min(a.y,b.y),hi1=horiz?Math.max(a.x,b.x):Math.max(a.y,b.y);
+ let penalty=0;
+ for(const route of routed)for(const line of route){
+  const c=line.a,d=line.b,otherHorizontal=Math.abs(c.y-d.y)<.05;
+  if(horiz===otherHorizontal){
+   const sep=horiz?Math.abs(a.y-c.y):Math.abs(a.x-c.x);
+   if(sep>=17)continue;
+   const lo2=horiz?Math.min(c.x,d.x):Math.min(c.y,d.y),hi2=horiz?Math.max(c.x,d.x):Math.max(c.y,d.y);
+   const overlap=Math.min(hi1,hi2)-Math.max(lo1,lo2);
+   if(overlap>0)penalty+=(overlap*(sep<3?3.8:sep<9?2.2:.7))+(sep<3?32:5);
+  }else{
+   const hx=horiz?a:c,hy=horiz?a.y:c.y;
+   const x=horiz?c.x:a.x,y=horiz?a.y:c.y;
+   const hmin=horiz?Math.min(a.x,b.x):Math.min(c.x,d.x),hmax=horiz?Math.max(a.x,b.x):Math.max(c.x,d.x);
+   const vmin=horiz?Math.min(c.y,d.y):Math.min(a.y,b.y),vmax=horiz?Math.max(c.y,d.y):Math.max(a.y,b.y);
+   if(x>=hmin-.001&&x<=hmax+.001&&y>=vmin-.001&&y<=vmax+.001)penalty+=53;
+  }
+ }
+ return penalty;
+}
+function planGrid(start,end,rects,routed,W,H){
+ const inset=14, xs=[12,W-12,start.x,end.x,(start.x+end.x)/2],ys=[78,H-20,start.y,end.y,(start.y+end.y)/2];
+ const rect=rects.map(r=>({l:r.x-inset,t:r.y-inset,r:r.x+r.w+inset,b:r.y+r.h+inset}));
+ rect.forEach(r=>{xs.push(r.l,r.r);ys.push(r.t,r.b);});
+ // Dedicated channels through gutters and between chapter rows.
+ for(let i=0;i<project.routes.length-1;i++)xs.push(54+i*354+276+39);
+ const X=[...new Set(xs.filter(n=>Number.isFinite(n)&&n>=0&&n<=W).map(n=>Math.round(n*10)/10))].sort((a,b)=>a-b);
+ const Y=[...new Set(ys.filter(n=>Number.isFinite(n)&&n>=0&&n<=H).map(n=>Math.round(n*10)/10))].sort((a,b)=>a-b);
+ const nx=X.length,ny=Y.length;
+ const sx=X.indexOf(Math.round(start.x*10)/10),sy=Y.indexOf(Math.round(start.y*10)/10),tx=X.indexOf(Math.round(end.x*10)/10),ty=Y.indexOf(Math.round(end.y*10)/10);
+ if(sx<0||sy<0||tx<0||ty<0)return null;
+ const pointOk=(x,y)=>!rect.some(r=>x>r.l+.05&&x<r.r-.05&&y>r.t+.05&&y<r.b-.05);
+ const isFree=new Uint8Array(nx*ny);
+ for(let y=0;y<ny;y++)for(let x=0;x<nx;x++)isFree[y*nx+x]=pointOk(X[x],Y[y])?1:0;
+ const clear=(ax,ay,bx,by)=>{
+  if(Math.abs(ay-by)<.001){const l=Math.min(ax,bx),h=Math.max(ax,bx);
+   return !rect.some(r=>ay>r.t+.05&&ay<r.b-.05&&l<r.r-.05&&h>r.l+.05);
+  }
+  const l=Math.min(ay,by),h=Math.max(ay,by);
+  return !rect.some(r=>ax>r.l+.05&&ax<r.r-.05&&l<r.b-.05&&h>r.t+.05);
+ };
+ const length=nx*ny*5,dist=new Float64Array(length).fill(Infinity),prev=new Int32Array(length).fill(-1);
+ const startKey=(sy*nx+sx)*5+4;dist[startKey]=0;
+ const heap=[];
+ const put=(key,score)=>{const p={key,score};heap.push(p);let i=heap.length-1;while(i){const j=(i-1)>>1;if(heap[j].score<=p.score)break;heap[i]=heap[j];i=j;}heap[i]=p;};
+ const take=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){const l=i*2+1,r=l+1;if(l>=heap.length)break;let j=r<heap.length&&heap[r].score<heap[l].score?r:l;if(heap[j].score>=last.score)break;heap[i]=heap[j];i=j;}heap[i]=last;}return top;};
+ const heuristic=(ix,iy)=>Math.abs(X[ix]-end.x)+Math.abs(Y[iy]-end.y);
+ put(startKey,heuristic(sx,sy));
+ const steps=[[1,0],[-1,0],[0,1],[0,-1]];
+ let reached=-1,iter=0;
+ while(heap.length&&iter++<240000){
+  const h=take(),key=h.key,d=key%5,loc=(key-d)/5,ix=loc%nx,iy=Math.floor(loc/nx);
+  if(h.score>dist[key]+heuristic(ix,iy)+.01)continue;
+  if(ix===tx&&iy===ty){reached=key;break;}
+  for(let k=0;k<4;k++){
+   const x=ix+steps[k][0],y=iy+steps[k][1];if(x<0||y<0||x>=nx||y>=ny||!isFree[y*nx+x])continue;
+   if(!clear(X[ix],Y[iy],X[x],Y[y]))continue;
+   const p={x:X[ix],y:Y[iy]},q={x:X[x],y:Y[y]};
+   const base=Math.abs(q.x-p.x)+Math.abs(q.y-p.y);
+   const turn=d===4||d===k?0:23;
+   const bias=(d!==4&&((d===0&&k===1)||(d===1&&k===0)||(d===2&&k===3)||(d===3&&k===2)))?120:0;
+   const cost=dist[key]+base+turn+bias+segmentPenalty(p,q,routed);
+   const next=(y*nx+x)*5+k;
+   if(cost+1e-7<dist[next]){dist[next]=cost;prev[next]=key;put(next,cost+heuristic(x,y));}
+  }
+ }
+ if(reached<0)return null;
+ const pts=[];
+ for(let k=reached;k>=0;k=prev[k]){const idx=Math.floor(k/5);pts.push({x:X[idx%nx],y:Y[Math.floor(idx/nx)]});if(k===startKey)break;}
+ return compactPoints(pts.reverse());
+}
+function edgeVisibilityFallback(start,end,rects,W,H){
+ // A deterministic fail-safe if a draft has illegally overlapping cards.
+ return compactPoints([start,{x:start.x,y:78},{x:end.x,y:78},end]);
+}
+function edgesHTML(){
+ const arrows=`<defs>
+  <marker id="arrow-flow" viewBox="0 0 12 12" refX="10.5" refY="6" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M1.2 2.2 L10.5 6 L1.2 9.8 Z" fill="#9bb5bf" stroke="none"/></marker>
+  <marker id="arrow-choice" viewBox="0 0 12 12" refX="10.5" refY="6" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M1.2 2.2 L10.5 6 L1.2 9.8 Z" fill="#86a9a8" stroke="none"/></marker>
+ </defs>`;
+ const all=ruleEdges().filter(e=>C(e.from)&&C(e.to));
+ if(!all.length)return arrows;
+ const rectangles=new Map(project.chapters.map(c=>[c.id,nodeRect(c)]));
+ const obstacles=[...rectangles.values()];
+ // Lane add-buttons are also excluded, otherwise a connection vanishes behind them.
+ $$('.lane-add',$('#board')).forEach(el=>obstacles.push({x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.offsetHeight}));
+ const w=boardGeometry().w,h=boardGeometry().h;
+ for(const e of all){
+  e.sides=edgeSides(rectangles.get(e.from),rectangles.get(e.to),e.from===e.to);
+  e.offsetStart=0;e.offsetEnd=0;
+ }
+ // Separate both source and destination ports. Sorting gives stable, non-jittery placement.
+ const grouped=new Map();
+ for(const e of all)for(const end of ['from','to']){
+  const key=e[end]+':'+e.sides[end]+':'+end;
+  if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push({e,end});
+ }
+ for(const arr of grouped.values()){
+  arr.sort((a,b)=>{
+   const r1=rectangles.get(a.end==='from'?a.e.to:a.e.from),r2=rectangles.get(b.end==='from'?b.e.to:b.e.from);
+   const side=a.e.sides[a.end];
+   const v1=side==='left'||side==='right'?r1.y+r1.h/2:r1.x+r1.w/2;
+   const v2=side==='left'||side==='right'?r2.y+r2.h/2:r2.x+r2.w/2;
+   return v1-v2||String(a.e.ruleId||a.e.rowId||'').localeCompare(String(b.e.ruleId||b.e.rowId||''));
+  });
+  const spacing=Math.min(23,90/Math.max(1,arr.length-1));
+  arr.forEach((x,i)=>x.e[x.end==='from'?'offsetStart':'offsetEnd']=(i-(arr.length-1)/2)*spacing);
+ }
+ // Short/local connections reserve their preferred channels first. Long bypasses
+ // then find alternate corridors instead of sitting directly atop earlier links.
+ all.sort((a,b)=>{
+  const A=rectangles.get(a.from),B=rectangles.get(a.to),C0=rectangles.get(b.from),D=rectangles.get(b.to);
+  const d1=Math.hypot(A.x-B.x,A.y-B.y),d2=Math.hypot(C0.x-D.x,C0.y-D.y);
+  return d1-d2||String(a.ruleId||a.rowId||'').localeCompare(String(b.ruleId||b.rowId||''));
+ });
+ const reserved=[];
+ const html=all.map(e=>{
+  const a=rectangles.get(e.from),b=rectangles.get(e.to),from=e.sides.from,to=e.sides.to;
+  const p=portPoint(a,from,e.offsetStart),q=portPoint(b,to,e.offsetEnd),start=portPoint(a,from,e.offsetStart,true),end=portPoint(b,to,e.offsetEnd,true);
+  let core=planGrid(start,end,obstacles,reserved,w,h);
+  if(!core)core=edgeVisibilityFallback(start,end,obstacles,w,h);
+  const pts=compactPoints([p,start,...core,end,q]);
+  const d=roundedEdgePath(pts),choice=e.type==='choice';
+  // Only the main grid route participates in congestion detection: the fixed
+  // 17px terminal port-stubs may meet by design at a shared node.
+  reserved.push(edgeSegments(core));
+  return `<g class="edge-group" data-edge-to="${attr(e.to)}" data-edge-from="${attr(e.from)}" data-edge-type="${e.type}" data-stage="${attr(e.stageId||'')}"><title>${esc(choice?'分支：'+(e.label||'未命名选项'):'完成 '+(C(e.from)?.title||'')+' → '+(C(e.to)?.title||''))}</title><path class="edge-hit" d="${d}"/><path class="edge-line ${choice?'branch':''}" marker-end="url(#${choice?'arrow-choice':'arrow-flow'})" d="${d}"/></g>`;
+ });
+ return arrows+html.join('');
+}
+
+function updateEdges(){const svg=$('#edges');if(!svg)return;svg.innerHTML=edgesHTML();$$('.edge-group',svg).forEach(g=>g.addEventListener('click',()=>{if(g.dataset.edgeType==='choice')go('stage',g.dataset.edgeFrom,g.dataset.stage);else rulesDialog(g.dataset.edgeTo);}));}
+function scheduleEdges(){if(edgeFrame)return;edgeFrame=requestAnimationFrame(()=>{edgeFrame=0;updateEdges();});}
+function renderBoard(e){const {w,h}=boardGeometry();e.innerHTML=`<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${project.routes.length} 条路线 · ${project.chapters.length} 章</span></div><div class="view-actions">${sim.active?`<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn('条件','flag','sim-flags','ghost small')}${ib('reset','sim-reset','重置演练')}</div>`:''}${btn('角色','users','characters','ghost')}${btn(sim.active?'结束':'演练',sim.active?'stop':'play','sim-toggle',sim.active?'active':'ghost')}${btn('章节','plus','add-chapter','primary')}${ib('dots','board-menu','路线设置')}</div></div><div id="graph-viewport" class="graph-viewport ${connectFrom?'connecting':''}"><div class="board-wrap" id="board-wrap" style="width:${w*zoom}px;height:${h*zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${zoom})">${project.routes.map((r,i)=>{const x=54+i*354,last=Math.max(112,...routeChapters(r.id).map(c=>c.y))+173;return `<div class="route-lane" style="left:${x-15}px;height:${h-48}px"></div><div class="lane-head" style="left:${x}px"><i class="route-dot" style="background:${safeColor(r.color)}"></i><span class="lane-name">${esc(r.name)}</span>${ib('dots','route-menu','管理路线',`data-id="${attr(r.id)}"`)}</div><button class="lane-add" data-act="lane-add" data-id="${attr(r.id)}" style="left:${x}px;top:${last}px" title="沿此路线添加章节">${ico('plus')}</button>`;}).join('')}<svg class="edge-layer" id="edges" viewBox="0 0 ${w} ${h}" style="width:${w}px;height:${h}px"></svg>${project.chapters.map(c=>cardHTML(c)).join('')}</div></div></div><div class="board-tools">${ib('minus','zoom-out','缩小')}<button class="zoom-value" data-act="zoom-reset" title="恢复 100%">${Math.round(zoom*100)}%</button>${ib('plus','zoom-in','放大')}<span class="divider"></span>${ib('fit','fit-board','适应画布')}${ib('link','connection-toggle',connectFrom?'取消连线':'点击章节下方圆点，再点击目标章节上方圆点')}${connectFrom?btn('取消',null,'cancel-connect','ghost small'):''}</div>`;
+const vp=$('#graph-viewport');vp.scrollLeft=boardScroll.x;vp.scrollTop=boardScroll.y;centerBoard();
+vp.addEventListener('wheel',ev=>{if(ev.ctrlKey||ev.metaKey){ev.preventDefault();setZoom(zoom*(ev.deltaY>0?.9:1.1));}},{passive:false});
+$$('.chapter-card').forEach(card=>attachCardDrag(card));
+updateEdges();
+}
+function cardHTML(c){const p=nodePos(c),rt=R(c.routeId),cnt=routeChapters(c.routeId).findIndex(x=>x.id===c.id)+1;const count=c.unlock.rules.length,locked=sim.active&&!isUnlocked(c),done=sim.active&&sim.chapters.has(c.id);const rs=count?(c.unlock.mode==='all'?'全部':'任一')+' · '+count:'起点';return `<article class="chapter-card ${done?'completed':''} ${locked?'blocked':''}" data-id="${attr(c.id)}" style="left:${p.x}px;top:${p.y}px" tabindex="0" aria-label="${attr(c.title)}"><button class="port in" data-act="port-in" data-id="${attr(c.id)}" title="连接前置章节" aria-label="连接到 ${attr(c.title)}"></button><div class="card-top">${sim.active?`<button class="sim-check ${done?'done':''} ${locked?'locked':''}" data-act="complete-chapter" data-id="${attr(c.id)}" title="${locked?'尚未解锁':done?'取消完成':'标记完成'}">${locked?ico('lock'):done?ico('check'):''}</button>`:`<span style="color:${safeColor(rt?.color)}">${String(cnt).padStart(2,'0')}</span>`}<span>${c.ending==='pause'?'<span class="pause-pill">待续</span>':c.ending==='end'?'<span class="pause-pill end-pill">终章</span>':''}</span>${ib('dots','chapter-menu','章节操作',`data-id="${attr(c.id)}"`)}</div><div class="card-title" data-act="open-chapter" data-id="${attr(c.id)}" title="${attr(c.title)}">${esc(c.title)}</div><div class="card-footer"><span>${c.stages.length} 阶段</span><span>·</span><span>${linesOf(c)} 行</span><button class="rule-chip" data-act="rules" data-id="${attr(c.id)}" title="${attr(count?c.unlock.rules.map(ruleTitle).join('\n'):'无前置条件')}">${ico(count?'link':'play')}${rs}</button></div><button class="port out ${connectFrom===c.id?'armed':''}" data-act="port-out" data-id="${attr(c.id)}" title="从此章节连接到下一章" aria-label="从 ${attr(c.title)} 连接"></button></article>`;}
+function crumbs(items){return '<nav class="crumbs">'+items.map((v,i)=>(i?ico('next'):'')+(v.act?`<button data-act="${v.act}" ${v.id?`data-id="${attr(v.id)}"`:''}>${esc(v.text)}</button>`:`<span class="current">${esc(v.text)}</span>`)).join('')+'</nav>';}
+function renderChapter(e){const c=currentChapter(),r=R(c.routeId);e.innerHTML=crumbs([{text:'路线图',act:'board'},{text:r?.name||''},{text:c.title}])+`<div class="chapter-header"><input class="title-edit" data-bind="chapter-title" value="${attr(c.title)}" aria-label="章节标题" maxlength="300"><div class="view-actions">${btn('解锁','link','current-rules','ghost')}${ib('note','chapter-notes','章节笔记')}${btn('阶段','plus','add-stage','primary')}${ib('dots','current-chapter-menu','章节操作')}</div></div><div class="page-scroll">${c.summary?`<div class="stage-summary">${esc(c.summary)}</div>`:''}<div class="stage-grid">${c.stages.map((s,i)=>`<article class="stage-card" data-act="open-stage" data-id="${attr(s.id)}" tabindex="0"><div class="stage-order">${sim.active?`<button class="sim-check ${sim.chapters.has(c.id)||sim.stages.has(s.id)?'done':''}" data-act="complete-stage" data-id="${attr(s.id)}" title="切换阶段完成状态">${sim.chapters.has(c.id)||sim.stages.has(s.id)?ico('check'):''}</button>`:''}<span>${String(i+1).padStart(2,'0')}</span>${ib('dots','stage-menu','阶段操作',`data-id="${attr(s.id)}"`)}</div><h2>${esc(s.title)}</h2>${s.notes?`<p>${esc(s.notes)}</p>`:''}<div class="stage-foot"><span>${s.kind==='investigation'?'调查 · '+(s.objects||[]).length+' 物品':'剧情阶段'}</span><span>·</span><span>${branchRowCount(s)} 行脚本</span><span>·</span><span>${textCount(s)} 字</span><span class="spacer"></span>${ico('next')}</div></article>`).join('')}<button class="stage-add" data-act="add-stage" title="新建阶段">${ico('plus')}<span>阶段</span></button></div></div>`;}
+function speakerOptions(id){return option('','旁白',id)+project.characters.map(p=>option(p.id,p.name,id)).join('')+option('__new','＋ 新建角色',id);}
+function effectButton(id){return `<button class="row-select effect-select" data-select-row="${attr(id)}" aria-pressed="${selectedRowIds.has(id)}" title="选择描述行 · Shift 连选 · Ctrl 单选 · Delete 删除" aria-label="选择画面效果描述">·</button>`;}
+function optionBodyTargets(op){return op.mode!=='jump'?'':`<div class="local-option-target"><select class="cell" data-option-field="chapterId" aria-label="跳转目标章节">${option('','目标章节',op.chapterId)}${project.chapters.map(c=>option(c.id,`${R(c.routeId)?.name||''} / ${c.title}`,op.chapterId)).join('')}</select><select class="cell" data-option-field="stageId" aria-label="跳转目标阶段">${option('','章节起始',op.stageId)}${(C(op.chapterId)?.stages||[]).map(st=>option(st.id,st.title,op.stageId)).join('')}</select></div>`;}
+function rowHTML(row,i){
+ const selected=selectedRowIds.has(row.id);
+ const num=`<div class="row-number"><span class="drag-handle" data-drag-row="${attr(row.id)}" title="拖动排序">${ico('grip')}</span><button class="row-select" data-select-row="${attr(row.id)}" aria-pressed="${selected}" aria-label="选择第 ${i+1} 行" title="选择行 · Shift 连选 · Ctrl 单选 · Delete 删除">${String(i+1).padStart(2,'0')}</button></div>`;
+ const menu=`<button class="icon-btn row-menu" data-act="row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico('dots')}</button>`;
+ if(row.type==='effect')return `<div class="script-row effect-row ${selected?'selected':''}" data-row="${attr(row.id)}"><div class="effect-gutter">${effectButton(row.id)}</div><textarea class="cell autosize effect-text" rows="1" data-row-field="text" placeholder="画面效果描述" aria-label="画面效果描述">${esc(row.text)}</textarea>${menu}</div>`;
+ if(row.type==='note')return `<div class="script-row note-row ${selected?'selected':''}" data-row="${attr(row.id)}">${num}<textarea class="cell autosize" rows="1" data-row-field="text" placeholder="笔记" aria-label="笔记">${esc(row.text)}</textarea>${menu}</div>`;
+ if(row.type==='branch')return `<div class="script-row local-choice-row ${selected?'selected':''}" data-row="${attr(row.id)}">${num}<div class="local-choice-body">
+ <div class="local-choice-top">${ico('branch')}<input class="cell local-question" data-row-field="text" value="${attr(row.text)}" placeholder="选择提示" aria-label="选择提示"></div>
+ <div class="local-choice-options">${row.options.map((op,idx)=>`<section class="local-option ${collapsedOptionIds.has(op.id)?'collapsed':''}" data-option="${attr(op.id)}" data-parent="${attr(row.id)}">
+   <div class="local-option-title"><button class="local-fold" data-act="local-toggle" title="展开或折叠" aria-expanded="${!collapsedOptionIds.has(op.id)}">${ico('down')}</button><span class="local-branch-label">${String.fromCharCode(65+idx)}</span><input class="cell" data-option-field="text" value="${attr(op.text)}" placeholder="选项文字" aria-label="选项文字"><select class="cell local-option-mode" data-option-field="mode" aria-label="选项去向" title="此选项播放完后">${option('continue','合流',op.mode)}${option('jump','跳转',op.mode)}</select>${ib('dots','local-option-menu','选项操作',`data-id="${attr(row.id)}" data-option="${attr(op.id)}"`)}</div>
+   <div class="local-option-content">${optionBodyTargets(op)}<div class="local-option-lines">${(()=>{let n=0;return (op.rows||[]).map(r=>branchLineHTML(row,op,r,r.type==='effect'?-1:n++)).join('');})()}</div><div class="local-add-pair"><button class="local-add-line" data-act="branch-add-line" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加对白">${ico('plus')}<span>对白</span></button><button class="local-add-line" data-act="branch-add-effect" data-id="${attr(row.id)}" data-option="${attr(op.id)}" title="添加画面效果描述">${ico('plus')}<span>描述</span></button></div></div>
+  </section>`).join('')}</div>
+ <div class="local-choice-footer"><button class="local-add-option" data-act="local-add-option" data-id="${attr(row.id)}" title="增加一个选项">${ico('plus')} 选项</button></div>
+ </div>${menu}</div>`;
+ const p=P(row.speakerId),eid='expr_'+row.id;
+ return `<div class="script-row ${selected?'selected':''}" data-row="${attr(row.id)}">${num}<div class="speaker-wrap"><i class="speaker-swatch" style="background:${safeColor(p?.color||'#adb7bb')}"></i><select class="cell" data-row-field="speakerId" aria-label="说话人">${speakerOptions(row.speakerId)}</select></div><textarea class="cell autosize dialogue-cell" rows="1" wrap="soft" data-row-field="text" placeholder="对白" aria-label="对白 · Enter 换行 · Alt Enter 新增对白" title="Enter 换行 · Alt+Enter 新增对白">${esc(row.text)}</textarea><div class="expression-wrap"><input class="cell expression-cell" data-row-field="expression" value="${attr(row.expression)}" list="${eid}" placeholder="表情" aria-label="立绘表情"><datalist id="${eid}">${(p?.expressions||[]).map(x=>`<option value="${attr(x)}">`).join('')}</datalist></div><div class="action-wrap"><textarea class="cell autosize action-cell" rows="1" data-row-field="action" placeholder="动作" aria-label="人物动作">${esc(row.action)}</textarea>${p?.actions?.length?`<button class="field-preset" data-act="action-presets" data-id="${attr(row.id)}" title="常用动作" aria-label="常用动作">${ico('down')}</button>`:''}</div>${menu}</div>`;
+}
+function branchLineHTML(parent,op,row,i){
+ const selected=selectedRowIds.has(row.id),p=P(row.speakerId),num=String(i+1).padStart(2,'0');
+ const rowHead=row.type==='effect'?effectButton(row.id):`<button class="row-select" data-select-row="${attr(row.id)}" aria-pressed="${selected}" title="选择此行 · Shift 连选 · Ctrl 单选" aria-label="选择分支对白 ${i+1}">${num}</button>`;
+ const menu=`<button class="icon-btn branch-row-menu" data-act="branch-row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico('dots')}</button>`;
+ if(row.type==='effect')return `<div class="branch-script-row branch-effect ${selected?'selected':''}" data-branch-row="${attr(row.id)}"><div class="branch-gutter">${rowHead}</div><textarea class="cell autosize effect-text" data-branch-field="text" rows="1" placeholder="画面效果描述" aria-label="画面效果描述">${esc(row.text)}</textarea>${menu}</div>`;
+ if(row.type==='note')return `<div class="branch-script-row branch-note ${selected?'selected':''}" data-branch-row="${attr(row.id)}"><div class="branch-gutter">${rowHead}</div><textarea class="cell autosize" data-branch-field="text" rows="1" placeholder="笔记">${esc(row.text)}</textarea>${menu}</div>`;
+ const eid='expr_'+row.id;
+ return `<div class="branch-script-row ${selected?'selected':''}" data-branch-row="${attr(row.id)}"><div class="branch-gutter">${rowHead}</div><div class="speaker-wrap"><i class="speaker-swatch" style="background:${safeColor(p?.color||'#adb7bb')}"></i><select class="cell" data-branch-field="speakerId" aria-label="说话人">${speakerOptions(row.speakerId)}</select></div><textarea class="cell autosize dialogue-cell" rows="1" wrap="soft" data-branch-field="text" placeholder="对白" aria-label="对白 · Enter 换行 · Alt Enter 新增对白" title="Enter 换行 · Alt+Enter 新增对白">${esc(row.text)}</textarea><div class="expression-wrap"><input class="cell expression-cell" data-branch-field="expression" value="${attr(row.expression)}" list="${eid}" placeholder="表情" aria-label="立绘表情"><datalist id="${eid}">${(p?.expressions||[]).map(x=>`<option value="${attr(x)}">`).join('')}</datalist></div><div class="action-wrap"><textarea class="cell autosize action-cell" rows="1" data-branch-field="action" placeholder="动作" aria-label="人物动作">${esc(row.action)}</textarea>${p?.actions?.length?`<button class="field-preset" data-act="branch-action-presets" data-id="${attr(row.id)}" title="常用动作">${ico('down')}</button>`:''}</div>${menu}</div>`;
+}
+function stageScriptTable(rows){let index=0;return `<div class="script-table"><div class="script-table-head"><span></span><span>说话人</span><span>对白</span><span>立绘表情</span><span>人物动作</span><span></span></div><div id="script-rows">${rows.map(r=>rowHTML(r,r.type==='effect'?-1:index++)).join('')}</div><div class="row-add-pair"><button class="row-add" data-act="add-row" title="新增对白 · Alt Enter">${ico('plus')}<span>对白</span></button><button class="row-add" data-act="add-effect" title="新增画面效果描述">${ico('plus')}<span>描述</span></button></div></div>`;}
+function renderStage(e){
+ const c=currentChapter(),s=currentStage(),investigation=s.kind==='investigation',opened=investigation?currentInvestigationItem():null;
+ const header=crumbs([{text:'路线图',act:'board'},{text:R(c.routeId)?.name||''},{text:c.title,act:'open-chapter',id:c.id},{text:s.title}])+`<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib('note','stage-notes','阶段笔记')}${ib('eye','read-stage','阅读本阶段')}${investigation?btn('物品','plus','inspect-add','primary'):btn('对白','plus','add-row','primary')}${ib('dots','script-menu','脚本操作')}</div></div><div class="stage-tabs">${c.stages.map((st,j)=>`<button class="stage-tab ${st.id===s.id?'active':''}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j+1).padStart(2,'0')} &nbsp; ${esc(st.title)}</button>`).join('')}${ib('plus','add-stage','新建阶段')}</div><div class="selection-toolbar" id="selection-toolbar" hidden></div>`;
+ let body='';
+ if(investigation){
+  body=`<div class="script-scroll investigation-scroll"><div class="inspect-stack">${s.objects.map((o,i)=>`<section class="inspect-card ${o.id===opened?.id?'is-open':''}"><div class="inspect-head"><button class="inspect-open" data-act="inspect-select" data-id="${attr(o.id)}" aria-expanded="${o.id===opened?.id}" title="展开调查物品"><span class="inspect-order">${String(i+1).padStart(2,'0')}</span><span class="inspect-name">${esc(o.name)}</span><span class="inspect-count">${flattenRows(o.rows).length} 行</span>${ico('down')}</button>${ib('dots','inspect-menu','物品操作',`data-id="${attr(o.id)}"`)}</div>${o.id===opened?.id?`<div class="inspect-details">${o.notes?`<div class="inspect-notes">${esc(o.notes)}</div>`:''}${stageScriptTable(o.rows)}</div>`:''}</section>`).join('')}<button class="inspect-add" data-act="inspect-add" title="添加调查物品">${ico('plus')}<span>调查物品</span></button></div></div>`;
+ }else body=`<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
+ e.innerHTML=header+body;setupRowDrag();syncRowSelection();
+}
+function renderCharacters(e){e.innerHTML=`<div class="view-head"><div class="view-title"><button class="icon-btn" data-act="board" title="路线图">${ico('back')}</button><h1>角色</h1><span class="count">${project.characters.length}</span></div><div class="view-actions">${btn('角色','plus','add-character','primary')}</div></div><div class="page-scroll"><div class="characters-grid">${project.characters.map(p=>`<article class="character-card" data-act="edit-character" data-id="${attr(p.id)}" tabindex="0"><div class="character-head"><div class="avatar" style="background:${safeColor(p.color)}18;color:${safeColor(p.color)}">${esc(p.name[0]||'角')}</div><h2>${esc(p.name)}</h2></div>${p.notes?`<p>${esc(p.notes)}</p>`:''}<div class="character-tags">${p.expressions.slice(0,6).map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</div></article>`).join('')}<button class="stage-add" data-act="add-character">${ico('plus')}<span>角色</span></button></div></div>`;}
+function autoSize(el){el.style.height='auto';el.style.height=Math.max(el.classList.contains('effect-text')?27:35,el.scrollHeight+2)+'px';}
+function centerBoard(){const vp=$('#graph-viewport'),b=$('#board');if(vp&&b)b.style.left=Math.max(0,(vp.clientWidth-boardGeometry().w*zoom)/2)+'px';}
+window.addEventListener('resize',()=>{centerBoard();scheduleEdges();if(view.type==='stage')requestAnimationFrame(()=>$$('textarea.autosize').forEach(autoSize));});
+function setZoom(z){const vp=$('#graph-viewport');if(vp)boardScroll={x:vp.scrollLeft,y:vp.scrollTop};const old=zoom;zoom=Math.max(.35,Math.min(1.6,z));boardScroll={x:boardScroll.x*zoom/old,y:boardScroll.y*zoom/old};skipBoardCapture=true;render();}
+function fitBoard(){const vp=$('#graph-viewport');if(!vp)return;const {w,h}=boardGeometry();zoom=Math.max(.35,Math.min(1,(vp.clientWidth-24)/w,(vp.clientHeight-16)/h));boardScroll={x:0,y:0};skipBoardCapture=true;render();}
+let dragSuppressUntil=0;
+function attachCardDrag(el){el.addEventListener('pointerdown',ev=>{if(ev.button!==0||ev.target.closest('button'))return;const c=C(el.dataset.id);if(!c)return;const orig={x:ev.clientX,y:ev.clientY,routeId:c.routeId,yPos:c.y},pos=nodePos(c);let moved=false,dx=0,dy=0;el.setPointerCapture(ev.pointerId);
+const move=e=>{dx=(e.clientX-orig.x)/zoom;dy=(e.clientY-orig.y)/zoom;if(!moved&&Math.abs(dx)+Math.abs(dy)>7){moved=true;el.classList.add('dragging');}if(moved){el.style.left=pos.x+dx+'px';el.style.top=Math.max(100,pos.y+dy)+'px';scheduleEdges();}};
+const finish=e=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',finish);el.removeEventListener('pointercancel',cancel);if(el.hasPointerCapture(e.pointerId))el.releasePointerCapture(e.pointerId);dragSuppressUntil=Date.now()+250;if(moved){const ri=Math.max(0,Math.min(project.routes.length-1,Math.round((pos.x+dx-54)/354))),routeId=project.routes[ri].id;let y=Math.max(112,Math.round((orig.yPos+dy-112)/20)*20+112);y=freeY(routeId,y,c.id);mutate(()=>{c.routeId=routeId;c.y=y;});}else go('chapter',c.id);};
+const cancel=e=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',finish);el.removeEventListener('pointercancel',cancel);render();};el.addEventListener('pointermove',move);el.addEventListener('pointerup',finish);el.addEventListener('pointercancel',cancel);});el.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target===el){ev.preventDefault();go('chapter',el.dataset.id);}});}
+function freeY(routeId,y,exclude=''){let n=0;while(project.chapters.some(c=>c.id!==exclude&&c.routeId===routeId&&Math.abs(c.y-y)<165)&&n++<project.chapters.length+2)y+=180;return y;}
+// Clicking the line number selects the complete row. Shift selects an interval;
+// Ctrl/Cmd toggles one row without discarding the other selected rows.
+function selectedRows(){return selectableRows().filter(row=>selectedRowIds.has(row.id));}
+function syncRowSelection(){
+ if(view.type!=='stage')return;
+ const valid=new Set(selectableRows().map(r=>r.id));
+ for(const id of [...selectedRowIds])if(!valid.has(id))selectedRowIds.delete(id);
+ $$('.script-row,.branch-script-row').forEach(el=>{
+  const active=selectedRowIds.has(el.dataset.branchRow||el.dataset.row);el.classList.toggle('selected',active);
+  const select=$('.row-select',el);if(select)select.setAttribute('aria-pressed',String(active));
+ });
+ const bar=$('#selection-toolbar');if(!bar)return;
+ const count=selectedRowIds.size;bar.hidden=!count;
+ bar.innerHTML=count?`<span class="selected-count">${count} 行</span><button class="selection-action" data-act="copy-rows" title="复制所选行 · Ctrl C">${ico('copy')}<span>复制</span></button><button class="selection-action" data-act="paste-rows" title="粘贴到所选行之后 · Ctrl V">${ico('layers')}<span>粘贴</span></button><button class="selection-action delete-action" data-act="delete-selected" title="删除所选行 · Delete">${ico('trash')}<span>删除</span></button><button class="selection-clear" data-act="clear-rows" title="清除选择" aria-label="清除选择">${ico('close')}</button>`:'';
+}
+function selectRow(id,{shift=false,toggle=false}={}){
+ const ids=selectableRows().map(r=>r.id),index=ids.indexOf(id);if(index<0)return;
+ if(shift){
+  let start=ids.indexOf(selectionAnchor);if(start<0)start=index;
+  if(!toggle)selectedRowIds.clear();
+  for(let n=Math.min(start,index);n<=Math.max(start,index);n++)selectedRowIds.add(ids[n]);
+ }else if(toggle){
+  if(selectedRowIds.has(id))selectedRowIds.delete(id);else selectedRowIds.add(id);
+  selectionAnchor=id;
+ }else{selectedRowIds=new Set([id]);selectionAnchor=id;}
+ syncRowSelection();
+}
+function deleteSelectedRows(){
+ if(view.type!=='stage'||!selectedRowIds.size)return;
+ const picked=new Set(selectedRowIds),rows=currentRows();
+ if(!rows)return;
+ mutate(()=>{
+  for(let i=rows.length-1;i>=0;i--){const r=rows[i];if(picked.has(r.id))rows.splice(i,1);else if(r.type==='branch')for(const op of r.options)op.rows=op.rows.filter(child=>!picked.has(child.id));}
+  selectedRowIds.clear();selectionAnchor=null;
+ });
+ toast('已删除选中行 · Ctrl Z 可撤销');
+}
+function rowText(rows,characters){return rows.map(row=>{
+ const name=characters.find(p=>p.id===row.speakerId)?.name||'旁白';
+ if(row.type==='note')return '〔笔记〕'+row.text;
+ if(row.type==='effect')return '〔演出〕'+row.text;
+ if(row.type==='branch')return '〔选项〕'+row.text+'\n'+row.options.map(o=>'　- '+o.text+(o.mode==='jump'?' → 跳转':' → 合流')+'\n'+rowText(o.rows||[],characters).split('\n').map(x=>'　　 '+x).join('\n')).join('\n');
+ return `${name}：${row.text}`+([row.expression,row.action].some(Boolean)?' 〔'+[row.expression,row.action].filter(Boolean).join(' · ')+'〕':'');
+}).join('\n');}
+function collectRows(){
+ const rows=clone(selectedRows().filter(r=>!selectableRows().some(parent=>parent.type==='branch'&&selectedRowIds.has(parent.id)&&parent.options.some(o=>(o.rows||[]).some(child=>child.id===r.id)))));if(!rows.length)return null;
+ const chars=clone(project.characters.filter(p=>flattenRows(rows).some(row=>row.speakerId===p.id)));
+ return {format:'xuxian.rows.v1',projectId:project.id,rows,characters:chars};
+}
+function rememberRows(bundle){if(!bundle)return null;const plain=rowText(bundle.rows,bundle.characters||[]);rowClipboard={...bundle,text:plain};return rowClipboard;}
+function copyRowsButton(){
+ const payload=rememberRows(collectRows());if(!payload)return toast('请先选择对白行');
+ // The system clipboard is for external apps, the internal typed clipboard keeps full metadata.
+ if(navigator.clipboard?.writeText)navigator.clipboard.writeText(payload.text).catch(()=>{});
+ toast('已复制 '+payload.rows.length+' 行');
+}
+function parseRows(raw){try{const data=JSON.parse(raw);return data?.format==='xuxian.rows.v1'&&Array.isArray(data.rows)?data:null;}catch{return null;}}
+function pasteRows(bundle){
+ if(view.type!=='stage'||!bundle?.rows?.length)return false;
+ const s=currentStage(),roots=currentRows();if(!roots)return toast('请先添加调查物品');
+ const locs=[...selectedRowIds].map(rowLocation).filter(Boolean);
+ const sameContainer=locs.length>0&&locs.every(x=>x.rows===locs[0].rows);
+ const dest=sameContainer?locs[0].rows:roots;
+ const last=Math.max(-1,...dest.map((r,i)=>selectedRowIds.has(r.id)?i:-1));
+ const rows=[];
+ mutate(()=>{
+  const chars=Array.isArray(bundle.characters)?bundle.characters:[],charRefs=new Map();
+  for(const raw of clone(bundle.rows)){
+   const r=normalizeCopiedRow(raw);
+   for(const item of flattenRows([r])){
+    if(item.speakerId&&!P(item.speakerId)){
+     const old=chars.find(c=>c.id===item.speakerId);
+     if(old){let found=project.characters.find(c=>c.name===old.name);if(!found){found={id:uid('char'),name:String(old.name||'未命名角色'),color:safeColor(old.color),notes:String(old.notes||''),expressions:Array.isArray(old.expressions)?old.expressions:[],actions:Array.isArray(old.actions)?old.actions:[]};project.characters.push(found);}charRefs.set(item.speakerId,found.id);}
+     item.speakerId=charRefs.get(item.speakerId)||'';
+    }
+   }
+   // A local option's dialogue cannot contain another branch container.
+   if(dest!==roots&&r.type==='branch')continue;
+   regenRowIds(r);
+   for(const item of flattenRows([r]))if(item.type==='branch')for(const op of item.options){if(!C(op.chapterId)){op.chapterId='';op.stageId='';}else if(op.stageId&&!C(op.chapterId).stages.some(st=>st.id===op.stageId))op.stageId='';}
+   rows.push(r);
+  }
+  if(rows.length){dest.splice(last<0?dest.length:last+1,0,...rows);selectedRowIds=new Set(rows.map(r=>r.id));selectionAnchor=rows[0].id;}
+ });
+ if(!rows.length)return toast('选项内部仅支持对白、描述和笔记行');
+ requestAnimationFrame(()=>{$(`[data-row="${rows[0].id}"],[data-branch-row="${rows[0].id}"]`)?.scrollIntoView({block:'nearest'});});
+ toast('已粘贴 '+rows.length+' 行');return true;
+}
+function normalizeCopiedRow(raw){
+ const text=v=>typeof v==='string'?v:'';
+ const rawType=raw?.type;
+ const type=['dialogue','note','effect','branch'].includes(rawType)?rawType:['choice','localChoice'].includes(rawType)?'branch':'dialogue';
+ const r={id:uid('line'),type,speakerId:text(raw?.speakerId),text:text(raw?.text),expression:text(raw?.expression),action:text(raw?.action),options:[]};
+ if(type==='branch')r.options=(Array.isArray(raw.options)?raw.options:[]).map(o=>({
+  id:uid('opt'),text:text(o?.text),mode:rawType==='choice'?'jump':rawType==='localChoice'?'continue':o?.mode==='jump'?'jump':'continue',
+  chapterId:text(o?.chapterId),stageId:text(o?.stageId),rows:(Array.isArray(o?.rows)?o.rows:[]).map(x=>{const sub=normalizeCopiedRow(x);if(!['dialogue','note','effect'].includes(sub.type))sub.type='dialogue';sub.options=[];return sub;})
+ }));
+ return r;
+}
+function pasteRowsButton(){if(!rowClipboard)return toast('请先复制对白行');pasteRows(rowClipboard);}
+function rowsAreEditable(target){return !!target?.closest?.('textarea,input,select,[contenteditable="true"]');}
+function hasNativeTextSelection(target){
+ if(!rowsAreEditable(target))return false;
+ if(typeof target.selectionStart==='number')return target.selectionStart!==target.selectionEnd;
+ return !!String(getSelection());
+}
+// v1.8 — quiet, pointer/touch-aware row ordering. No HTML5 draggable handles.
+function setupRowDrag(){
+ const sc=$('.script-scroll');if(!sc)return;
+ let session=null,animationFrame=0;
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ const isRow=e=>e?.closest?.('.branch-script-row,.script-row');
+ const isEditableControl=target=>{
+  const control=target.closest('input,textarea,select,option,a,[contenteditable="true"],[role="textbox"],label,[data-act]');
+  // Short click selects a line; holding its number can still start a drag.
+  if(target.closest('.row-select,.drag-handle'))return false;
+  return !!control||!!target.closest('button');
+ };
+ function eligible(target){
+  if(view.type!=='stage'||$('#modal-root').firstChild||isEditableControl(target))return null;
+  const el=isRow(target);if(!el||!sc.contains(el))return null;
+  const id=el.dataset.branchRow||el.dataset.row,loc=rowLocation(id);
+  return loc?.rows&&Array.from(el.parentElement.children).filter(x=>x.matches('.script-row,.branch-script-row')).length>0?{el,id,loc}:null;
+ }
+ function clean(){
+  if(!session)return;
+  clearTimeout(session.holdTimer);
+  if(animationFrame){cancelAnimationFrame(animationFrame);animationFrame=0;}
+  window.removeEventListener('pointermove',pointerMove,true);
+  window.removeEventListener('pointerup',pointerUp,true);
+  window.removeEventListener('pointercancel',pointerCancel,true);
+  window.removeEventListener('touchmove',touchMove,true);
+  window.removeEventListener('touchend',touchEnd,true);
+  window.removeEventListener('touchcancel',touchCancel,true);
+  window.removeEventListener('keydown',dragKey,true);
+  document.body.classList.remove('row-sort-active');
+  session.el.classList.remove('drag-pending','drag-origin');
+  if(session.ghost?.isConnected)session.ghost.remove();
+  session=null;
+ }
+ function beginDrag(){
+  const s=session;if(!s||s.active||!s.el.isConnected)return;
+  s.active=true;s.el.classList.remove('drag-pending');s.el.classList.add('drag-origin');
+  document.body.classList.add('row-sort-active');
+  window.addEventListener('keydown',dragKey,true);
+  const row=s.loc.row,speaker=P(row.speakerId)?.name||'旁白';
+  const symbol=row.type==='effect'?'◌':row.type==='branch'?'◇':'•';
+  let sample=String(row.text||'').trim().replace(/\s+/g,' ');
+  if(row.type==='branch'&&!sample)sample=(row.options||[]).map(op=>op.text).filter(Boolean).join(' / ');
+  if(!sample)sample='···';
+  s.ghost=document.createElement('div');s.ghost.className='row-drag-ghost';
+  s.ghost.innerHTML=`<span class="row-drag-mark">${symbol}</span><span class="row-drag-content"><span class="row-drag-label">${esc(row.type==='effect'?'演出':row.type==='branch'?'选项':row.type==='note'?'笔记':speaker)}</span><span class="row-drag-excerpt">${esc(sample.slice(0,100))}</span></span>`;
+  s.ghost.style.width=Math.min(490,Math.max(230,s.el.getBoundingClientRect().width*.65),window.innerWidth-24)+'px';
+  document.body.append(s.ghost);placeGhost(s);
+  if(s.touch&&navigator.vibrate)try{navigator.vibrate(9);}catch(_){/* Optional subtle touch feedback. */}
+  scheduleAutoScroll();
+ }
+ function placeGhost(s){
+  if(!s.ghost)return;
+  const w=s.ghost.offsetWidth||300,h=s.ghost.offsetHeight||62;
+  s.ghost.style.left=Math.min(window.innerWidth-w-12,Math.max(12,s.x+16))+'px';
+  s.ghost.style.top=Math.min(window.innerHeight-h-10,Math.max(10,s.y-22))+'px';
+ }
+ function flipArrange(next){
+  const s=session;if(!s||!s.active)return;
+  const siblings=Array.from(s.container.children).filter(el=>el.matches('.script-row,.branch-script-row'));
+  const bounds=sc.getBoundingClientRect();
+  const old=new Map();
+  for(const el of siblings){const r=el.getBoundingClientRect();if(r.bottom>=bounds.top-180&&r.top<=bounds.bottom+180)old.set(el,r);}
+  if(next)s.container.insertBefore(s.el,next);else s.container.append(s.el);
+  if(reduced)return;
+  for(const [el,prev] of old){
+   const now=el.getBoundingClientRect(),dy=prev.top-now.top;
+   if(Math.abs(dy)>1&&Math.abs(dy)<900){
+    try{el.animate([{transform:`translateY(${dy}px)`},{transform:'translateY(0)'}],{duration:185,easing:'cubic-bezier(.22,.68,.27,1)'});}catch(_){}
+   }
+  }
+ }
+ function arrangeAt(y){
+  const s=session;if(!s?.active)return;
+  const siblings=Array.from(s.container.children).filter(el=>el!==s.el&&el.matches('.script-row,.branch-script-row'));
+  if(!siblings.length)return;
+  let lo=0,hi=siblings.length;
+  while(lo<hi){const mid=(lo+hi)>>1,r=siblings[mid].getBoundingClientRect();if(y<r.top+r.height*.5)hi=mid;else lo=mid+1;}
+  const before=siblings[lo]||null;
+  if(before===s.el.nextElementSibling||(!before&&s.el===siblings[siblings.length-1].nextElementSibling))return;
+  // A single moving placeholder makes insert position immediately clear.
+  if(before!==s.el.nextElementSibling)flipArrange(before);
+ }
+ function move(x,y){const s=session;if(!s)return;s.x=x;s.y=y;
+  if(!s.active){const dist=Math.hypot(x-s.startX,y-s.startY);
+   if(s.touch){if(dist>9)cancelDrag();}
+   else if(dist>8){beginDrag();}
+   return;
+  }
+  placeGhost(s);arrangeAt(y);
+ }
+ function scheduleAutoScroll(){
+  if(animationFrame)cancelAnimationFrame(animationFrame);
+  const tick=()=>{
+   const s=session;if(!s?.active){animationFrame=0;return;}
+   const r=sc.getBoundingClientRect(),zone=56;let speed=0;
+   if(s.y<r.top+zone&&s.y>=r.top-32)speed=-Math.min(17,(r.top+zone-s.y)*.29);
+   else if(s.y>r.bottom-zone&&s.y<=r.bottom+32)speed=Math.min(17,(s.y-(r.bottom-zone))*.29);
+   if(speed&&sc.scrollHeight>sc.clientHeight){const before=sc.scrollTop;sc.scrollTop+=speed;if(before!==sc.scrollTop)arrangeAt(s.y);}
+   animationFrame=requestAnimationFrame(tick);
+  };
+  animationFrame=requestAnimationFrame(tick);
+ }
+ function start(rowInfo,x,y,touch){
+  if(session)clean();
+  const {el,id,loc}=rowInfo;
+  session={el,id,loc,container:el.parentElement,originIndex:loc.rows.indexOf(loc.row),startX:x,startY:y,x,y,touch,active:false,ghost:null,holdTimer:0};
+  // Calm, delayed feedback prevents accidental reorders while selecting.
+  session.holdTimer=setTimeout(()=>{if(session?.id===id)beginDrag();},touch?280:190);
+  if(!touch){
+   window.addEventListener('pointermove',pointerMove,true);
+   window.addEventListener('pointerup',pointerUp,true);
+   window.addEventListener('pointercancel',pointerCancel,true);
+  }else{
+   window.addEventListener('touchmove',touchMove,{capture:true,passive:false});
+   window.addEventListener('touchend',touchEnd,true);
+   window.addEventListener('touchcancel',touchCancel,true);
+  }
+ }
+ function endDrag(cancel=false){
+  const s=session;if(!s)return;
+  if(!s.active){clean();return;}
+  dragSuppressUntil=Date.now()+360;
+  const newIndex=Array.from(s.container.children).filter(el=>el.matches('.script-row,.branch-script-row')).indexOf(s.el);
+  const oldIndex=s.originIndex,id=s.id;
+  // Avoid reordering on loss of focus, Escape, pointer cancellation or failed drop.
+  if(cancel||newIndex<0||newIndex===oldIndex){
+   if(newIndex!==oldIndex){const other=Array.from(s.container.children).filter(el=>el.matches('.script-row,.branch-script-row'));
+    s.container.insertBefore(s.el,other[oldIndex]||null);
+   }
+   clean();return;
+  }
+  const ghost=s.ghost,loc=s.loc,sourceEl=s.el;
+  session=null;
+  if(animationFrame){cancelAnimationFrame(animationFrame);animationFrame=0;}
+  window.removeEventListener('pointermove',pointerMove,true);window.removeEventListener('pointerup',pointerUp,true);window.removeEventListener('pointercancel',pointerCancel,true);
+  window.removeEventListener('touchmove',touchMove,true);window.removeEventListener('touchend',touchEnd,true);window.removeEventListener('touchcancel',touchCancel,true);
+  document.body.classList.remove('row-sort-active');
+  window.removeEventListener('keydown',dragKey,true);
+  sourceEl.classList.remove('drag-origin','drag-pending');
+  if(ghost){if(!reduced){ghost.style.opacity='0';ghost.style.transform='translateY(5px) scale(.97)';setTimeout(()=>ghost.remove(),190);}else ghost.remove();}
+  mutate(()=>{const index=loc.rows.indexOf(loc.row);if(index<0)return;const [item]=loc.rows.splice(index,1);loc.rows.splice(newIndex,0,item);});
+  const next=document.querySelector(`[data-row="${CSS.escape(id)}"],[data-branch-row="${CSS.escape(id)}"]`);
+  if(next){next.classList.add('row-dropped');setTimeout(()=>next.classList.remove('row-dropped'),380);}
+ }
+ function cancelDrag(){endDrag(true);}
+ function pointerMove(e){if(!session||session.touch)return;move(e.clientX,e.clientY);if(session?.active)e.preventDefault();}
+ function pointerUp(e){if(!session||session.touch)return;endDrag();}
+ function pointerCancel(){if(session&&!session.touch)cancelDrag();}
+ function touchMove(e){if(!session?.touch)return;const t=[...e.changedTouches].find(t=>t.identifier===session.touchId);if(!t)return;move(t.clientX,t.clientY);if(session?.active&&e.cancelable)e.preventDefault();}
+ function touchEnd(e){if(!session?.touch)return;if([...e.changedTouches].some(t=>t.identifier===session.touchId)){if(session.active&&e.cancelable)e.preventDefault();endDrag();}}
+ function touchCancel(e){if(session?.touch)cancelDrag();}
+ function dragKey(e){if(e.key==='Escape'&&session?.active){e.preventDefault();e.stopPropagation();cancelDrag();}}
+ sc.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch'||(e.button!==0)||e.ctrlKey||e.shiftKey||e.metaKey)return;
+  const rowInfo=eligible(e.target);if(rowInfo)start(rowInfo,e.clientX,e.clientY,false);
+ });
+ sc.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1)return;
+  const rowInfo=eligible(e.target);if(rowInfo){const t=e.changedTouches[0];start(rowInfo,t.clientX,t.clientY,true);session.touchId=t.identifier;}
+ },{passive:true});
+ sc.addEventListener('dragstart',e=>{if(e.target.closest('.drag-handle'))e.preventDefault();});
+}
+function closeMenu(){$('#menu-root').innerHTML='';}
+function menu(anchor,items){closeMenu();const r=anchor?.getBoundingClientRect?.()||{right:innerWidth-24,bottom:64};const m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');for(const item of items){if(!item){const sep=document.createElement('div');sep.className='menu-sep';m.append(sep);continue;}const b=document.createElement('button');b.className='menu-item'+(item.danger?' danger':'');b.disabled=!!item.disabled;b.innerHTML=(item.icon?ico(item.icon):'')+`<span>${esc(item.label)}</span>`+(item.shortcut?`<span class="shortcut">${esc(item.shortcut)}</span>`:'');b.onclick=e=>{e.stopPropagation();closeMenu();item.click();};m.append(b);}$('#menu-root').append(m);const mr=m.getBoundingClientRect();m.style.left=Math.max(8,Math.min(innerWidth-mr.width-8,r.right-mr.width))+'px';m.style.top=Math.max(8,Math.min(innerHeight-mr.height-8,r.bottom+7))+'px';}
+function modal(title,body,foot='',wide=false,onClose=null){closeMenu();if(!$('#modal-root').firstChild)previousFocus=document.activeElement;modalClose=onClose;$('#modal-root').innerHTML=`<div class="overlay"><section class="modal ${wide?'wide':''}" role="dialog" aria-modal="true" aria-label="${attr(title)}"><div class="modal-head"><h2>${esc(title)}</h2>${ib('close','modal-close','关闭')}</div><div class="modal-body">${body}</div>${foot?`<div class="modal-foot">${foot}</div>`:''}</section></div>`;$('.overlay').addEventListener('mousedown',e=>{if(e.target.classList.contains('overlay'))closeModal();});requestAnimationFrame(()=>{$('[autofocus]',$('#modal-root'))?.focus();});}
+function closeModal(){const fn=modalClose;modalClose=null;$('#modal-root').innerHTML='';if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});previousFocus=null;if(fn)fn();}
+function confirmBox(title,message,fn,danger=false){modal(title,`<div class="help"><p>${esc(message)}</p></div>`,btn('取消',null,'modal-close')+`<button class="btn ${danger?'danger':'primary'}" id="confirm-yes">${danger?'删除':'继续'}</button>`);$('#confirm-yes').onclick=()=>{closeModal();fn();};}
+function guardReplace(fn){if(dirty){modal('替换当前剧本',`<div class="help"><p>当前改动尚未保存到源文件。继续后，可从“最近备份”找回本地副本。</p></div>`,btn('取消',null,'modal-close')+'<button class="btn" id="replace-discard">继续</button><button class="btn primary" id="replace-save">保存并继续</button>');$('#replace-discard').onclick=()=>{closeModal();backup();fn();};$('#replace-save').onclick=async()=>{const ok=await saveSource();if(ok){closeModal();backup();fn();}};}else{backup();fn();}}
+function topMenu(anchor){menu(anchor,[{label:'项目列表',icon:'folder',click:showProjectLibrary},{label:'新建剧本',icon:'file',click:()=>BRIDGE?newHubDialog():newDialog()},{label:'另存源文件',icon:'save',shortcut:'Ctrl Shift S',click:()=>saveSource(true)},{label:'下载源文件副本',icon:'download',click:downloadSource},{label:'导入源文件',icon:'folder',click:importSourceAction},{label:'导出可读剧本',icon:'note',click:exportMarkdown},null,{label:'撤销',icon:'undo',shortcut:'Ctrl Z',disabled:!history.length,click:undo},{label:'重做',icon:'redo',shortcut:'Ctrl Shift Z',disabled:!future.length,click:redo},{label:'检查剧情关系',icon:'audit',click:auditDialog},{label:'最近备份',icon:'reset',click:backupDialog},null,{label:'载入示例',icon:'map',click:()=>guardReplace(()=>adopt(normalizeProject(clone(DEMO)),'',null,true))},{label:'使用说明',icon:'help',click:helpDialog},{label:'关于 / 开源许可',icon:'file',click:aboutDialog},...(BRIDGE?[null,{label:'退出本地服务',icon:'close',click:stopLocalBridge}]:[])]);}
+async function stopLocalBridge(){
+ if(!BRIDGE)return;
+ const stop=async()=>{try{await bridgeCall('shutdown');bridgeBinding=null;toast('本地服务已关闭，可以关闭网页');}catch(e){toast(e.message||'退出失败',true);}};
+ if(dirty){
+  modal('退出本地服务','<div class="help"><p>当前改动尚未写回 JSON。关闭后无法继续保存，请先保存或确认放弃未保存修改。</p></div>',btn('取消',null,'modal-close')+'<button class="btn danger" id="bridge-exit-confirm">仍要退出</button>');
+  $('#bridge-exit-confirm').onclick=()=>{closeModal();stop();};
+ }else await stop();
+}
+function boardMenu(anchor){menu(anchor,[{label:'新增路线',icon:'plus',click:()=>routeDialog()},{label:'管理条件',icon:'flag',click:()=>flagsDialog(false)},{label:'整理画布',icon:'layers',click:arrangeBoard},{label:'检查剧情关系',icon:'audit',click:auditDialog}]);}
+function routeMenu(id,anchor){const idx=project.routes.findIndex(r=>r.id===id);menu(anchor,[{label:'编辑路线',icon:'edit',click:()=>routeDialog(id)},{label:'向左移动',icon:'back',disabled:idx<=0,click:()=>mutate(()=>project.routes.splice(idx-1,0,project.routes.splice(idx,1)[0]))},{label:'向右移动',icon:'next',disabled:idx>=project.routes.length-1,click:()=>mutate(()=>project.routes.splice(idx+1,0,project.routes.splice(idx,1)[0]))},null,{label:'删除路线',icon:'trash',danger:true,click:()=>{if(project.chapters.some(c=>c.routeId===id))return toast('先将此路线的章节移到其他路线，或删除章节');if(project.routes.length<=1)return toast('至少保留一条路线');confirmBox('删除路线',R(id).name,()=>mutate(()=>project.routes=project.routes.filter(r=>r.id!==id)),true);}}]);}
+function routeDialog(id=null){const r=id?R(id):{name:'路线 '+String.fromCharCode(65+project.routes.length),color:PALETTE[project.routes.length%PALETTE.length]};let color=r.color;modal(id?'编辑路线':'新路线',`<div class="field"><label>名称</label><input class="input" id="route-name" value="${attr(r.name)}" maxlength="200" autofocus></div><div class="field"><label>颜色</label>${colorHTML(color)}</div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="route-save">保存</button>');bindColors(c=>color=c);$('#route-save').onclick=()=>{const name=$('#route-name').value.trim();if(!name)return toast('请输入路线名称');mutate(()=>{if(id){r.name=name;r.color=color;}else project.routes.push({id:uid('route'),name,color});});closeModal();};}
+function colorHTML(c){return `<div class="color-picker">${PALETTE.map(x=>`<button class="color-dot ${c===x?'selected':''}" style="background:${x}" data-color="${x}" title="${x}" aria-label="颜色 ${x}"></button>`).join('')}</div>`;}
+function bindColors(fn){$$('[data-color]',$('#modal-root')).forEach(b=>b.onclick=()=>{$$('[data-color]',$('#modal-root')).forEach(x=>x.classList.toggle('selected',x===b));fn(b.dataset.color);});}
+function arrangeBoard(){mutate(()=>project.routes.forEach(r=>routeChapters(r.id).forEach((c,i)=>c.y=112+i*218)));toast('已按当前顺序整理');}
+function newDialog(){modal('新剧本',`<div class="field"><label>名称</label><input class="input" id="new-title" value="未命名剧本" maxlength="200" autofocus></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="new-create">创建</button>');$('#new-create').onclick=()=>{const name=$('#new-title').value.trim()||'未命名剧本';closeModal();guardReplace(()=>adopt(newProject(name),'',null,true));};}
+function chapterMenu(id,anchor){const c=C(id);menu(anchor,[{label:'打开阶段',icon:'layers',click:()=>go('chapter',id)},{label:'章节设置',icon:'settings',click:()=>chapterDialog(id)},{label:'解锁条件',icon:'link',click:()=>rulesDialog(id)},{label:'章节笔记',icon:'note',click:()=>notesDialog('chapter',id)},{label:'接续新章节',icon:'plus',click:()=>addChapterDialog(c.routeId,id)},{label:'复制章节',icon:'copy',click:()=>duplicateChapter(id)},null,{label:'删除章节',icon:'trash',danger:true,click:()=>deleteChapter(id)}]);}
+function chapterDialog(id){const c=C(id);modal('章节设置',`<div class="field"><label>标题</label><input class="input" id="ch-title" value="${attr(c.title)}" maxlength="300" autofocus></div><div class="field-row"><div class="field"><label>路线</label><select class="input" id="ch-route">${project.routes.map(r=>option(r.id,r.name,c.routeId)).join('')}</select></div><div class="field"><label>章节收束</label><select class="input" id="ch-ending">${option('continue','继续',c.ending)}${option('pause','未完待续',c.ending)}${option('end','路线结局',c.ending)}</select></div></div><div class="field"><label>章节笔记</label><textarea class="input" id="ch-summary" rows="4">${esc(c.summary)}</textarea></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="ch-save">保存</button>');$('#ch-save').onclick=()=>{const title=$('#ch-title').value.trim();if(!title)return toast('请输入章节标题');const rid=$('#ch-route').value,end=$('#ch-ending').value,note=$('#ch-summary').value;mutate(()=>{if(rid!==c.routeId)c.y=freeY(rid,c.y,c.id);c.title=title;c.routeId=rid;c.ending=end;c.summary=note;});closeModal();};}
+function addChapterDialog(routeId=null,prevId=null){routeId=routeId||project.routes[0].id;prevId=prevId||routeChapters(routeId).at(-1)?.id||'';modal('新章节',`<div class="field"><label>标题</label><input class="input" id="new-ch-title" value="新章节" maxlength="300" autofocus></div><div class="field-row"><div class="field"><label>路线</label><select class="input" id="new-ch-route">${project.routes.map(r=>option(r.id,r.name,routeId)).join('')}</select></div><div class="field"><label>接续章节</label><select class="input" id="new-ch-prev"></select></div></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="new-ch-save">创建</button>');const fill=(rid,prev)=>{$('#new-ch-prev').innerHTML=option('','无前置条件',prev)+routeChapters(rid).map(c=>option(c.id,c.title,prev)).join('');};fill(routeId,prevId);$('#new-ch-route').onchange=e=>fill(e.target.value,routeChapters(e.target.value).at(-1)?.id||'');$('#new-ch-save').onclick=()=>{const name=$('#new-ch-title').value.trim();if(!name)return toast('请输入章节标题');const rid=$('#new-ch-route').value,prev=$('#new-ch-prev').value;const c=chapter(rid,name,freeY(rid,prev?C(prev).y+218:112));if(prev)c.unlock.rules.push({id:uid('rule'),type:'chapter',targetId:prev,expected:true});mutate(()=>project.chapters.push(c));closeModal();go('chapter',c.id);};}
+function duplicateChapter(id){const old=C(id),c=clone(old),stageMap=new Map();c.id=uid('chapter');c.title+=' · 副本';c.y=freeY(c.routeId,c.y+180);c.stages.forEach(s=>{const oldId=s.id;s.id=uid('stage');stageMap.set(oldId,s.id);s.rows.forEach(regenRowIds);if(s.kind==='investigation')for(const o of s.objects){o.id=uid('object');o.rows.forEach(regenRowIds);}});c.unlock.rules.forEach(r=>r.id=uid('rule'));c.stages.forEach(s=>stageRootRows(s).forEach(row=>row.options.forEach(op=>{if(op.chapterId===id){op.chapterId=c.id;op.stageId=stageMap.get(op.stageId)||'';}})));mutate(()=>project.chapters.push(c));toast('已复制章节');}
+function referencesTo(chapterId,stageIds=[]){let rules=0,choices=0;for(const c of project.chapters){rules+=c.unlock.rules.filter(r=>(r.type==='chapter'&&r.targetId===chapterId)||(r.type==='stage'&&stageIds.includes(r.targetId))).length;for(const s of c.stages)for(const r of stageRootRows(s))for(const op of r.options)if((chapterId&&op.chapterId===chapterId)||stageIds.includes(op.stageId))choices++;}return {rules,choices};}
+function removeReferences(chapterId,stageIds=[]){for(const c of project.chapters){c.unlock.rules=c.unlock.rules.filter(r=>!((r.type==='chapter'&&r.targetId===chapterId)||(r.type==='stage'&&stageIds.includes(r.targetId))));for(const s of c.stages)for(const row of stageRootRows(s))for(const op of row.options){if(chapterId&&op.chapterId===chapterId){op.chapterId='';op.stageId='';}else if(stageIds.includes(op.stageId))op.stageId='';}}}
+function deleteChapter(id){const c=C(id),ids=c.stages.map(s=>s.id),refs=referencesTo(id,ids);confirmBox('删除章节',`删除“${c.title}”及其 ${c.stages.length} 个阶段、${linesOf(c)} 行脚本，同时移除 ${refs.rules} 条相关解锁依赖、清空 ${refs.choices} 个相关分支指向。受影响章节的解锁条件会变化。`,()=>{mutate(()=>{project.chapters=project.chapters.filter(x=>x.id!==id);removeReferences(id,ids);});validateView();render();},true);}
+function inspectObjectDialog(id=null){
+ const st=currentStage();if(!st||st.kind!=='investigation')return;
+ const obj=id?(st.objects||[]).find(o=>o.id===id):investigationObject();if(!obj)return;
+ modal(id?'编辑调查物品':'新调查物品',`<div class="field"><label>物品名称</label><input class="input" id="inspect-name" value="${attr(obj.name)}" maxlength="160" autofocus></div><div class="field"><label>备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(obj.notes||'')}</textarea></div>`,btn('取消',null,'modal-close')+`<button class="btn primary" id="inspect-save">${id?'保存':'创建'}</button>`);
+ $('#inspect-save').onclick=()=>{const name=$('#inspect-name').value.trim();if(!name)return toast('请输入调查物品名称');const notes=$('#inspect-notes').value;mutate(()=>{obj.name=name;obj.notes=notes;if(!id)st.objects.push(obj);activeInspectObjectId=obj.id;selectedRowIds.clear();selectionAnchor=null;});closeModal();};
+}
+function inspectObjectMenu(id,anchor){const st=currentStage(),idx=st?.objects.findIndex(x=>x.id===id)??-1,obj=st?.objects[idx];if(!obj)return;
+ menu(anchor,[{label:'编辑物品',icon:'edit',click:()=>inspectObjectDialog(id)},{label:'复制物品',icon:'copy',click:()=>{const c=clone(obj);c.id=uid('object');c.name+=' · 副本';c.rows.forEach(regenRowIds);mutate(()=>{st.objects.splice(idx+1,0,c);activeInspectObjectId=c.id;selectedRowIds.clear();selectionAnchor=null;});}},{label:'上移',icon:'up',disabled:idx===0,click:()=>mutate(()=>st.objects.splice(idx-1,0,st.objects.splice(idx,1)[0]))},{label:'下移',icon:'down',disabled:idx===st.objects.length-1,click:()=>mutate(()=>st.objects.splice(idx+1,0,st.objects.splice(idx,1)[0]))},null,{label:'删除物品',icon:'trash',danger:true,click:()=>{const remove=()=>mutate(()=>{st.objects.splice(idx,1);activeInspectObjectId=st.objects[0]?.id||null;selectedRowIds.clear();selectionAnchor=null;});if(obj.rows.length)confirmBox('删除调查物品',`删除“${obj.name}”及其中 ${flattenRows(obj.rows).length} 行脚本？`,remove,true);else remove();}}]);
+}
+function stageMenu(id,anchor){const c=currentChapter(),idx=c.stages.findIndex(s=>s.id===id);menu(anchor,[{label:'编辑阶段',icon:'edit',click:()=>stageDialog(id)},{label:'上移',icon:'up',disabled:idx<=0,click:()=>mutate(()=>c.stages.splice(idx-1,0,c.stages.splice(idx,1)[0]))},{label:'下移',icon:'down',disabled:idx>=c.stages.length-1,click:()=>mutate(()=>c.stages.splice(idx+1,0,c.stages.splice(idx,1)[0]))},{label:'复制阶段',icon:'copy',click:()=>duplicateStage(id)},null,{label:'删除阶段',icon:'trash',danger:true,click:()=>deleteStage(id)}]);}
+function stageDialog(id=null){
+ const c=currentChapter(),s=id?c.stages.find(s=>s.id===id):stage('阶段 '+String(c.stages.length+1).padStart(2,'0'));
+ modal(id?'编辑阶段':'新阶段',`<div class="field"><label>名称</label><input class="input" id="st-title" value="${attr(s.title)}" maxlength="300" autofocus></div><div class="field"><label>阶段类型</label><select class="input" id="st-kind">${option('story','剧情阶段',s.kind||'story')}${option('investigation','调查阶段',s.kind||'story')}</select></div><div class="field"><label>阶段笔记</label><textarea class="input" id="st-notes" rows="4">${esc(s.notes)}</textarea></div>`,btn('取消',null,'modal-close')+`<button class="btn primary" id="st-save">${id?'保存':'创建'}</button>`);
+ $('#st-save').onclick=()=>{const title=$('#st-title').value.trim();if(!title)return toast('请输入阶段名称');const notes=$('#st-notes').value,kind=$('#st-kind').value;
+ if(id&&kind!==s.kind&&branchRowCount(s)>0)return toast('阶段已有脚本。请先复制阶段，再修改空白阶段的类型。',true);
+ mutate(()=>{s.title=title;s.notes=notes;s.kind=kind;if(!id)c.stages.push(s);});closeModal();if(!id)go('stage',c.id,s.id);};
+}
+function duplicateStage(id){const c=currentChapter(),idx=c.stages.findIndex(s=>s.id===id),s=clone(c.stages[idx]);s.id=uid('stage');s.title+=' · 副本';s.rows.forEach(regenRowIds);if(s.kind==='investigation')for(const o of s.objects){o.id=uid('object');o.rows.forEach(regenRowIds);}mutate(()=>c.stages.splice(idx+1,0,s));}
+function deleteStage(id){const c=currentChapter(),s=c.stages.find(s=>s.id===id),refs=referencesTo('',[id]);confirmBox('删除阶段',`删除“${s.title}”及其 ${branchRowCount(s)} 行脚本，同时移除 ${refs.rules} 条阶段解锁依赖、重置 ${refs.choices} 个分支的目标阶段。`,()=>mutate(()=>{c.stages=c.stages.filter(x=>x.id!==id);removeReferences('',[id]);}),true);}
+function notesDialog(type,id){const obj=type==='chapter'?C(id):S(id)?.stage,key=type==='chapter'?'summary':'notes';if(!obj)return;modal(type==='chapter'?'章节笔记':'阶段笔记',`<div class="field"><textarea class="input" id="notes-text" rows="10" autofocus>${esc(obj[key])}</textarea></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="notes-save">保存</button>');$('#notes-save').onclick=()=>{const val=$('#notes-text').value;mutate(()=>obj[key]=val);closeModal();};}
+function characterDialog(id=null,onCreated=null){const p=id?P(id):{id:uid('char'),name:'',color:PALETTE[project.characters.length%PALETTE.length],notes:'',expressions:['平静','微笑','疑惑','惊讶','严肃'],actions:[]};let color=p.color;modal(id?'编辑角色':'新角色',`<div class="field"><label>姓名</label><input class="input" id="char-name" value="${attr(p.name)}" maxlength="120" autofocus></div><div class="field"><label>颜色</label>${colorHTML(color)}</div><div class="field"><label>常用表情 <span class="tiny">· 逗号分隔</span></label><input class="input" id="char-expressions" value="${attr(p.expressions.join('，'))}"></div><div class="field"><label>常用动作 <span class="tiny">· 逗号分隔</span></label><input class="input" id="char-actions" value="${attr(p.actions.join('，'))}"></div><div class="field"><label>角色笔记</label><textarea class="input char-note" id="char-notes" rows="3">${esc(p.notes)}</textarea></div>${id?'<div class="danger-zone"><span></span><button class="btn danger small" id="char-delete">删除角色</button></div>':''}`,btn('取消',null,'modal-close')+'<button class="btn primary" id="char-save">保存</button>');bindColors(c=>color=c);$('#char-save').onclick=()=>{const name=$('#char-name').value.trim();if(!name)return toast('请输入角色姓名');if(project.characters.some(c=>c.id!==id&&c.name===name))return toast('已有同名角色');const expr=[...new Set($('#char-expressions').value.split(/[,，\n]/).map(x=>x.trim()).filter(Boolean))],actions=[...new Set($('#char-actions').value.split(/[,，\n]/).map(x=>x.trim()).filter(Boolean))],notes=$('#char-notes').value;mutate(()=>{Object.assign(p,{name,color,expressions:expr,actions,notes});if(!id)project.characters.push(p);if(onCreated)onCreated(p.id);});closeModal();};if(id)$('#char-delete').onclick=()=>{let n=0;for(const c of project.chapters)for(const s of c.stages)for(const r of flattenRows(stageRootRows(s)))if(r.speakerId===id)n++;confirmBox('删除角色',`“${p.name}”被 ${n} 行对白引用。删除后，这些行的说话人会变为旁白，文字、动作和表情保留。`,()=>mutate(()=>{project.characters=project.characters.filter(c=>c.id!==id);for(const c of project.chapters)for(const s of c.stages)for(const r of flattenRows(stageRootRows(s)))if(r.speakerId===id)r.speakerId='';}),true);};}
+function rulesDialog(id){const c=C(id);if(!c)return;let draft=clone(c.unlock),newFlags=[];
+function targets(type,current){let opts=[];if(type==='chapter')opts=project.chapters.filter(x=>x.id!==id).map(x=>[x.id,`${R(x.routeId)?.name} / ${x.title}`]);if(type==='stage')opts=project.chapters.filter(x=>x.id!==id).flatMap(x=>x.stages.map(s=>[s.id,`${x.title} / ${s.title}`]));if(type==='flag')opts=[...project.flags,...newFlags].map(x=>[x.id,x.name]);return option('','选择目标',current)+opts.map(([v,t])=>option(v,t,current)).join('');}
+function draw(){modal('解锁 · '+c.title,`<div class="rule-mode"><button data-mode="all" class="${draft.mode==='all'?'selected':''}" title="所有条件均满足时解锁">全部满足</button><button data-mode="any" class="${draft.mode==='any'?'selected':''}" title="任意一个条件满足时解锁">任一满足</button></div><div id="rule-list">${draft.rules.length?draft.rules.map((r,i)=>`<div class="rule-row" data-rule-index="${i}"><select class="input" data-rule-field="type" aria-label="条件类型">${option('chapter','章节',r.type)}${option('stage','阶段',r.type)}${option('flag','自定条件',r.type)}</select><select class="input" data-rule-field="targetId" aria-label="条件目标">${targets(r.type,r.targetId)}</select>${r.type==='flag'?`<select class="input expected-select" data-rule-field="expected" aria-label="条件取值">${option('true','已达成',String(r.expected!==false))}${option('false','未达成',String(r.expected!==false))}</select>`:'<span class="rule-state">已完成</span>'}<button class="icon-btn" data-rule-delete="${i}" title="移除此条件">${ico('close')}</button></div>`).join(''):`<div class="rule-empty">${ico('play')}<span>无前置条件</span></div>`}</div><div style="display:flex;gap:8px;margin-top:19px"><button class="btn small" id="rule-add">${ico('plus')}条件</button><button class="btn ghost small" id="rule-new-flag">${ico('flag')}新建自定条件</button></div><div id="new-rule-flag" class="hidden"><div class="field-row"><div class="field"><input class="input" id="local-flag-name" placeholder="条件名称" aria-label="新条件名称" maxlength="200"></div><div class="field" style="flex:0;justify-content:center"><button class="btn" id="local-flag-add">创建</button></div></div></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="rules-apply">保存</button>',true);
+$$('[data-mode]').forEach(b=>b.onclick=()=>{draft.mode=b.dataset.mode;draw();});
+$$('[data-rule-field]').forEach(el=>el.onchange=()=>{const row=el.closest('[data-rule-index]'),rule=draft.rules[+row.dataset.ruleIndex],key=el.dataset.ruleField;if(key==='type'){rule.type=el.value;rule.targetId='';rule.expected=true;draw();}else if(key==='expected')rule.expected=el.value==='true';else rule.targetId=el.value;});
+$$('[data-rule-delete]').forEach(b=>b.onclick=()=>{draft.rules.splice(+b.dataset.ruleDelete,1);draw();});
+$('#rule-add').onclick=()=>{draft.rules.push({id:uid('rule'),type:'chapter',targetId:'',expected:true});draw();};
+$('#rule-new-flag').onclick=()=>{$('#new-rule-flag').classList.remove('hidden');$('#local-flag-name').focus();};
+$('#local-flag-add').onclick=()=>{const name=$('#local-flag-name').value.trim();if(!name)return toast('请输入条件名称');let f=[...project.flags,...newFlags].find(x=>x.name===name);if(!f){f={id:uid('flag'),name,notes:''};newFlags.push(f);}draft.rules.push({id:uid('rule'),type:'flag',targetId:f.id,expected:true});draw();};
+$('#rules-apply').onclick=()=>{if(draft.rules.some(r=>!r.targetId))return toast('请为每条条件选择目标');const seen=new Set();draft.rules=draft.rules.filter(r=>{const key=r.type+':'+r.targetId+':'+r.expected;if(seen.has(key))return false;seen.add(key);return true;});mutate(()=>{c.unlock=draft;project.flags.push(...newFlags);});closeModal();};}
+draw();}
+function addConnection(targetId){if(!C(connectFrom))return toast('先点击前置章节的下方圆点');if(connectFrom===targetId)return toast('不能将章节本身作为前置');const c=C(targetId),from=connectFrom;if(c.unlock.rules.some(r=>r.type==='chapter'&&r.targetId===from)){connectFrom=null;render();return toast('这条依赖已经存在');}mutate(()=>c.unlock.rules.push({id:uid('rule'),type:'chapter',targetId:from,expected:true}));connectFrom=null;render();toast('已连接 · '+(c.unlock.mode==='all'?'全部满足':'任一满足'));}
+function flagsDialog(forSimulation=false){modal(forSimulation?'演练条件':'自定条件',`<div id="flag-list">${project.flags.map(f=>`<div class="flag-row" data-flag="${attr(f.id)}">${forSimulation?`<button class="toggle ${sim.flags.has(f.id)?'on':''}" data-flag-toggle="${attr(f.id)}" role="switch" aria-checked="${sim.flags.has(f.id)}" aria-label="${attr(f.name)}"></button><span class="flag-title">${esc(f.name)}</span>`:`<input class="cell flag-title" data-flag-name="${attr(f.id)}" value="${attr(f.name)}" aria-label="条件名称" maxlength="200">`}<button class="icon-btn" data-flag-delete="${attr(f.id)}" title="删除条件" aria-label="删除条件">${ico('trash')}</button></div>`).join('')}</div><div class="field-row" style="margin-top:12px"><div class="field"><input class="input" id="flag-new-name" placeholder="条件名称" aria-label="新增条件名称" maxlength="200"></div><div class="field" style="flex:0;justify-content:center"><button class="btn" id="flag-create">${ico('plus')}</button></div></div>`,btn('完成',null,'modal-close','primary'));$$('[data-flag-toggle]').forEach(b=>b.onclick=()=>{const id=b.dataset.flagToggle;sim.flags.has(id)?sim.flags.delete(id):sim.flags.add(id);reconcileSimulation();render();flagsDialog(true);});$$('[data-flag-name]').forEach(inp=>inp.oninput=()=>{edit('flag:'+inp.dataset.flagName,()=>F(inp.dataset.flagName).name=inp.value);});$$('[data-flag-delete]').forEach(b=>b.onclick=()=>{const id=b.dataset.flagDelete,f=F(id),n=project.chapters.reduce((a,c)=>a+c.unlock.rules.filter(r=>r.type==='flag'&&r.targetId===id).length,0);confirmBox('删除条件',`删除“${f.name}”，同时移除 ${n} 条解锁依赖。受影响章节的解锁条件会变化。`,()=>{mutate(()=>{project.flags=project.flags.filter(x=>x.id!==id);project.chapters.forEach(c=>c.unlock.rules=c.unlock.rules.filter(r=>!(r.type==='flag'&&r.targetId===id)));});flagsDialog(forSimulation);},true);});$('#flag-create').onclick=()=>{const name=$('#flag-new-name').value.trim();if(!name)return toast('请输入条件名称');if(project.flags.some(f=>f.name===name))return toast('已有同名条件');mutate(()=>project.flags.push({id:uid('flag'),name,notes:''}));flagsDialog(forSimulation);};}
+function addRow(type='dialogue',afterId=null){const rows=currentRows();if(!rows)return toast('请先添加调查物品');const r=line(type),prev=afterId?rows.find(x=>x.id===afterId):rows.at(-1);if(type==='dialogue'&&prev?.type==='dialogue'){r.speakerId=prev.speakerId;r.expression=prev.expression;}mutate(()=>{if(afterId){const idx=rows.findIndex(x=>x.id===afterId);rows.splice(idx+1,0,r);}else rows.push(r);});focusRow(r.id);}
+function focusRow(id){requestAnimationFrame(()=>{const el=$(`[data-row="${id}"],[data-branch-row="${id}"]`);if(el){el.scrollIntoView({block:'nearest'});$('[data-row-field="text"]',el)?.focus();}});}
+function rowMenu(id,anchor){const rows=currentRows()||[],idx=rows.findIndex(r=>r.id===id),row=rows[idx];if(!row)return;menu(anchor,[{label:'在下方插入对白',icon:'plus',click:()=>addRow('dialogue',id)},{label:'在下方插入描述',icon:'note',click:()=>addRow('effect',id)},{label:'复制此行',icon:'copy',click:()=>{const r=regenRowIds(clone(row));mutate(()=>rows.splice(idx+1,0,r));focusRow(r.id);}},{label:'上移',icon:'up',disabled:idx<=0,click:()=>mutate(()=>rows.splice(idx-1,0,rows.splice(idx,1)[0]))},{label:'下移',icon:'down',disabled:idx>=rows.length-1,click:()=>mutate(()=>rows.splice(idx+1,0,rows.splice(idx,1)[0]))},{label:'移至其他阶段',icon:'layers',click:()=>moveRowDialog(id)},null,{label:'删除此行',icon:'trash',danger:true,click:()=>mutate(()=>rows.splice(idx,1))}]);}
+function branchRowMenu(id,anchor){const loc=rowLocation(id);if(!loc||!loc.parent)return;const rows=loc.rows,i=rows.indexOf(loc.row);menu(anchor,[{label:'在下方插入对白',icon:'plus',click:()=>{const r=line();mutate(()=>rows.splice(i+1,0,r));focusRow(r.id);}},{label:'在下方插入描述',icon:'note',click:()=>{const r=line('effect');mutate(()=>rows.splice(i+1,0,r));focusRow(r.id);}},{label:'复制此行',icon:'copy',click:()=>{const r=regenRowIds(clone(loc.row));mutate(()=>rows.splice(i+1,0,r));focusRow(r.id);}},{label:'上移',icon:'up',disabled:i===0,click:()=>mutate(()=>rows.splice(i-1,0,rows.splice(i,1)[0]))},{label:'下移',icon:'down',disabled:i===rows.length-1,click:()=>mutate(()=>rows.splice(i+1,0,rows.splice(i,1)[0]))},{label:'移至其他阶段',icon:'layers',click:()=>moveRowDialog(id)},null,{label:'删除此行',icon:'trash',danger:true,click:()=>mutate(()=>rows.splice(i,1))}]);}
+function localOptionMenu(parentId,optId,anchor){const parent=currentRows()?.find(r=>r.id===parentId&&r.type==='branch'),opts=parent?.options||[],idx=opts.findIndex(o=>o.id===optId),op=opts[idx];if(!op)return;menu(anchor,[{label:'复制选项',icon:'copy',click:()=>{const c=clone(op);c.id=uid('opt');c.rows.forEach(regenRowIds);mutate(()=>opts.splice(idx+1,0,c));}},{label:'上移',icon:'up',disabled:idx===0,click:()=>mutate(()=>opts.splice(idx-1,0,opts.splice(idx,1)[0]))},{label:'下移',icon:'down',disabled:idx>=opts.length-1,click:()=>mutate(()=>opts.splice(idx+1,0,opts.splice(idx,1)[0]))},{label:'添加描述',icon:'note',click:()=>{const r=line('effect');mutate(()=>op.rows.push(r));focusRow(r.id);}},{label:'添加笔记',icon:'note',click:()=>{const r=line('note');mutate(()=>op.rows.push(r));focusRow(r.id);}},null,{label:'删除选项',icon:'trash',danger:true,disabled:opts.length<=1,click:()=>{const del=()=>mutate(()=>opts.splice(idx,1));if(op.rows.some(r=>r.text.trim()))confirmBox('删除选项',`删除选项“${op.text||'未命名'}”及其中 ${op.rows.length} 行脚本？`,del,true);else del();}}]);}
+function moveRowDialog(id){const location=rowLocation(id);if(!location)return;const from=currentStage(),source=currentInvestigationItem();
+ const choices=project.chapters.flatMap(c=>c.stages.flatMap(st=>st.kind==='investigation'?(st.objects||[]).filter(o=>!(st.id===from.id&&o.id===source?.id)).map(o=>({id:o.id,label:`${R(c.routeId)?.name} / ${c.title} / ${st.title} / ${o.name}`,rows:o.rows})):st.id===from.id?[]:[{id:st.id,label:`${R(c.routeId)?.name} / ${c.title} / ${st.title}`,rows:st.rows}]));
+ if(!choices.length)return toast('没有其他目标');
+ modal('移动脚本行',`<div class="field"><label>目标阶段 / 物品</label><select class="input" id="move-row-target">${choices.map(x=>option(x.id,x.label,null)).join('')}</select></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="move-row-go">移动</button>');
+ $('#move-row-go').onclick=()=>{const dest=choices.find(x=>x.id===$('#move-row-target').value);if(!dest)return;mutate(()=>{const idx=location.rows.indexOf(location.row);dest.rows.push(location.rows.splice(idx,1)[0]);});closeModal();};
+}
+function scriptMenu(anchor){menu(anchor,[...((currentStage().kind==='investigation')?[{label:'新建调查物品',icon:'plus',click:()=>inspectObjectDialog()}]:[]),{label:'添加选项组',icon:'branch',click:()=>addRow('branch')},{label:'添加画面描述',icon:'note',click:()=>addRow('effect')},{label:'添加笔记行',icon:'note',click:()=>addRow('note')},{label:'批量录入对白',icon:'file',click:bulkDialog},{label:'复制所选行',icon:'copy',shortcut:'Ctrl C',disabled:!selectedRows().length,click:copyRowsButton},{label:'粘贴对白行',icon:'layers',shortcut:'Ctrl V',disabled:!rowClipboard,click:pasteRowsButton},null,{label:'阶段设置',icon:'settings',click:()=>stageDialog(currentStage().id)},{label:'阅读本阶段',icon:'eye',click:readStage},{label:'返回阶段卡片',icon:'layers',click:()=>go('chapter',view.chapterId)}]);}
+function bulkDialog(){modal('批量录入',`<div class="field"><textarea class="input" id="bulk-text" rows="12" placeholder="角色名：对白\n角色名：下一句对白\n没有角色名的行会作为旁白。" autofocus></textarea></div><label class="tiny" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="bulk-create" checked>为新姓名创建角色</label>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="bulk-import">插入</button>',true);$('#bulk-import').onclick=()=>{const list=$('#bulk-text').value.split(/\r?\n/).filter(x=>x.trim()),create=$('#bulk-create').checked,rows=currentRows();if(!rows)return toast('请先添加调查物品');if(!list.length)return toast('请粘贴对白');mutate(()=>{for(const str of list){const m=str.match(/^\s*([^:：\n]{1,40})[:：]\s*(.*)$/),r=line();if(m){const name=m[1].trim();let p=project.characters.find(x=>x.name===name);if(!p&&create&&!['旁白','叙述'].includes(name)){p={id:uid('char'),name,color:PALETTE[project.characters.length%PALETTE.length],expressions:['平静','微笑','疑惑'],actions:[],notes:''};project.characters.push(p);}if(p||['旁白','叙述'].includes(name)){r.speakerId=p?.id||'';r.text=m[2];}else r.text=str;}else r.text=str;rows.push(r);}});closeModal();toast('已插入 '+list.length+' 行');};}
+function previewRow(r){
+ if(r.type==='note')return `<div class="preview-note">${esc(r.text)}</div>`;
+ if(r.type==='effect')return `<div class="preview-effect">${esc(r.text)}</div>`;
+ if(r.type==='branch')return `<div class="preview-dialogue"><strong>选项</strong><p>${esc(r.text)}</p><div class="read-local-options">${r.options.map((o,i)=>`<div class="read-local-option"><strong>${String.fromCharCode(65+i)} · ${esc(o.text)}</strong>${(o.rows||[]).map(previewRow).join('')}<small>${o.mode==='jump'?'↳ 跳转至 '+esc(C(o.chapterId)?.title||'未设置章节')+(o.stageId?' / '+esc(S(o.stageId)?.stage.title||'未设置阶段'):''):'↳ 返回下一行'}</small></div>`).join('')}</div></div>`;
+ return `<div class="preview-dialogue"><strong>${esc(P(r.speakerId)?.name||'旁白')}</strong>${r.expression||r.action?`<small> &nbsp; ${esc([r.expression,r.action].filter(Boolean).join(' · '))}</small>`:''}<p>${esc(r.text)}</p></div>`;
+}
+function readStage(){const st=currentStage();const html=st.kind==='investigation'?(st.objects||[]).map(o=>`<h3>${esc(o.name)}</h3>${o.rows.map(previewRow).join('')}`).join(''):st.rows.map(previewRow).join('');modal(st.title,`<div class="readable-preview">${html||'<div class="empty-centered">暂无脚本</div>'}</div>`,btn('关闭',null,'modal-close'),true);}
+function searchDialog(){modal('搜索',`<input id="search-input" class="search-input" placeholder="章节、阶段、对白、角色…" aria-label="搜索剧情" autofocus><div id="search-results" class="search-results"></div>`,'',true);$('#search-input').oninput=()=>{const q=$('#search-input').value.trim().toLowerCase(),found=[];if(!q){$('#search-results').innerHTML='';return;}const match=t=>String(t||'').toLowerCase().includes(q);for(const c of project.chapters){if(match(c.title)||match(c.summary))found.push({title:c.title,path:R(c.routeId)?.name||'',text:c.summary,chapterId:c.id});for(const s of c.stages){const path=`${R(c.routeId)?.name} / ${c.title} / ${s.title}`;if(match(s.title)||match(s.notes))found.push({title:s.title,path,text:s.notes,chapterId:c.id,stageId:s.id});if(s.kind==='investigation')for(const o of s.objects||[])if(match(o.name)||match(o.notes))found.push({title:o.name,path,text:o.notes,chapterId:c.id,stageId:s.id});for(const r of flattenRows(stageRootRows(s))){if([r.text,r.action,r.expression,P(r.speakerId)?.name,...(r.options||[]).map(o=>o.text)].some(match))found.push({title:P(r.speakerId)?.name||(r.type==='branch'?'选项组':r.type==='effect'?'画面描述':r.type==='note'?'笔记':'旁白'),path,text:r.text||r.action||r.expression,chapterId:c.id,stageId:s.id,rowId:r.id});}}}for(const p of project.characters)if(match(p.name)||match(p.notes))found.push({title:p.name,path:'角色',text:p.notes,characterId:p.id});const results=found.slice(0,150);$('#search-results').innerHTML=results.map((r,i)=>`<button class="search-item" data-result="${i}"><small>${esc(r.path)}</small><strong>${esc(r.title)}</strong><span>${esc(String(r.text).slice(0,170))}</span></button>`).join('')||'<div class="empty-centered">没有匹配结果</div>';$$('[data-result]').forEach(b=>b.onclick=()=>{const r=results[+b.dataset.result];closeModal();if(r.characterId){go('characters');characterDialog(r.characterId);}else{go(r.stageId?'stage':'chapter',r.chapterId,r.stageId||null);if(r.rowId)requestAnimationFrame(()=>{const row=$(`[data-row="${r.rowId}"],[data-branch-row="${r.rowId}"]`);row?.scrollIntoView({block:'center'});row?.classList.add('flash-row');});}});};}
+function auditProject(){const issues=[];for(const c of project.chapters){for(const r of c.unlock.rules){if((r.type==='chapter'&&!C(r.targetId))||(r.type==='stage'&&!S(r.targetId))||(r.type==='flag'&&!F(r.targetId)))issues.push({id:c.id,msg:'存在已缺失的解锁目标',kind:'引用'});if((r.type==='chapter'&&r.targetId===c.id)||(r.type==='stage'&&S(r.targetId)?.chapter.id===c.id))issues.push({id:c.id,msg:'依赖本章或本章内部阶段，无法首次进入',kind:'自依赖'});}if(c.unlock.mode==='all'){const flags=new Map();for(const r of c.unlock.rules)if(r.type==='flag'){if(flags.has(r.targetId)&&flags.get(r.targetId)!==(r.expected!==false))issues.push({id:c.id,msg:'同一条件同时要求已达成与未达成',kind:'冲突'});flags.set(r.targetId,r.expected!==false);}}for(const s of c.stages)for(const r of flattenRows(stageRootRows(s))){if(r.type==='dialogue'&&r.speakerId&&!P(r.speakerId))issues.push({id:c.id,stageId:s.id,msg:'对白引用了不存在的角色',kind:'角色'});if(r.type==='branch')for(const op of r.options){if(op.mode!=='jump')continue;if(!op.chapterId||!C(op.chapterId))issues.push({id:c.id,stageId:s.id,msg:'分支选项“'+(op.text||'未命名')+'”尚未设置有效章节',kind:'分支'});else if(op.stageId&&!C(op.chapterId).stages.some(x=>x.id===op.stageId))issues.push({id:c.id,stageId:s.id,msg:'分支选项的目标阶段不属于目标章节',kind:'分支'});}}}
+const reachable=new Set();let changed=true;while(changed){changed=false;for(const c of project.chapters){if(reachable.has(c.id))continue;const rs=c.unlock.rules,possible=r=>r.type==='flag'?!!F(r.targetId):r.type==='chapter'?reachable.has(r.targetId):!!S(r.targetId)&&reachable.has(S(r.targetId).chapter.id);if(!rs.length||(c.unlock.mode==='any'?rs.some(possible):rs.every(possible))){reachable.add(c.id);changed=true;}}}for(const c of project.chapters)if(!reachable.has(c.id))issues.push({id:c.id,msg:'从现有起点不可达，请检查闭环或缺失前置',kind:'不可达'});return issues;}
+function auditDialog(){const issues=auditProject();modal('剧情关系检查',issues.length?issues.map((x,i)=>`<div class="diagnostic"><span class="kind">${esc(x.kind)}</span><button data-audit="${i}">${esc(C(x.id)?.title||'')} ${ico('next')}</button><div>${esc(x.msg)}</div></div>`).join(''):'<div class="empty-centered">未发现引用缺失或前置不可达</div>',btn('关闭',null,'modal-close'));$$('[data-audit]').forEach(b=>b.onclick=()=>{const x=issues[+b.dataset.audit];closeModal();go(x.stageId?'stage':'chapter',x.id,x.stageId||null);});}
+// Strictly copy known fields: imported JSON never becomes executable HTML or code.
+function normalizeProject(raw){if(!raw||typeof raw!=='object'||raw.format!==FORMAT)throw Error('这不是叙线源文件（.json）');if(![1,2,3].includes(raw.version))throw Error('源文件版本不受支持，请使用兼容的编辑器');const ids=new Set();const id=(v)=>{if(typeof v!=='string'||!v.match(/^[a-zA-Z0-9_-]{1,100}$/))throw Error('源文件中有无效标识');if(ids.has(v))throw Error('源文件中存在重复标识：'+v);ids.add(v);return v;};const str=(v,def='')=>typeof v==='string'?v:def;const arr=(v)=>{if(v===undefined)return [];if(!Array.isArray(v))throw Error('源文件结构不完整');return v;};const ref=v=>typeof v==='string'&&/^[a-zA-Z0-9_-]{0,100}$/.test(v)?v:'';const p={format:FORMAT,version:3,id:id(raw.id),title:str(raw.title,'未命名剧本'),createdAt:str(raw.createdAt,now()),updatedAt:str(raw.updatedAt,now()),routes:[],characters:[],flags:[],chapters:[]};
+p.routes=arr(raw.routes).map(r=>({id:id(r.id),name:str(r.name,'未命名路线'),color:safeColor(r.color)}));if(!p.routes.length)throw Error('源文件至少需要一条路线');if(p.routes.length>100)throw Error('路线数量超过安全上限（100）');p.characters=arr(raw.characters).map(c=>({id:id(c.id),name:str(c.name,'未命名角色'),color:safeColor(c.color),notes:str(c.notes),expressions:arr(c.expressions).filter(x=>typeof x==='string'),actions:arr(c.actions).filter(x=>typeof x==='string')}));p.flags=arr(raw.flags).map(f=>({id:id(f.id),name:str(f.name,'未命名条件'),notes:str(f.notes)}));
+const parseRow=(r,inside=false)=>{
+ const rawType=['dialogue','note','effect','branch','choice','localChoice'].includes(r?.type)?r.type:'dialogue';
+ const type=inside&&!['dialogue','note','effect'].includes(rawType)?'dialogue':(['choice','localChoice'].includes(rawType)?'branch':rawType);
+ const base={id:id(r.id),type,speakerId:ref(r.speakerId),text:str(r.text),expression:str(r.expression),action:str(r.action),options:[]};
+ if(type==='branch')base.options=arr(r.options).map(o=>({
+  id:id(o.id),text:str(o.text),mode:rawType==='choice'?'jump':rawType==='localChoice'?'continue':o.mode==='jump'?'jump':'continue',
+  chapterId:ref(o.chapterId),stageId:ref(o.stageId),rows:arr(o.rows).map(x=>parseRow(x,true))
+ }));
+ return base;
+};
+p.chapters=arr(raw.chapters).map(c=>{
+ const rid=ref(c.routeId);if(!p.routes.some(r=>r.id===rid))throw Error('章节“'+str(c.title)+'”缺少所属路线');
+ return {id:id(c.id),routeId:rid,title:str(c.title,'未命名章节'),summary:str(c.summary),y:typeof c.y==='number'&&Number.isFinite(c.y)?Math.max(112,Math.min(100000,c.y)):112,
+ ending:['continue','pause','end'].includes(c.ending)?c.ending:'continue',
+ unlock:{mode:c.unlock?.mode==='any'?'any':'all',rules:arr(c.unlock?.rules).map(r=>{if(!['chapter','stage','flag'].includes(r.type))throw Error('未知的解锁条件类型');return {id:id(r.id),type:r.type,targetId:ref(r.targetId),expected:r.expected!==false};})},
+ stages:arr(c.stages).map(st=>({id:id(st.id),title:str(st.title,'未命名阶段'),notes:str(st.notes),kind:st.kind==='investigation'?'investigation':'story',rows:arr(st.rows).map(r=>parseRow(r)),objects:arr(st.objects).map(o=>({id:id(o.id),name:str(o.name,'未命名物品'),notes:str(o.notes),rows:arr(o.rows).map(r=>parseRow(r))}))}))};
+});
+if(p.chapters.length>3000)throw Error('章节数量超过安全上限（3000）');return p;}
+// IndexedDB stores native handles, not the text of the source. Unavailable on some file:// origins.
+function handleStore(mode,work){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){resolve(null);return;}let req;try{req=indexedDB.open(HANDLE_DB,1);}catch(e){reject(e);return;}req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('source'))req.result.createObjectStore('source');};req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('source',mode),st=tx.objectStore('source');const op=work(st);op.onsuccess=()=>resolve(op.result);op.onerror=()=>reject(op.error);tx.oncomplete=()=>db.close();tx.onabort=()=>db.close();}catch(e){db.close();reject(e);}};});}
+async function rememberHandle(){if(!fileHandle)return;try{await handleStore('readwrite',st=>st.put({handle:fileHandle,name:sourceName,stamp:fileStamp},project.id));}catch(e){/* No storage permission: keep handle until this tab closes. */}}
+async function restoreHandle(){if(BRIDGE||!sourceName)return;const refId=project.id, refName=sourceName;try{const item=await handleStore('readonly',st=>st.get(refId));if(item?.handle?.kind==='file'&&item.name===refName&&project.id===refId&&sourceName===refName&&!fileHandle&&!bridgeBinding){fileHandle=item.handle;fileStamp=item.stamp||null;updateTop();}}catch(e){/* Reopen the file when the browser cannot remember handles. */}}
+async function bridgeCall(endpoint,data={}){const r=await fetch('/api/'+endpoint,{method:'POST',cache:'no-store',credentials:'omit',headers:{'Content-Type':'application/json','X-Xuxian-Token':BRIDGE},body:JSON.stringify(data)});let payload;try{payload=await r.json();}catch(e){throw Error('无法连接本地文件服务，请重新启动编辑器');}if(!r.ok){const error=new Error(payload.error||'文件操作失败');error.status=r.status;throw error;}return payload;}
+// Project hub. Each card represents exactly one JSON document in a local folder.
+let libraryItems=[],libraryBusy=false,restoredDraft=false;
+const libraryVisible=()=>!$('#project-library').classList.contains('hidden');
+function showProjectLibrary(){if(!BRIDGE)$('#library-folder').classList.add('hidden');$('#library-close').classList.toggle('hidden',!sourceName&&!bridgeBinding&&!fileHandle&&!dirty&&!restoredDraft);closeMenu();$('#project-library').classList.remove('hidden');$('#library-close').title=dirty?'返回未保存的草稿':'返回编辑器';return refreshProjectLibrary();}
+function closeProjectLibrary(){$('#project-library').classList.add('hidden');}
+function renderProjectLibrary(){
+ const box=$('#library-grid'),counter=$('#library-count'),status=$('#library-status');
+ if(!BRIDGE){counter.textContent='';box.innerHTML=`<button class="library-new" id="library-standalone-open">${ico('folder')} 打开 JSON</button><button class="library-new" id="library-standalone-new">${ico('plus')} 新建剧本</button>`;status.textContent='自动扫描项目文件夹需要使用 Windows 启动叙线.cmd';$('#library-standalone-open').onclick=()=>openStandaloneSource();$('#library-standalone-new').onclick=newDialog;return;}
+ counter.textContent=libraryItems.length?`${libraryItems.length} 个项目`:'';
+ status.textContent=libraryBusy?'读取中…':'本地 · 剧本项目';
+ box.innerHTML=libraryItems.map((p,i)=>`<article class="library-card" data-project-file="${attr(p.fileName)}">
+   <button class="library-open" data-library-open="${i}" title="打开 ${attr(p.title)}"><span class="library-title">${esc(p.title||'未命名剧本')}</span><span class="library-file">${esc(p.fileName)}</span></button>
+   <div class="library-actions"><button class="icon-btn" title="项目操作" aria-label="${attr(p.title)} 的操作" data-library-more="${i}">${ico('dots')}</button></div>
+   <div class="library-meta"><span>${Number(p.routes||0)} 路线 · ${Number(p.chapters||0)} 章节</span><span>${p.modified?new Date(Number(p.modified)).toLocaleDateString('zh-CN'):''}</span></div>
+ </article>`).join('')+`<button class="library-new" id="library-new-card">${ico('plus')} 新建项目</button>`;
+ $('#library-new-card').onclick=newHubDialog;
+ $$('[data-library-open]').forEach(b=>b.onclick=()=>openManagedProject(libraryItems[+b.dataset.libraryOpen].fileName));
+ $$('[data-library-more]').forEach(b=>b.onclick=e=>{e.stopPropagation();const p=libraryItems[+b.dataset.libraryMore];menu(b,[
+  {label:'打开',icon:'folder',click:()=>openManagedProject(p.fileName)},
+  {label:'复制项目',icon:'copy',click:()=>duplicateManagedProject(p.fileName)},
+  {label:'重命名',icon:'edit',click:()=>renameManagedProject(p)},
+  null,{label:'删除项目',icon:'trash',danger:true,click:()=>deleteManagedProject(p)}]);});
+}
+async function refreshProjectLibrary(){if(!BRIDGE){renderProjectLibrary();return;}if(libraryBusy)return;libraryBusy=true;try{const d=await bridgeCall('projects/list');libraryItems=Array.isArray(d.items)?d.items:[];renderProjectLibrary();}catch(e){$('#library-grid').innerHTML=`<div class="library-empty">无法读取项目文件夹 <small>${esc(e.message)}</small></div>`;toast('项目列表读取失败：'+e.message,true);}finally{libraryBusy=false;$('#library-status').textContent='本地 · 剧本项目';}}
+function managedAction(action){return async ()=>{try{await action();await refreshProjectLibrary();}catch(e){toast(e.message||'项目操作失败',true);}};}
+function openManagedProject(fileName){
+ const proceed=async()=>{try{const d=await bridgeCall('projects/open',{fileName});const p=normalizeProject(JSON.parse(d.text.replace(/^\uFEFF/,'')));adopt(p,d.name,null,false,d.stamp,d.bindingId);toast('已打开 '+p.title);}catch(e){toast('打开失败：'+e.message,true);}};
+ guardReplace(proceed);
+}
+function newHubDialog(){modal('新建项目',`<div class="field"><label>项目名称</label><input class="input" id="library-new-name" value="未命名剧本" maxlength="200" autofocus></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="library-new-submit">创建</button>');
+ const create=()=>{const title=$('#library-new-name')?.value.trim();if(!title)return toast('请输入项目名称',true);closeModal();
+  const run=async()=>{try{if(BRIDGE){const p=newProject(title),d=await bridgeCall('projects/create',{text:JSON.stringify(p,null,2)});adopt(normalizeProject(JSON.parse(d.text)),d.name,null,false,d.stamp,d.bindingId);}else adopt(newProject(title),'',null,true);toast('已创建 '+title);}catch(e){toast('创建失败：'+e.message,true);}};guardReplace(run);
+ };
+ $('#library-new-submit').onclick=create;$('#library-new-name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();create();}});
+}
+async function duplicateManagedProject(fileName){try{await bridgeCall('projects/duplicate',{fileName});await refreshProjectLibrary();toast('已复制项目');}catch(e){toast('复制失败：'+e.message,true);}}
+function renameManagedProject(p){modal('重命名项目',`<div class="field"><label>项目名称</label><input class="input" id="library-rename-name" value="${attr(p.title)}" maxlength="200" autofocus></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="library-rename-submit">保存</button>');
+ $('#library-rename-submit').onclick=()=>{const title=$('#library-rename-name').value.trim();if(!title)return toast('请输入项目名称',true);closeModal();const run=async()=>{try{const d=await bridgeCall('projects/rename',{fileName:p.fileName,title});if(sourceName===p.fileName){adopt(normalizeProject(JSON.parse(d.text)),d.name,null,false,d.stamp,d.bindingId);showProjectLibrary();}else await refreshProjectLibrary();toast('已重命名');}catch(e){toast('重命名失败：'+e.message,true);}};if(sourceName===p.fileName)guardReplace(run);else run();};
+}
+function deleteManagedProject(p){confirmBox('删除项目',`将「${p.title}」移入「剧本项目/_回收站」，不会直接永久删除。`,async()=>{try{if(dirty&&sourceName===p.fileName){toast('当前项目有未保存的改动，请先保存或返回项目列表',true);return;}await bridgeCall('projects/delete',{fileName:p.fileName});if(sourceName===p.fileName){adopt(newProject(),'',null,false);showProjectLibrary();}else await refreshProjectLibrary();toast('已移入回收站');}catch(e){toast('删除失败：'+e.message,true);}},true);}
+function importSourceAction(){if(BRIDGE||!window.showOpenFilePicker){$('#file-input').click();}else openStandaloneSource();}
+async function importSelectedSource(file){if(!BRIDGE){await loadFile(file);return;}try{if(file.size>25*1024*1024)throw Error('文件不能超过 25 MB');const raw=await file.text();const p=normalizeProject(JSON.parse(raw.replace(/^\uFEFF/,'')));
+ const run=async()=>{try{const d=await bridgeCall('projects/create',{text:JSON.stringify(p,null,2)});adopt(normalizeProject(JSON.parse(d.text)),d.name,null,false,d.stamp,d.bindingId);toast('已导入 '+p.title);}catch(e){toast('导入失败：'+e.message,true);}};
+ guardReplace(run);
+}catch(e){toast('导入失败：'+e.message,true);}}
+function adopt(p,name='',handle=null,isNew=false,stamp=null,binding=null){$('#project-library')?.classList.add('hidden');collapsedOptionIds.clear();project=p;sourceName=name;fileHandle=handle;fileStamp=stamp;bridgeBinding=binding;history=[];future=[];lastEdit='';dirty=isNew;exported=false;view={type:'board'};zoom=1;boardScroll={x:0,y:0};connectFrom=null;sim={active:false,chapters:new Set(),stages:new Set(),flags:new Set()};closeModal();render();persist();if(handle)rememberHandle();}
+function loadText(txt,name,handle,stamp,binding=null){try{if(txt.length>25*1024*1024)throw Error('文件超过 25 MB，请使用拆分后的剧本');const p=normalizeProject(JSON.parse(txt.replace(/^\uFEFF/,'')));guardReplace(()=>{adopt(p,name,handle,false,stamp,binding);toast('已打开 '+name);});}catch(e){toast(e instanceof SyntaxError?'无法读取：JSON 格式错误':e.message||'无法读取此文件',true);}}
+async function loadFile(file,handle=null){try{if(file.size>25*1024*1024)throw Error('文件超过 25 MB，请使用拆分后的剧本');loadText(await file.text(),file.name,handle,{size:file.size,lastModified:file.lastModified});}catch(e){toast(e.message||'无法读取此文件',true);}}
+async function openSource(){return showProjectLibrary();}
+async function openStandaloneSource(){if(typeof window.showOpenFilePicker==='function'){try{const [handle]=await window.showOpenFilePicker({id:'xuxian-source',multiple:false,types:[{description:'叙线剧本源文件',accept:{'application/json':['.json']}}]});if(handle){const f=await handle.getFile();await loadFile(f,handle);}return;}catch(e){if(e.name==='AbortError')return;toast('无法关联文件写入权限，将使用普通导入',true);}}$('#file-input').click();}
+function fileName(){return (project.title||'未命名剧本').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120)+'.story.json';}
+function downloadText(text,name,type='application/json'){const blob=new Blob([text],{type:type+';charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+function downloadSource(){const name=sourceName||fileName(),text=JSON.stringify(project,null,2);downloadText(text,name);dirty=false;exported=true;persist();toast('已下载源文件副本（未覆盖磁盘原件）');return true;}
+function fileConflict(){modal('源文件已改变','<div class="help"><p>磁盘上的 JSON 在上次打开或保存之后发生过修改。直接覆盖会替换这些外部改动。</p></div>',btn('取消',null,'modal-close')+'<button class="btn" id="conflict-copy">另存</button><button class="btn danger" id="conflict-write">覆盖原文件</button>');$('#conflict-copy').onclick=()=>{closeModal();saveSource(true);};$('#conflict-write').onclick=()=>{closeModal();saveSource(false,true);};}
+function cannotWriteDialog(){modal('当前浏览器不能直接写回',`<div class="help"><p>Firefox 的普通 HTML 页面无法覆盖磁盘上的 JSON。</p><p>Windows 可使用压缩包里的「启动叙线.cmd」，然后正常打开、保存；也可以用 Chrome / Edge 打开 HTML。</p></div>`,btn('取消',null,'modal-close')+'<button class="btn primary" id="download-fallback">下载副本</button>');$('#download-fallback').onclick=()=>{closeModal();downloadSource();};}
+async function chooseLinkForExisting(){const [h]=await window.showOpenFilePicker({id:'xuxian-source',multiple:false,types:[{description:'叙线剧本源文件',accept:{'application/json':['.json']}}]});if(!h)return null;const f=await h.getFile();let other;try{other=normalizeProject(JSON.parse((await f.text()).replace(/^\uFEFF/,'')));}catch(e){throw Error('所选 JSON 不是有效的叙线源文件');}if(other.id!==project.id)throw Error('所选文件属于另一份剧本，请选择原 JSON 或使用「另存」');const previous=fileStamp;fileHandle=h;sourceName=h.name;fileStamp={size:f.size,lastModified:f.lastModified};if(previous&&(previous.size!==fileStamp.size||previous.lastModified!==fileStamp.lastModified))return 'conflict';return h;}
+async function saveSource(asNew=false,force=false){if(saving)return false;saving=true;$('#save-btn').disabled=true;try{const snapshot=JSON.stringify(project,null,2);
+if(BRIDGE){
+let result,created=null;
+try{
+ if(asNew){created=clone(project);created.id=uid('project');created.title+=' 副本';created.createdAt=now();created.updatedAt=now();result=await bridgeCall('projects/create',{text:JSON.stringify(created,null,2)});}
+ else if(!bridgeBinding){result=await bridgeCall('projects/create',{text:snapshot});}
+ else result=await bridgeCall('save',{text:snapshot,bindingId:bridgeBinding,stamp:fileStamp,force});
+}catch(e){if(e.status===409){fileConflict();return false;}throw e;}
+if(result.cancelled)return false;
+if(created){adopt(normalizeProject(JSON.parse(result.text)),result.name,null,false,result.stamp,result.bindingId);}else{
+ bridgeBinding=result.bindingId;fileHandle=null;sourceName=result.name;fileStamp=result.stamp;
+ dirty=JSON.stringify(project,null,2)!==snapshot;exported=false;persist();
+}
+toast((asNew?'已另存 ': '已写回 ')+sourceName);return true;
+}
+let h=asNew?null:fileHandle;
+if(!h&&!asNew&&sourceName&&typeof window.showOpenFilePicker==='function'){
+const selected=await chooseLinkForExisting();if(selected==='conflict'){fileConflict();return false;}h=selected;
+}
+if(!h){if(typeof window.showSaveFilePicker==='function'){h=await window.showSaveFilePicker({id:'xuxian-source',suggestedName:sourceName||fileName(),types:[{description:'叙线剧本源文件',accept:{'application/json':['.json']}}]});}else{cannotWriteDialog();return false;}}
+if(!h)return false;
+if(h===fileHandle&&fileStamp&&!force){const f=await h.getFile();if(f.lastModified!==fileStamp.lastModified||f.size!==fileStamp.size){fileConflict();return false;}}
+const stream=await h.createWritable();try{await stream.write(snapshot);await stream.close();}catch(e){try{await stream.abort();}catch(_){}throw e;}fileHandle=h;sourceName=h.name;const f=await h.getFile();fileStamp={size:f.size,lastModified:f.lastModified};dirty=JSON.stringify(project,null,2)!==snapshot;exported=false;persist();rememberHandle();toast('已写回 '+sourceName);return true;
+}catch(e){if(e.name==='AbortError')return false;toast('保存未完成：'+(e.message||'文件不可写'),true);return false;}finally{saving=false;$('#save-btn').disabled=false;updateTop();}}
+function appendMarkdownRows(out,rows,indent=''){
+ for(const row of rows){
+  if(row.type==='note'){out.push(indent+'〔笔记〕'+row.text,'');continue;}
+  if(row.type==='effect'){out.push(indent+'〔画面效果〕'+row.text,'');continue;}
+  if(row.type==='branch'){
+   out.push(indent+'〔选项〕'+row.text,'');
+   for(const op of row.options){out.push(indent+'- **'+op.text+'**','');appendMarkdownRows(out,op.rows||[],indent+'    ');out.push(indent+(op.mode==='jump'?'↳ 跳转：'+(C(op.chapterId)?.title||'未设置章节')+(op.stageId?' / '+(S(op.stageId)?.stage.title||'未设置阶段'):''):'↳ 合流，继续下一行'),'');}
+   continue;
+  }
+  out.push(indent+'**'+(P(row.speakerId)?.name||'旁白')+'**'+([row.expression,row.action].some(Boolean)?' 〔'+[row.expression,row.action].filter(Boolean).join(' · ')+'〕':''),indent+row.text,'');
+ }
+}
+function exportMarkdown(){const out=['# '+project.title,'','> 叙线可读剧本 · '+new Date().toLocaleString('zh-CN'),''];if(project.characters.length){out.push('## 角色','');for(const p of project.characters)out.push('### '+p.name,p.notes||'',p.expressions.length?'表情：'+p.expressions.join(' / '):'',p.actions.length?'动作：'+p.actions.join(' / '):'','');}for(const r of project.routes){out.push('---','','## '+r.name,'');for(const c of routeChapters(r.id)){out.push('### '+c.title,'');if(c.ending!=='continue')out.push('收束：'+(c.ending==='pause'?'未完待续':'路线结局'),'');if(c.unlock.rules.length)out.push('解锁（'+(c.unlock.mode==='all'?'全部满足':'任一满足')+'）：',...c.unlock.rules.map(rule=>'- '+ruleTitle(rule)+(rule.type==='flag'?(rule.expected===false?'：未达成':'：已达成'):'：已完成')),'');if(c.summary)out.push(c.summary,'');for(const st of c.stages){out.push('#### '+st.title+' ['+(st.kind==='investigation'?'调查':'剧情')+']','');if(st.notes)out.push('> '+st.notes.replace(/\n/g,'\n> '),'');if(st.kind==='investigation'){for(const o of st.objects||[]){out.push('##### '+o.name,'');if(o.notes)out.push('> '+o.notes.replace(/\n/g,'\n> '),'');appendMarkdownRows(out,o.rows);}}else appendMarkdownRows(out,st.rows);}}}downloadText(out.join('\n'),fileName().replace('.story.json','.md'),'text/markdown');toast('已导出可读剧本');}
+function backupDialog(){let arr=[];try{arr=JSON.parse(localStorage.getItem(BACKUPS)||'[]');}catch(e){}modal('最近备份',arr.length?arr.map((b,i)=>`<button class="search-item" data-backup="${i}"><strong>${esc(b.title)}</strong><small>${esc(new Date(b.at).toLocaleString('zh-CN'))}</small></button>`).join(''):'<div class="empty-centered">暂无切换前的本地备份</div>',btn('关闭',null,'modal-close'));$$('[data-backup]').forEach(b=>b.onclick=()=>{let p;try{p=normalizeProject(arr[+b.dataset.backup].project);}catch(e){return toast(e.message,true);}closeModal();guardReplace(()=>{adopt(p,'',null,true);toast('已恢复备份');});});}
+function helpDialog(){modal('使用说明',`<div class="help"><h3>项目</h3><p>启动器扫描「剧本项目」文件夹。一份 JSON 对应一个项目，自动列出可新建、复制、重命名、删除的项目。Ctrl+S 保存回原文件；删除项目会先移至回收站。</p><h3>脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查阶段可创建调查物品，每个物品下独立编排脚本；点击物品卡片展开相应对白。每行对白可设置说话人、对白、表情、动作。Enter 在同一句中换行，Alt+Enter 添加对白。「＋描述」添加没有序号的独立演出描述行，适合镜头、画面、音效与转场。</p><p>选项组内可创建多个选项、分别编写对白与描述。每个选项独立设置「合流」或「跳转」，跳转可指定目标章节与阶段；只有跳转到其他章节的分支在路线图上形成虚线。旧版的「局部选项」和「章节跳转」打开后都会自动升级为选项组。</p><h3>行操作</h3><p>点击行号可选中整行，描述行点击左侧小圆点；Shift 连选，Ctrl/⌘ 单选。选择后按 Delete 删除整行，可以 Ctrl/⌘ Z 撤销；在输入框中按 Delete 则正常删字。Ctrl/⌘ C/V 复制粘贴选中行，也支持跨章节、跨阶段。文字框本身保持普通文字复制。</p><h3>路线</h3><p>在路线图管理章节位置和解锁条件。阶段可以分别设置剧情或调查类型、标题、笔记、顺序；有脚本内容的阶段不可直接更换类型，以避免误丢失内容。解锁可依赖完成其他章节、完成某阶段或自定义条件。「演练」用于检查解锁关系，不影响剧本数据。</p><h3>保存</h3><p>Windows：用「启动叙线.cmd」打开。支持本地扫描项目和直接 JSON 写回。单独打开 HTML 时浏览器访问本地磁盘受到权限限制；Chrome/Edge 可在授权后写回，其他浏览器可下载文件副本。升级前请备份项目 JSON。v1.7 使用 JSON v3 格式，支持读取旧 v1–v2 文件，旧版编辑器不支持新的选项与描述结构。</p></div>`,btn('关闭',null,'modal-close'),true);}
+function aboutDialog(){modal('叙线',`<div class="help"><p>轻量 AVG 剧情编辑器 · ${VERSION}</p><p>单文件 HTML · 无外部依赖 · MIT 开源许可</p><h3>MIT License</h3><p>Copyright (c) 2026</p><p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p><p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p><p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p></div>`,btn('关闭',null,'modal-close'),true);}
+// Event delegation keeps document state independent of the current view.
+function dispatch(action,el){const id=el.dataset.id;switch(action){
+case 'board':go('board');break;
+case 'characters':go('characters');break;
+case 'add-character':characterDialog();break;
+case 'edit-character':characterDialog(id);break;
+case 'board-menu':boardMenu(el);break;
+case 'route-menu':routeMenu(id,el);break;
+case 'add-chapter':addChapterDialog();break;
+case 'lane-add':addChapterDialog(id);break;
+case 'open-chapter':go('chapter',id);break;
+case 'chapter-menu':chapterMenu(id,el);break;
+case 'current-chapter-menu':chapterMenu(view.chapterId,el);break;
+case 'current-rules':rulesDialog(view.chapterId);break;
+case 'rules':rulesDialog(id);break;
+case 'chapter-notes':notesDialog('chapter',view.chapterId);break;
+case 'stage-notes':notesDialog('stage',view.stageId);break;
+case 'add-stage':stageDialog();break;
+case 'inspect-add':inspectObjectDialog();break;
+case 'inspect-select':activeInspectObjectId=id;selectedRowIds.clear();selectionAnchor=null;render();break;
+case 'inspect-menu':inspectObjectMenu(id,el);break;
+case 'open-stage':{const obj=S(id);if(obj)go('stage',obj.chapter.id,id);break;}
+case 'stage-menu':stageMenu(id,el);break;
+case 'add-row':addRow();break;
+case 'add-effect':addRow('effect');break;
+case 'row-menu':rowMenu(id,el);break;
+ case 'branch-row-menu':branchRowMenu(id,el);break;
+ case 'local-option-menu':localOptionMenu(id,el.dataset.option,el);break;
+ case 'local-toggle':{const section=el.closest('.local-option'),folded=section.classList.toggle('collapsed'),oid=section.dataset.option;folded?collapsedOptionIds.add(oid):collapsedOptionIds.delete(oid);el.setAttribute('aria-expanded',String(!folded));break;}
+ case 'local-add-option':{const row=currentRows()?.find(r=>r.id===id);if(!row||row.type!=='branch')break;mutate(()=>row.options.push({id:uid('opt'),text:'选项 '+String.fromCharCode(65+row.options.length),mode:'continue',chapterId:'',stageId:'',rows:[line()]}));break;}
+ case 'branch-add-line':{const row=currentRows()?.find(r=>r.id===id),op=row?.options.find(o=>o.id===el.dataset.option);if(!op)break;const r=line();mutate(()=>op.rows.push(r));focusRow(r.id);break;}
+ case 'branch-add-effect':{const row=currentRows()?.find(r=>r.id===id),op=row?.options.find(o=>o.id===el.dataset.option);if(!op)break;const r=line('effect');mutate(()=>op.rows.push(r));focusRow(r.id);break;}
+ case 'branch-action-presets':{const loc=rowLocation(id),p=P(loc?.row.speakerId);if(p)menu(el,p.actions.map(action=>({label:action,click:()=>mutate(()=>loc.row.action=action)})));break;}
+
+ case 'copy-rows':copyRowsButton();break;
+ case 'delete-selected':deleteSelectedRows();break;
+ case 'paste-rows':pasteRowsButton();break;
+ case 'clear-rows':selectedRowIds.clear();selectionAnchor=null;syncRowSelection();break;
+case 'script-menu':scriptMenu(el);break;
+case 'action-presets':{const row=currentRows()?.find(r=>r.id===id),p=P(row?.speakerId);if(p)menu(el,p.actions.map(action=>({label:action,click:()=>mutate(()=>row.action=action)})));break;}
+case 'read-stage':readStage();break;
+case 'port-out':connectFrom=connectFrom===id?null:id;render();break;
+case 'port-in':addConnection(id);break;
+case 'connection-toggle':connectFrom=connectFrom?null:'__choose';render();if(connectFrom)toast('点击前置章节下方圆点，再点击目标章节上方圆点');break;
+case 'cancel-connect':connectFrom=null;render();break;
+case 'zoom-in':setZoom(zoom+.1);break;
+case 'zoom-out':setZoom(zoom-.1);break;
+case 'zoom-reset':setZoom(1);break;
+case 'fit-board':fitBoard();break;
+case 'sim-toggle':sim.active=!sim.active;reconcileSimulation();render();break;
+case 'sim-reset':sim.chapters.clear();sim.stages.clear();sim.flags.clear();render();toast('演练已重置');break;
+case 'sim-flags':flagsDialog(true);break;
+case 'complete-chapter':toggleChapter(id);break;
+case 'complete-stage':toggleStage(id);break;
+case 'modal-close':closeModal();break;
+}}
+document.addEventListener('click',ev=>{
+ if(Date.now()<dragSuppressUntil)return;
+ const row=ev.target.closest('.branch-script-row,.script-row');
+ if(row&&view.type==='stage'&&!$('#modal-root').firstChild){
+  const gutter=ev.target.closest('.row-select,.row-number');
+  const interactive=ev.target.closest('button,input,textarea,select,.drag-handle');
+  if(gutter||!interactive||((ev.shiftKey||ev.ctrlKey||ev.metaKey)&&!ev.target.closest('[data-act]'))){
+   selectRow(row.dataset.branchRow||row.dataset.row,{shift:ev.shiftKey,toggle:ev.ctrlKey||ev.metaKey});
+   if(interactive&&!gutter&&(ev.shiftKey||ev.ctrlKey||ev.metaKey))ev.preventDefault();
+   return;
+  }
+ }
+ const el=ev.target.closest('[data-act]');if(el){ev.stopPropagation();dispatch(el.dataset.act,el);}
+});
+document.addEventListener('pointerdown',ev=>{if(!ev.target.closest('.menu')&&!ev.target.closest('#menu-btn'))closeMenu();});
+document.addEventListener('input',ev=>{const t=ev.target;if(t.id==='project-name'){edit('project:title',()=>project.title=t.value);return;}if(t.dataset.bind){const key=t.dataset.bind;if(key==='chapter-title')edit('chapter:'+view.chapterId,()=>currentChapter().title=t.value);else if(key==='stage-title')edit('stage:'+view.stageId,()=>currentStage().title=t.value);return;}if(t.dataset.branchField&&t.tagName!=='SELECT'){const id=t.closest('[data-branch-row]')?.dataset.branchRow,loc=rowLocation(id);if(!loc)return;edit('row:'+id+':'+t.dataset.branchField,()=>loc.row[t.dataset.branchField]=t.value);if(t.tagName==='TEXTAREA')autoSize(t);return;}if(t.dataset.rowField&&t.tagName!=='SELECT'){const id=t.closest('[data-row]').dataset.row,r=currentRows()?.find(r=>r.id===id);if(!r)return;edit('row:'+id+':'+t.dataset.rowField,()=>r[t.dataset.rowField]=t.value);if(t.tagName==='TEXTAREA')autoSize(t);return;}if(t.dataset.optionField&&t.tagName!=='SELECT'){const id=t.closest('[data-row]').dataset.row,oid=t.closest('[data-option]').dataset.option,row=currentRows()?.find(r=>r.id===id),op=row?.options.find(o=>o.id===oid);edit('option:'+oid+':'+t.dataset.optionField,()=>op[t.dataset.optionField]=t.value);}});
+document.addEventListener('change',ev=>{const t=ev.target;if(t.dataset.branchField&&t.tagName==='SELECT'){const loc=rowLocation(t.closest('[data-branch-row]')?.dataset.branchRow);if(!loc)return;if(t.value==='__new'){t.value=loc.row.speakerId;characterDialog(null,charId=>loc.row.speakerId=charId);}else mutate(()=>loc.row[t.dataset.branchField]=t.value);return;}if(t.dataset.rowField&&t.tagName==='SELECT'){const id=t.closest('[data-row]').dataset.row,row=currentRows()?.find(r=>r.id===id);if(!row)return;if(t.value==='__new'){t.value=row.speakerId;characterDialog(null,charId=>row.speakerId=charId);}else mutate(()=>row[t.dataset.rowField]=t.value);return;}if(t.dataset.optionField&&t.tagName==='SELECT'){const id=t.closest('[data-row]').dataset.row,oid=t.closest('[data-option]').dataset.option,row=currentRows()?.find(r=>r.id===id),op=row?.options.find(o=>o.id===oid);const key=t.dataset.optionField,value=t.value;mutate(()=>{op[key]=value;if(key==='chapterId')op.stageId='';});}});
+document.addEventListener('copy',ev=>{
+ if(view.type!=='stage'||!selectedRowIds.size||$('#modal-root').firstChild||hasNativeTextSelection(ev.target))return;
+ const bundle=rememberRows(collectRows());if(!bundle)return;
+ if(ev.clipboardData){ev.clipboardData.setData(ROW_MIME,JSON.stringify(bundle));ev.clipboardData.setData('text/plain',bundle.text);ev.preventDefault();}
+ toast('已复制 '+bundle.rows.length+' 行');
+});
+document.addEventListener('paste',ev=>{
+ if(view.type!=='stage'||$('#modal-root').firstChild||rowsAreEditable(ev.target))return;
+ let bundle=parseRows(ev.clipboardData?.getData(ROW_MIME)||'');
+ if(!bundle&&rowClipboard&&ev.clipboardData?.getData('text/plain')===rowClipboard.text)bundle=rowClipboard;
+ if(bundle){ev.preventDefault();pasteRows(bundle);}
+});
+document.addEventListener('compositionstart',()=>composition=true);document.addEventListener('compositionend',()=>composition=false);
+document.addEventListener('keydown',ev=>{if(composition||ev.isComposing||ev.keyCode===229)return;const mod=ev.ctrlKey||ev.metaKey,k=ev.key.toLowerCase();if(mod&&['s','o','k','z','y'].includes(k)){if(k==='s'){ev.preventDefault();saveSource(ev.shiftKey);return;}if(k==='o'){ev.preventDefault();openSource();return;}if(k==='k'){ev.preventDefault();searchDialog();return;}if($('#modal-root').firstChild&&['z','y'].includes(k))return;ev.preventDefault();if(k==='y'||(k==='z'&&ev.shiftKey))redo();else if(k==='z')undo();return;}if(ev.key==='Delete'&&!mod&&!ev.altKey&&view.type==='stage'&&selectedRowIds.size&&!$('#modal-root').firstChild&&!libraryVisible()&&!rowsAreEditable(ev.target)){ev.preventDefault();deleteSelectedRows();return;}if(ev.key==='Escape'){if($('#menu-root').firstChild)closeMenu();else if($('#modal-root').firstChild)closeModal();else if(libraryVisible())closeProjectLibrary();else if(connectFrom){connectFrom=null;render();}return;}if(ev.altKey&&ev.key==='Enter'&&view.type==='stage'&&!$('#modal-root').firstChild){ev.preventDefault();const inside=document.activeElement.closest('[data-branch-row]');if(inside){const loc=rowLocation(inside.dataset.branchRow),r=line();if(loc){mutate(()=>loc.rows.splice(loc.rows.indexOf(loc.row)+1,0,r));focusRow(r.id);}return;}addRow('dialogue',document.activeElement.closest('[data-row]')?.dataset.row||null);return;}if(ev.key==='Enter'&&ev.target.matches('[tabindex="0"][data-act]')){ev.preventDefault();ev.target.click();}if(ev.key==='Tab'&&$('#modal-root').firstChild){const elements=$$('button,input,select,textarea,[tabindex="0"]',$('#modal-root')).filter(e=>!e.disabled&&e.offsetParent!==null);const first=elements[0],last=elements.at(-1);if(ev.shiftKey&&document.activeElement===first){ev.preventDefault();last?.focus();}else if(!ev.shiftKey&&document.activeElement===last){ev.preventDefault();first?.focus();}}});
+$('#library-refresh').innerHTML=ico('reset');$('#library-folder').innerHTML=ico('folder');$('#library-folder').onclick=async()=>{if(!BRIDGE)return;try{await bridgeCall('projects/open-folder');}catch(e){toast('无法打开项目文件夹：'+e.message,true);}};$('#library-refresh').onclick=refreshProjectLibrary;$('#library-create').onclick=newHubDialog;$('#library-import').onclick=importSourceAction;$('#library-close').onclick=closeProjectLibrary;$('#brand').innerHTML=ico('logo')+'<span>叙线</span>';$('#brand').onclick=()=>go('board');$('#undo-btn').innerHTML=ico('undo');$('#undo-btn').onclick=undo;$('#search-btn').innerHTML=ico('search');$('#search-btn').onclick=searchDialog;$('#menu-btn').innerHTML=ico('dots');$('#menu-btn').onclick=e=>topMenu(e.currentTarget);$('#open-btn').onclick=openSource;$('#save-btn').onclick=()=>saveSource();
+$('#project-name').addEventListener('blur',()=>{if(!project.title.trim()){edit('project:title',()=>project.title='未命名剧本');$('#project-name').value=project.title;}});
+$('#file-input').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(f)await importSelectedSource(f);};
+window.addEventListener('beforeunload',ev=>{clearTimeout(cacheTimer);persist();if(dirty&&!suppressUnload){ev.preventDefault();ev.returnValue='';}});
+let dragDepth=0;function clearFileDrop(){dragDepth=0;$('.file-drop-overlay')?.remove();}
+document.addEventListener('dragenter',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();dragDepth++;if(!$('.file-drop-overlay')){const n=document.createElement('div');n.className='file-drop-overlay';n.innerHTML=ico('file')+'<span>打开源文件</span>';document.body.append(n);}}});
+document.addEventListener('dragleave',e=>{if([...e.dataTransfer.types].includes('Files')){dragDepth--;if(dragDepth<=0)clearFileDrop();}});
+document.addEventListener('dragover',e=>{if([...e.dataTransfer.types].includes('Files'))e.preventDefault();});
+document.addEventListener('drop',e=>{if([...e.dataTransfer.types].includes('Files')){e.preventDefault();clearFileDrop();if(e.dataTransfer.files.length!==1)return toast('一次只打开一份源文件');const file=e.dataTransfer.files[0],item=e.dataTransfer.items?.[0];let hp;try{hp=!BRIDGE&&item?.getAsFileSystemHandle?.();}catch(_){}Promise.resolve(hp).then(async h=>{if(h?.kind==='file'){try{return await loadFile(await h.getFile(),h);}catch(e){toast('无法取得文件权限，将改用普通导入',true);}}await importSelectedSource(file);}).catch(e=>toast(e.message||'文件导入失败',true));}});
+window.addEventListener('blur',()=>{clearFileDrop();});
+function boot(){let restored=false;try{const data=JSON.parse(localStorage.getItem(STORAGE)||'null');if(data?.project){project=normalizeProject(data.project);sourceName=data.sourceName||'';view=data.view||{type:'board'};zoom=typeof data.zoom==='number'?Math.max(.35,Math.min(1.6,data.zoom)):1;restored=true;}}catch(e){cacheOK=false;}if(!project){project=newProject();dirty=false;}restoredDraft=restored;render();if(restored)restoreHandle();showProjectLibrary();}
+window.XuXian=Object.freeze({version:VERSION,snapshot:()=>clone(project)});
+boot();
+})();
+</script>
+</body>
+</html>

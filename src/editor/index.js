@@ -2,7 +2,7 @@ import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
 import { findRow } from "../domain/scenes.js";
 import { initializeMobile } from "./mobile.js";
-import { oneClickSync, showGitHubProjects } from "./github-sync.js";
+import { showGitHubProjects } from "./github-sync.js";
 import { uid, clone } from "../domain/primitives.js";
 import { line } from "../domain/project.js";
 import { showUpdates, configureUpdates } from "../ui/update-dialog";
@@ -442,7 +442,10 @@ document.addEventListener("contextmenu", (event) => {
 });
 
 document.addEventListener("pointerdown", (ev) => {
-  if (!ev.target.closest(".menu") && !ev.target.closest("#menu-btn"))
+  if (
+    !ev.target.closest(".menu") &&
+    !ev.target.closest("#menu-btn,#mobile-more")
+  )
     closeMenu();
 });
 
@@ -690,8 +693,6 @@ document.addEventListener("keydown", (ev) => {
 $("#source-folder-btn").innerHTML = ico("folder");
 $("#source-folder-btn").hidden = !isNative || isAndroid;
 $("#source-folder-btn").onclick = revealSource;
-$("#sync-btn").hidden = !isNative;
-$("#sync-btn").onclick = oneClickSync;
 $("#library-github").hidden = !isNative;
 $("#library-github").onclick = showGitHubProjects;
 $("#library-update").onclick = showUpdates;

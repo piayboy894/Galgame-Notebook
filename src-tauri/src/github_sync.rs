@@ -6,7 +6,7 @@ use tauri_plugin_opener::OpenerExt;
 #[cfg(not(target_os = "android"))]
 use xuxian_github_sync::Credentials;
 use xuxian_github_sync::{Connection, Engine, GithubTransport};
-use xuxian_story_store::{Error, Stamp};
+use xuxian_story_store::Error;
 
 #[derive(Default)]
 pub struct SyncState(Mutex<Option<Engine>>);
@@ -95,26 +95,24 @@ pub async fn github_sync_command(
         let engine = guard.as_mut().unwrap();
         let text = |key: &str| body[key].as_str().unwrap_or("");
         match endpoint.as_str() {
-            "sync/settings" => engine.settings(text("projectId")),
+            "sync/settings" => engine.settings(""),
             "sync/configure" => {
                 let connection: Connection = serde_json::from_value(body["connection"].clone()).map_err(|_| Error::new(400, "同步配置不完整"))?;
-                engine.configure(text("projectId"), connection, text("token"))
+                engine.configure("", connection, text("token"))
             }
-            "sync/disconnect" => engine.disconnect(text("projectId"), body["forgetToken"].as_bool().unwrap_or(false)),
-            "sync/list" => engine.list(text("connectionId")),
-            "sync/preview" => engine.preview(text("connectionId"), text("fileName")),
-            "sync/inspect" | "sync/execute" | "sync/restore" => {
+            "sync/archive-list" => engine.archive_list(text("connectionId")),
+            "sync/archive-preview" => engine.archive_preview(text("connectionId"),text("fileName")),
+            "sync/archive-delete" => engine.archive_delete(text("connectionId"),text("fileName"),text("sha")),
+            "sync/archive-save" | "sync/archive-load" => {
                 let store = app.state::<AppStore>();
-                let mut store = store.0.lock().map_err(|_| Error::new(500, "项目服务忙，请重试"))?;
-                match endpoint.as_str() {
-                    "sync/inspect" => {
-                        let stamp: Stamp = serde_json::from_value(body["stamp"].clone()).map_err(|_| Error::new(409, "请先保存源文件再同步"))?;
-                        engine.inspect(&store, text("bindingId"), &stamp)
-                    }
-                    "sync/execute" => engine.execute(&mut store, text("planId"), text("resolution")),
-                    _ => engine.restore(&mut store, text("connectionId"), text("fileName"), text("sha")),
+                let mut store=store.0.lock().map_err(|_| Error::new(500,"项目库忙，请重试"))?;
+                if endpoint=="sync/archive-save" {
+                    engine.archive_save(&store,text("connectionId"),text("fileName"),text("sha"),text("name"),text("note"))
+                } else {
+                    engine.archive_load(&mut store,text("connectionId"),text("fileName"),text("sha"))
                 }
             }
+            "sync/inspect" | "sync/execute" | "sync/restore" => Err(Error::new(410,"旧版逐项目同步已停用，请在项目库中使用全局云存档")),
             _ => Err(Error::new(404, "未知同步操作")),
         }
     }).await.map_err(|_| Error::new(500, "同步任务未完成，请重试"))?

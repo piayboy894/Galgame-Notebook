@@ -3,10 +3,13 @@ package io.github.piayboy894.xuxian
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import android.view.KeyboardShortcutGroup
+import android.view.KeyEvent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiSelector
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,9 +53,31 @@ class AndroidPlatformTest {
     try {
       ready(scenario,"window.XuXian && document.querySelector('.library-open')")
       assertEquals("true",js(scenario,"window.__XUXIAN_ANDROID__===true"))
+      scenario.onActivity { activity ->
+        assertEquals("叙线",activity.title.toString())
+        val groups=mutableListOf<KeyboardShortcutGroup>()
+        activity.onProvideKeyboardShortcuts(groups,null,0)
+        assertTrue(groups.any{it.label.toString()=="叙线" && it.items.any{key->key.keycode==KeyEvent.KEYCODE_S}})
+      }
+      // Exercise real IME insets and the inline editor, with no second editing screen.
+      js(scenario,"document.querySelector('.library-open').click();true")
+      // The default editor exists underneath the project library while native I/O is pending.
+      // Wait for adoption; otherwise clicks navigate that old editor before adoption resets it.
+      ready(scenario,"document.querySelector('#project-library').classList.contains('hidden') && document.querySelector('#view [data-act=\"open-chapter\"]')")
+      js(scenario,"document.querySelector('#view [data-act=\"open-chapter\"]').click();true")
+      ready(scenario,"document.querySelector('#view .stage-card[data-act=\"open-stage\"]')")
+      js(scenario,"document.querySelector('#view .stage-card[data-act=\"open-stage\"]').click();true")
+      ready(scenario,"document.querySelector('textarea.dialogue-cell')")
+      val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+      val inlineEditor=device.findObject(UiSelector().className("android.widget.EditText").instance(0))
+      assertTrue("Inline dialogue input is not accessible",inlineEditor.waitForExists(5000))
+      inlineEditor.click()
+      ready(scenario,"document.documentElement.classList.contains('ime-visible') && getComputedStyle(document.querySelector('#mobile-keyboard-bar')).display!=='none'")
+      assertEquals("0",js(scenario,"document.querySelectorAll('#modal-root .modal').length"))
+      js(scenario,"window.__imeHidden=false;window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/hide-keyboard',body:{}}).then(()=>window.__imeHidden=true);true")
+      ready(scenario,"window.__imeHidden && !document.documentElement.classList.contains('ime-visible')")
       // This round trip exercises Rust -> Kotlin plugin registration and the system document picker.
       js(scenario,"""window.__picker='pending';window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/import',body:{}}).then(r=>window.__picker=r.cancelled?'ok':'selected').catch(e=>window.__picker='error');true""")
-      val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
       var pickerReady=false
       for(attempt in 0 until 50) {
         val name=device.currentPackageName

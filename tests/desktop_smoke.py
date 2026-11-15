@@ -92,6 +92,9 @@ with sync_playwright() as p:
     tab.locator('#update-action').click()
     expect(tab.locator('#update-status')).to_have_text('当前已是最新版本。')
     tab.locator('#update-close').click()
+    assert tab.locator('.app').evaluate('(element) => element.inert')
+    assert not tab.locator('#project-library').evaluate('(element) => element.inert')
+    tab.locator('.library-open').click()
     assert not tab.locator('.app').evaluate('(element) => element.inert')
     assert not errors, errors
     context.close()

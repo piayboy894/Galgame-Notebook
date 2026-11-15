@@ -78,10 +78,6 @@
   line-height: 1.8;
 }
 @media (max-width: 850px) {
-  #sync-btn {
-    font-size: 11px;
-    padding: 7px;
-  }
   .sync-fields {
     grid-template-columns: 1fr;
     gap: 0;

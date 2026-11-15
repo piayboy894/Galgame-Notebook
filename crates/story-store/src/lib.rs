@@ -1,4 +1,6 @@
 //! Platform-independent project storage. No GUI, network, or arbitrary paths from IPC.
+mod library;
+pub use library::{validate_library_entries, LibraryProject, MAX_LIBRARY_BYTES};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -181,6 +183,7 @@ fn atomic_write(path: &Path, text: &str) -> Result<()> {
 
 impl Store {
     pub fn new(root: PathBuf) -> Result<Self> {
+        library::recover(&root)?;
         fs::create_dir_all(&root)?;
         if fs::symlink_metadata(&root)?.file_type().is_symlink() {
             return Err(Error::new(400, "项目目录不能是符号链接"));
@@ -443,6 +446,10 @@ impl Store {
         let text = |name: &str| body[name].as_str().unwrap_or("");
         match endpoint {
             "projects/list" => self.list(),
+            "projects/library-revision" => Ok(json!({"revision":self.library_revision()?})),
+            "projects/library-backups" => self.library_backups(),
+            "projects/library-backup-preview" => self.preview_library_backup(text("name")),
+            "projects/library-load-backup" => self.load_library_backup(text("name"), text("hash")),
             "projects/open" => Ok(serde_json::to_value(self.open(text("fileName"))?)?),
             "projects/create" => Ok(serde_json::to_value(self.create(text("text"))?)?),
             "projects/duplicate" => Ok(serde_json::to_value(self.duplicate(text("fileName"))?)?),

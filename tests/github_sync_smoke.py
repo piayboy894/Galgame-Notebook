@@ -1,119 +1,113 @@
-"""GitHub sync UI via isolated native IPC fixtures; no personal token or real data."""
+"""Global library save/load slots: isolated IPC, no real account or personal data."""
 from pathlib import Path
-import json
-import os
-from playwright.sync_api import sync_playwright, expect
-
+import json,os
+from playwright.sync_api import sync_playwright,expect
 ROOT=Path(__file__).resolve().parents[1]
 PROJECT=json.loads((ROOT/'examples/示例剧本.story.json').read_text())
-MOCK=r'''initial => {
-  window.isTauri=true;
-  let project=structuredClone(initial),configured=false,connection=null,serial=0;
-  window.syncCalls=[];window.syncMode='upload';window.syncDelay=0;
-  window.__TAURI_INTERNALS__={
-    metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},
-    transformCallback:()=>++serial,
+MOCK=r'''initial=>{
+  window.isTauri=true;let files={'sample.story.json':structuredClone(initial)},serial=0,configured=false,connection=null;
+  const bindings=new Map();let currentName='sample.story.json';
+  window.syncCalls=[];window.archives={};window.localBackups=[];window.archiveMode='normal';window.archiveDelay=0;window.libraryRevision='legacy';window.legacyCount=0;
+  const expose=()=>window.libraryFiles=files;expose();
+  window.installLibraryFixture=(values,revision)=>{files=structuredClone(values);expose();window.libraryRevision=revision;};
+  const clone=value=>structuredClone(value);
+  const opened=(name=currentName)=>{currentName=name;const key='binding-'+(++serial);bindings.set(key,name);return{name,text:JSON.stringify(files[name]),stamp:{size:100,lastModified:serial,hash:'hash-'+serial},bindingId:key};};
+  window.addSecondProject=()=>{const next=clone(initial);next.id='project_second';next.title='第二个独立项目';files['second.story.json']=next;expose();};
+  window.addThirdProject=()=>{const next=clone(initial);next.id='project_third';next.title='仅本机第三个项目';files['third.story.json']=next;expose();};
+  const loadLibrary=archive=>{
+    window.localBackups.unshift({name:'local-'+(++serial),savedAt:1794800000000,projects:Object.entries(files).map(([fileName,project])=>({fileName,project:clone(project)}))});
+    files=Object.fromEntries(archive.projects.map(item=>[item.fileName,clone(item.project)]));expose();bindings.clear();window.libraryRevision='generation-'+(++serial);
+    return{opened:null,projectCount:archive.projects.length,revision:window.libraryRevision,backupName:window.localBackups[0].name};
+  };
+  window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},transformCallback:()=>++serial,
     invoke:async(command,args={})=>{
-      const endpoint=args.endpoint;
-      if(endpoint)window.syncCalls.push(endpoint);
-      const opened=()=>({name:'sample.story.json',text:JSON.stringify(project),stamp:{size:100,lastModified:serial++,hash:'hash'},bindingId:'binding'});
+      const endpoint=args.endpoint;if(endpoint)window.syncCalls.push(endpoint);const body=args.body||{};
       if(command==='project_command'){
-        if(endpoint==='projects/list')return{items:[{fileName:'sample.story.json',title:project.title,routes:3,chapters:9}]};
-        if(endpoint==='projects/open')return opened();
-        if(endpoint==='save'||endpoint==='projects/create'){project=JSON.parse(args.body.text);return opened();}
+        if(endpoint==='projects/library-revision')return{revision:window.libraryRevision};
+        if(endpoint==='projects/list')return{items:Object.entries(files).map(([fileName,p])=>({fileName,title:p.title,routes:p.routes.length,chapters:p.chapters.length}))};
+        if(endpoint==='projects/open')return opened(body.fileName);
+        if(endpoint==='save'){const name=bindings.get(body.bindingId)||currentName;files[name]=JSON.parse(body.text);expose();return opened(name);}
+        if(endpoint==='projects/create'){const p=JSON.parse(body.text),name='created-'+(++serial)+'.story.json';files[name]=p;expose();return opened(name);}
+        if(endpoint==='projects/library-backups')return window.localBackups.map(({name,savedAt})=>({name,savedAt}));
+        if(endpoint==='projects/library-backup-preview'){const backup=window.localBackups.find(v=>v.name===body.name);return{...clone(backup),hash:'local-sha',projectCount:backup.projects.length,projects:backup.projects.map(v=>({fileName:v.fileName,title:v.project.title}))};}
+        if(endpoint==='projects/library-load-backup'){const backup=clone(window.localBackups.find(v=>v.name===body.name));return loadLibrary(backup);}
       }
       if(command==='github_sync_command'){
-        if(endpoint==='sync/settings')return{connections:configured?[{id:'connection',connection,hasToken:true}]:[],linked:configured?{connectionId:'connection',lastSync:1794640000000}:null};
+        if(endpoint==='sync/settings')return{connections:configured?[{id:'connection',connection,hasToken:true}]:[],linked:null};
         if(endpoint==='sync/configure'){
-          if(args.body.token!=='fixture-token')throw{status:401,message:'令牌错误'};
-          connection=args.body.connection;configured=true;return{private:true,connectionId:'connection'};
+          if(body.token!=='fixture-token'&&!(configured&&!body.token))throw{status:401,message:'令牌错误'};
+          connection=clone(body.connection);configured=true;return{private:true,connectionId:'connection'};
         }
-        if(endpoint==='sync/inspect'){
-          await new Promise(resolve=>setTimeout(resolve,window.syncDelay));
-          if(window.syncMode==='offline')throw{status:503,message:'无法连接 GitHub'};
-          const remote=structuredClone(project);remote.title='来自 GitHub 的剧本';
-          return{planId:'plan',action:window.syncMode,path:'xuxian/projects/project_test.story.json',remoteText:window.syncMode==='upload'?null:JSON.stringify(remote)};
+        await new Promise(resolve=>setTimeout(resolve,window.archiveDelay));
+        if(window.archiveMode==='offline')throw{status:503,message:'无法连接 GitHub，请重试'};
+        if(endpoint==='sync/archive-list')return{slots:Object.entries(window.archives).map(([fileName,a])=>({fileName,sha:a.sha,name:a.name,note:a.note,savedAt:a.savedAt,projectCount:a.projects.length})),legacyCount:window.legacyCount};
+        if(endpoint==='sync/archive-save'){
+          if(window.archiveMode==='race')throw{status:409,message:'目标云存档已变化，请刷新预览后手动重试'};
+          const fileName=body.fileName||'library-'+String(++serial).padStart(32,'0')+'.xuxian-save.json';
+          if(body.fileName&&window.archives[fileName]?.sha!==body.sha)throw{status:409,message:'目标云存档已变化'};
+          const archive={name:body.name,note:body.note,savedAt:1794800000000,sha:'cloud-'+(++serial),projects:Object.entries(files).map(([fileName,project])=>({fileName,project:clone(project)}))};
+          window.archives[fileName]=archive;return{fileName,projectCount:archive.projects.length,name:archive.name};
         }
-        if(endpoint==='sync/execute'){
-          if(window.syncMode==='download'||args.body.resolution==='remote')project.title='来自 GitHub 的剧本';
-          return{action:args.body.resolution==='remote'?'download':(window.syncMode==='conflict'?'upload':window.syncMode),opened:opened(),lastSync:1794640000000,conflictCopy:args.body.resolution==='local'?'GitHub 冲突副本.story.json':null};
+        if(endpoint==='sync/archive-preview'){
+          const a=window.archives[body.fileName];return{fileName:body.fileName,sha:a.sha,name:a.name,note:a.note,savedAt:a.savedAt,projectCount:a.projects.length,projects:a.projects.map(v=>({fileName:v.fileName,title:v.project.title}))};
         }
-        if(endpoint==='sync/disconnect'){configured=false;return{disconnected:true};}
-        if(endpoint==='sync/list')return[{name:'project_restored.story.json',size:200}];
-        if(endpoint==='sync/preview'){
-          const remote=structuredClone(project);remote.id='project_restored';remote.title='换电脑恢复的剧本';return{text:JSON.stringify(remote),sha:'remote-sha'};
+        if(endpoint==='sync/archive-load'){
+          if(window.archiveMode==='race'||window.archives[body.fileName]?.sha!==body.sha)throw{status:409,message:'云存档在预览后发生变化，请刷新后再读档'};
+          return loadLibrary(clone(window.archives[body.fileName]));
         }
-        if(endpoint==='sync/restore'){
-          if(args.body.sha!=='remote-sha')throw{status:409,message:'远端已变'};
-          project.id='project_restored';project.title='换电脑恢复的剧本';return{opened:opened()};
+        if(endpoint==='sync/archive-delete'){
+          if(window.archives[body.fileName]?.sha!==body.sha)throw{status:409,message:'目标云存档已变化'};
+          delete window.archives[body.fileName];return{deleted:true};
         }
+        throw Error('Retired automatic sync endpoint called: '+endpoint);
       }
       if(command==='plugin:event|listen')return ++serial;
       return null;
     }
   };
 }'''
-
 with sync_playwright() as p:
     executable=os.environ.get('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
-    browser=p.chromium.launch(executable_path=executable,headless=True,args=['--no-sandbox'])
-    context=browser.new_context(viewport={'width':1360,'height':1000})
-    context.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)})')
-    page=context.new_page();errors=[]
-    page.on('pageerror',lambda error:errors.append(str(error)))
-    page.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'))
-    page.locator('.library-open').click()
+    browser=p.chromium.launch(executable_path=executable,headless=True,args=['--no-sandbox']);context=browser.new_context(viewport={'width':1360,'height':1000})
+    context.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)})');page=context.new_page();errors=[]
+    page.on('pageerror',lambda error:errors.append(str(error)));page.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'))
+    page.locator('.library-open').click();expect(page.locator('#sync-btn')).to_have_count(0)
+    page.locator('#menu-btn').click();expect(page.get_by_role('menuitem',name='GitHub 一键同步',exact=True)).to_have_count(0);page.keyboard.press('Escape')
     assert not any(call.startswith('sync/') for call in page.evaluate('window.syncCalls'))
-    page.locator('#sync-btn').click()
-    expect(page.get_by_role('dialog',name='GitHub 同步设置',exact=True)).to_be_visible()
-    page.locator('#sync-repository').fill('https://github.com/writer/shared-data')
-    expect(page.locator('#sync-directory')).to_have_value('xuxian/projects')
-    assert page.locator('#sync-token').get_attribute('type')=='password'
-    page.screenshot(path=str(ROOT/'work/test-results/github-sync-settings.png'),full_page=True)
-    page.locator('#sync-token').fill('fixture-token')
-    page.locator('#sync-configure').click()
-    expect(page.get_by_role('dialog')).to_have_count(0)
-    assert 'fixture-token' not in page.evaluate('JSON.stringify(localStorage)')
-    assert 'fixture-token' not in page.evaluate('JSON.stringify(window.XuXian.snapshot())')
-    page.locator('#project-name').fill('本地新改动')
-    page.evaluate('window.syncDelay=250')
-    page.locator('#sync-btn').click()
-    expect(page.locator('#sync-progress')).to_be_visible()
-    assert page.locator('.app').evaluate('element=>element.inert')
-    page.keyboard.press('Escape')
-    expect(page.get_by_role('dialog',name='GitHub 同步完成')).to_be_visible()
-    calls=page.evaluate('window.syncCalls')
-    assert calls.index('save')<calls.index('sync/inspect')<calls.index('sync/execute')
-    page.get_by_role('button',name='完成',exact=True).click()
-    page.evaluate('window.syncMode="download";window.syncDelay=0')
-    page.locator('#sync-btn').click()
-    expect(page.get_by_role('dialog',name='GitHub 同步完成')).to_be_visible()
-    expect(page.locator('#project-name')).to_have_value('来自 GitHub 的剧本')
-    page.get_by_role('button',name='完成',exact=True).click()
-    page.evaluate('window.syncMode="conflict"')
-    page.locator('#sync-btn').click()
-    expect(page.get_by_role('dialog',name='双方都有改动')).to_be_visible()
-    before=page.evaluate('window.syncCalls.filter(call=>call==="sync/execute").length')
-    page.locator('#sync-cancel').click()
-    assert before==page.evaluate('window.syncCalls.filter(call=>call==="sync/execute").length')
-    page.locator('#sync-btn').click()
-    page.locator('#sync-use-local').click()
-    expect(page.get_by_role('dialog',name='GitHub 同步完成')).to_contain_text('GitHub 冲突副本.story.json')
-    page.get_by_role('button',name='完成',exact=True).click()
-    page.evaluate('window.syncMode="offline"')
-    page.locator('#sync-btn').click()
-    expect(page.get_by_role('dialog',name='GitHub 同步未完成')).to_contain_text('无法连接 GitHub')
-    page.evaluate('window.syncMode="current"')
-    page.locator('#sync-retry').click()
-    expect(page.get_by_role('dialog',name='GitHub 同步完成')).to_contain_text('已一致')
-    page.get_by_role('button',name='完成',exact=True).click()
-    page.locator('#open-btn').click()
-    page.locator('#library-github').click()
-    page.locator('[data-sync-preview="0"]').click()
-    expect(page.locator('#sync-remote-preview')).to_contain_text('换电脑恢复的剧本')
-    page.locator('#sync-restore').click()
-    expect(page.locator('#project-name')).to_have_value('换电脑恢复的剧本')
-    page.screenshot(path=str(ROOT/'work/test-results/github-sync.png'),full_page=True)
+    page.locator('#project-name').fill('当前尚未保存的改动');page.evaluate('window.addSecondProject()');page.locator('#open-btn').click();page.locator('#library-github').click()
+    expect(page.get_by_role('dialog',name='全局云存档连接',exact=True)).to_be_visible();page.locator('#sync-repository').fill('https://github.com/writer/shared-data');page.locator('#sync-token').fill('fixture-token');page.locator('#sync-configure').click()
+    expect(page.locator('#archive-new')).to_be_visible();assert 'fixture-token' not in page.evaluate('JSON.stringify(localStorage)');assert 'fixture-token' not in page.evaluate('JSON.stringify(window.XuXian.snapshot())')
+    stale=page.evaluate('JSON.parse(localStorage.getItem("xuxian.draft.v1"))');stale['project']['title']='不应复活的旧草稿'
+    page.locator('#archive-new').click();page.locator('#archive-name').fill('全库 A');page.locator('#archive-note').fill('<img src=x onerror=alert(1)> 两个项目')
+    page.evaluate('window.archiveDelay=100');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('1 个云存档')
+    assert page.evaluate('Object.values(window.archives)[0].projects.length')==2
+    assert page.evaluate('Object.values(window.archives)[0].projects.some(v=>v.project.title==="当前尚未保存的改动")')
+    calls=page.evaluate('window.syncCalls');assert calls.index('save')<calls.index('sync/archive-save')
+    page.locator('[data-archive-slot="0"]').click();expect(page.get_by_role('dialog')).to_contain_text('2 个项目');expect(page.locator('#modal-root img')).to_have_count(0)
+    before=page.evaluate('window.syncCalls.filter(c=>c==="sync/archive-load").length');page.locator('#archive-load').click();expect(page.get_by_role('dialog')).to_contain_text('本机整个项目库');page.locator('#archive-load-cancel').click()
+    assert before==page.evaluate('window.syncCalls.filter(c=>c==="sync/archive-load").length')
+    page.evaluate('window.addThirdProject()');page.locator('[data-archive-slot="0"]').click();page.locator('#archive-overwrite').click();page.locator('#archive-name').fill('全库 A 覆盖');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('1 个云存档')
+    assert page.evaluate('Object.values(window.archives)[0].projects.length')==3
+    page.locator('#archive-new').click();page.locator('#archive-name').fill('全库 B');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('2 个云存档')
+    # Load the first save after changing local data; no direction or merge is chosen for us.
+    page.evaluate('delete window.libraryFiles["second.story.json"]')
+    page.locator('[data-archive-slot="0"]').click();page.evaluate('window.archiveMode="race"');page.locator('#archive-load').click();page.locator('#archive-load-confirm').click();expect(page.locator('#archive-message')).to_contain_text('变化')
+    assert page.evaluate('Object.keys(window.libraryFiles).length')==2
+    page.evaluate('window.archiveMode="normal"');page.locator('#archive-load-confirm').click();expect(page.locator('.library-open')).to_have_count(3)
+    assert page.evaluate('window.localBackups[0].projects.length')==2
+    page.locator('#library-github').click();page.locator('#archive-local').click();page.locator('[data-local-archive="0"]').click();page.locator('#archive-load-confirm').click();expect(page.locator('.library-open')).to_have_count(2)
+    page.locator('#library-github').click();page.locator('[data-archive-slot="0"]').click();page.locator('#archive-delete').click();page.locator('#archive-delete-cancel').click()
+    assert len(page.evaluate('Object.keys(window.archives)'))==2
+    page.locator('[data-archive-slot="0"]').click();page.locator('#archive-delete').click();page.locator('#archive-delete-confirm').click();expect(page.locator('[data-archive-slot]')).to_have_count(1)
+    assert page.evaluate('Object.keys(window.libraryFiles).length')==2
+    page.evaluate('window.archiveMode="offline"');page.locator('#archive-refresh').click();expect(page.locator('#archive-message')).to_contain_text('无法连接')
+    page.evaluate('window.archiveMode="normal"');page.locator('#archive-refresh').click();expect(page.locator('[data-archive-slot]')).to_have_count(1)
+    calls=page.evaluate('window.syncCalls');assert not any(c in ('sync/inspect','sync/execute','sync/restore') for c in calls)
+    native_files=page.evaluate('window.libraryFiles');revision=page.evaluate('window.libraryRevision')
+    fresh=browser.new_context(viewport={'width':1360,'height':1000})
+    fresh.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)});window.installLibraryFixture({json.dumps(native_files,ensure_ascii=False)},{json.dumps(revision)});localStorage.setItem("xuxian.draft.v1",JSON.stringify({json.dumps(stale,ensure_ascii=False)}));')
+    restored=fresh.new_page();restored.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(restored.locator('.library-open')).to_have_count(2)
+    assert restored.evaluate('window.XuXian.snapshot().title')!='不应复活的旧草稿'
+    fresh.close()
     assert not errors,errors
-    browser.close()
-    print('PASS: private GitHub configuration, secret isolation, save-before-sync, upload/download, conflict/cancel, network retry and restore')
+    browser.close();print('PASS: global whole-library slots, explicit create/overwrite/load, cancel, race protection, no project sync, secret isolation and two-project snapshots')

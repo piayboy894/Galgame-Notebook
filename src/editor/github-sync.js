@@ -184,7 +184,7 @@ export async function showGitHubProjects() {
     preferredConnection = connections[0].id;
   modal(
     "云存档 · 全部项目",
-    `<p class="archive-intro">每个存档保存整个项目库。你自己选择存档、覆盖或读档，不会自动上传、下载或合并。</p><div class="field"><label for="archive-connection">存档位置</label><select class="input" id="archive-connection">${connections.map((item) => option(item.id, `${item.connection.owner}/${item.connection.repo} · ${item.connection.directory}`, preferredConnection)).join("")}</select></div><div class="archive-tools"><button class="btn primary" id="archive-new">＋ 新建云存档</button><button class="btn" id="archive-refresh">刷新</button><button class="btn" id="archive-settings">连接设置</button><button class="btn" id="archive-local">本机读档备份</button></div><p id="archive-message" role="status" class="sync-message"></p><div id="archive-slots" class="archive-slots"></div>`,
+    `<p class="archive-intro">每个存档保存整个项目库。你自己选择存档、覆盖或读档，不会自动上传、下载或合并。</p><div class="field"><label for="archive-connection">存档位置</label><select class="input" id="archive-connection">${connections.map((item) => option(item.id, `${item.connection.owner}/${item.connection.repo} · ${item.connection.directory}`, preferredConnection)).join("")}</select></div><div class="archive-tools"><button class="btn primary" id="archive-new">＋ 新建云存档</button><button class="btn" id="archive-refresh">刷新</button><button class="btn" id="archive-settings">连接设置</button></div><p id="archive-message" role="status" class="sync-message"></p><div id="archive-slots" class="archive-slots"></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );
@@ -192,7 +192,6 @@ export async function showGitHubProjects() {
   $("#archive-new").onclick = () => saveForm();
   $("#archive-settings").onclick = () =>
     showSyncSettings(true, showGitHubProjects);
-  $("#archive-local").onclick = localBackups;
   async function load() {
     preferredConnection = $("#archive-connection").value;
     $("#archive-message").textContent = "正在读取存档列表…";
@@ -204,23 +203,17 @@ export async function showGitHubProjects() {
       $("#archive-message").textContent = slots.length
         ? `${slots.length} 个云存档`
         : "还没有云存档。点击新建，将软件的全部项目存到一个存档中。";
-      $("#archive-slots").innerHTML =
-        slots
-          .map(
-            (slot, index) =>
-              `<button class="archive-slot" data-archive-slot="${index}"><strong>${esc(String(slot.name || "未命名存档").slice(0, 160))}</strong><small>${esc(displayTime(slot.savedAt))} · ${slot.projectCount == null ? "待预览" : Number(slot.projectCount) + " 个项目"}</small>${slot.note ? `<p>${esc(String(slot.note).slice(0, 400))}</p>` : ""}${slot.warning ? `<p>${esc(slot.warning)}</p>` : ""}<span>预览与管理 →</span></button>`,
-          )
-          .join("") +
-        (result.legacyCount
-          ? `<button class="archive-slot legacy-slot" id="archive-legacy"><strong>旧版云端项目合集</strong><small>${Number(result.legacyCount)} 个旧版项目</small><p>可手动读取为整个项目库，原云端文件保持不变。</p><span>预览旧版数据 →</span></button>`
-          : "");
+      $("#archive-slots").innerHTML = slots
+        .map(
+          (slot, index) =>
+            `<button class="archive-slot" data-archive-slot="${index}"><strong>${esc(String(slot.name || "未命名存档").slice(0, 160))}</strong><small>${esc(displayTime(slot.savedAt))} · ${slot.projectCount == null ? "待预览" : Number(slot.projectCount) + " 个项目"}</small>${slot.note ? `<p>${esc(String(slot.note).slice(0, 400))}</p>` : ""}${slot.warning ? `<p>${esc(slot.warning)}</p>` : ""}<span>预览与管理 →</span></button>`,
+        )
+        .join("");
       $$("[data-archive-slot]").forEach(
         (button) =>
           (button.onclick = () =>
             previewSlot(slots[Number(button.dataset.archiveSlot)].fileName)),
       );
-      if ($("#archive-legacy"))
-        $("#archive-legacy").onclick = () => previewSlot("legacy");
     } catch (error) {
       message(error);
     }
@@ -241,13 +234,9 @@ async function previewSlot(fileName) {
       String(preview.name || "云存档").slice(0, 160),
       `<p class="tiny">${esc(displayTime(preview.savedAt))}</p>${preview.note ? `<p>${esc(preview.note)}</p>` : ""}${projectSummary(preview)}<p id="archive-message" role="status" class="sync-message"></p>`,
       '<button class="btn" id="archive-back">返回</button>' +
-        (fileName !== "legacy"
-          ? '<button class="btn" id="archive-overwrite">覆盖存档</button>'
-          : "") +
+        '<button class="btn" id="archive-overwrite">覆盖存档</button>' +
         '<button class="btn primary" id="archive-load">读取整库</button>' +
-        (fileName !== "legacy"
-          ? '<button class="btn danger" id="archive-delete">删除存档</button>'
-          : ""),
+        '<button class="btn danger" id="archive-delete">删除存档</button>',
       true,
     );
     libraryClass();
@@ -295,42 +284,33 @@ function saveForm(target = null) {
     }
   };
 }
-function confirmLoad(target, local = false) {
+function confirmLoad(target) {
   modal(
-    local ? "读取本机整库备份" : "读取整库云存档",
-    `<p class="archive-warning">将用此存档的 ${Number(target.projectCount)} 个项目替换本机整个项目库。本机多出的项目不会合并。</p><p>当前改动会先保存，再保留完整的本机读档备份。软件授权与云端其他存档不受影响。</p>${projectSummary(target)}<p id="archive-message" role="status" class="sync-message"></p>`,
-    '<button class="btn" id="archive-load-cancel">取消</button><button class="btn primary" id="archive-load-confirm">备份本机并读取整库</button>',
+    "读取整库云存档",
+    `<p class="archive-warning">将用此存档的 ${Number(target.projectCount)} 个项目替换本机整个项目库。本机多出的项目不会合并。</p><p>本机项目及未保存改动将被替换，不会先保存，也不保留本机读档备份。软件授权与云端其他存档不受影响。</p>${projectSummary(target)}<p id="archive-message" role="status" class="sync-message"></p>`,
+    '<button class="btn" id="archive-load-cancel">取消</button><button class="btn primary" id="archive-load-confirm">直接读取并替换整库</button>',
     true,
   );
   libraryClass();
-  $("#archive-load-cancel").onclick = local ? localBackups : showGitHubProjects;
+  $("#archive-load-cancel").onclick = showGitHubProjects;
   $("#archive-load-confirm").onclick = async () => {
     try {
       $("#archive-message").textContent = "正在校验并读取整库…";
-      let result;
-      if (local) {
-        result = await busy(async () => {
-          if (state.dirty && !(await saveSource())) return null;
-          return bridgeCall("projects/library-load-backup", {
-            name: target.fileName,
-            hash: target.sha,
-          });
-        });
-        if (result) applyLibrary(result);
-      } else
-        result = await busy(() =>
-          archiveService.load({
-            connectionId: preferredConnection,
-            fileName: target.fileName,
-            sha: target.sha,
-          }),
-        );
+      const result = await busy(() =>
+        archiveService.load({
+          connectionId: preferredConnection,
+          fileName: target.fileName,
+          sha: target.sha,
+        }),
+      );
       if (!result) return;
       closeModal();
       await showProjectLibrary(true);
       await refreshProjectLibrary();
       toast(
-        `已读取整库，共 ${result.projectCount} 个项目；原项目库保留在本机备份中`,
+        result.cleanupPending
+          ? `已读取整库，共 ${result.projectCount} 个项目；旧文件清理未完成，请重启软件`
+          : `已读取整库，共 ${result.projectCount} 个项目`,
       );
     } catch (error) {
       message(error);
@@ -360,37 +340,4 @@ function confirmDelete(target) {
       message(error);
     }
   };
-}
-async function localBackups() {
-  try {
-    const backups = await busy(() => bridgeCall("projects/library-backups"));
-    modal(
-      "本机读档备份",
-      `<p class="tiny">每次整库读取前保留原项目库，可在这里手动取回。</p><div class="archive-slots">${backups.map((backup, index) => `<button class="archive-slot" data-local-archive="${index}"><strong>${esc(displayTime(backup.savedAt))}</strong><span>预览与读取 →</span></button>`).join("") || "<p>尚无本机读档备份。</p>"}</div><p id="archive-message" role="status" class="sync-message"></p>`,
-      '<button class="btn" id="archive-local-back">返回云存档</button>',
-    );
-    libraryClass();
-    $("#archive-local-back").onclick = showGitHubProjects;
-    $$("[data-local-archive]").forEach(
-      (button) =>
-        (button.onclick = async () => {
-          try {
-            const chosen = backups[Number(button.dataset.localArchive)];
-            const preview = await busy(() =>
-              bridgeCall("projects/library-backup-preview", {
-                name: chosen.name,
-              }),
-            );
-            confirmLoad(
-              { ...preview, fileName: chosen.name, sha: preview.hash },
-              true,
-            );
-          } catch (error) {
-            message(error);
-          }
-        }),
-    );
-  } catch (error) {
-    message(error);
-  }
 }

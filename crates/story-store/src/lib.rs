@@ -447,9 +447,6 @@ impl Store {
         match endpoint {
             "projects/list" => self.list(),
             "projects/library-revision" => Ok(json!({"revision":self.library_revision()?})),
-            "projects/library-backups" => self.library_backups(),
-            "projects/library-backup-preview" => self.preview_library_backup(text("name")),
-            "projects/library-load-backup" => self.load_library_backup(text("name"), text("hash")),
             "projects/open" => Ok(serde_json::to_value(self.open(text("fileName"))?)?),
             "projects/create" => Ok(serde_json::to_value(self.create(text("text"))?)?),
             "projects/duplicate" => Ok(serde_json::to_value(self.duplicate(text("fileName"))?)?),

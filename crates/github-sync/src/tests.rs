@@ -173,7 +173,7 @@ fn manual_archives_always_save_every_project_and_never_choose_a_direction() {
         .contains("fake-token-never-persist"));
 }
 #[test]
-fn manual_load_replaces_the_whole_library_and_keeps_all_previous_projects_in_backup() {
+fn manual_load_replaces_the_whole_library_without_retaining_a_backup() {
     let mut f = Fixture::new();
     let id = connection().key();
     let saved = f
@@ -198,11 +198,9 @@ fn manual_load_replaces_the_whole_library_and_keeps_all_previous_projects_in_bac
         )
         .unwrap();
     assert_eq!(f.store.capture_library().unwrap().len(), 1);
-    let local = f
-        .store
-        .preview_library_backup(result["backupName"].as_str().unwrap())
-        .unwrap();
-    assert_eq!(local["projectCount"], 2);
+    assert!(result.get("backupName").is_none());
+    assert_eq!(result["cleanupPending"], false);
+    assert_eq!(fs::read_dir(f._dir.path()).unwrap().count(), 2); // projects and connection settings only.
 }
 #[test]
 fn overwrite_and_delete_require_the_previewed_slot_and_leave_other_software_untouched() {
@@ -260,34 +258,38 @@ fn archive_errors_and_public_repositories_do_not_modify_local_or_cloud_data() {
     assert_eq!(f.engine.archive_list(&id).unwrap_err().status, 403);
 }
 #[test]
-fn legacy_cloud_projects_are_read_as_one_explicit_library_save_without_changing_old_files() {
+fn old_project_files_are_ignored_and_the_legacy_slot_cannot_be_loaded() {
     let mut f = Fixture::new();
     let id = connection().key();
     let text = story("旧版云端");
     f.remote.0.lock().unwrap().files.insert(
-        connection().path("project_test").unwrap(),
+        format!("{}/project_test.story.json", connection().directory),
         RemoteFile {
             sha: hash(&text),
             text,
         },
     );
-    assert_eq!(f.engine.archive_list(&id).unwrap()["legacyCount"], 1);
-    let preview = f.engine.archive_preview(&id, "legacy").unwrap();
-    assert_eq!(preview["projectCount"], 1);
-    f.engine
-        .archive_load(
-            &mut f.store,
-            &id,
-            "legacy",
-            preview["sha"].as_str().unwrap(),
-        )
-        .unwrap();
+    let list = f.engine.archive_list(&id).unwrap();
+    assert!(list["slots"].as_array().unwrap().is_empty());
+    assert!(list.get("legacyCount").is_none());
+    assert_eq!(
+        f.engine.archive_preview(&id, "legacy").unwrap_err().status,
+        400
+    );
+    assert_eq!(
+        f.engine
+            .archive_load(&mut f.store, &id, "legacy", "unused")
+            .unwrap_err()
+            .status,
+        400
+    );
     assert_eq!(
         f.store.capture_library().unwrap()[0].project["title"],
-        "旧版云端"
+        "local"
     );
     assert_eq!(f.remote.0.lock().unwrap().files.len(), 1);
 }
+
 #[test]
 fn configuration_is_global_private_and_preserves_legacy_metadata_without_using_it() {
     let mut f = Fixture::new();

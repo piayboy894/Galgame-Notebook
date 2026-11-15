@@ -321,7 +321,7 @@ impl Remote for GithubClient {
                     item["type"] == "file"
                         && item["name"]
                             .as_str()
-                            .is_some_and(|n| n.ends_with(".story.json") || n.ends_with(".xuxian-save.json") || n.ends_with(".xuxian-save.meta.json"))
+                            .is_some_and(|n| n.ends_with(".xuxian-save.json") || n.ends_with(".xuxian-save.meta.json"))
                 })
                 .map(|item| json!({"name":item["name"],"path":item["path"],"size":item["size"],"sha":item["sha"]}))
                 .collect(),

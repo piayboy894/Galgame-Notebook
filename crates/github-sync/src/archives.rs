@@ -56,15 +56,11 @@ impl Engine {
         let (connection, client) = self.archive_connection(id)?;
         let files = client.list(connection)?;
         let mut slots = Vec::new();
-        let mut legacy = 0;
         for file in files
             .as_array()
             .ok_or_else(|| Error::new(502, "云端目录无效"))?
         {
             let name = file["name"].as_str().unwrap_or("");
-            if name.ends_with(".story.json") {
-                legacy += 1;
-            }
             if !archive_name(name) {
                 continue;
             }
@@ -99,71 +95,10 @@ impl Engine {
             slots.push(item);
         }
         slots.sort_by_key(|value| std::cmp::Reverse(value["savedAt"].as_u64()));
-        Ok(json!({"slots":slots,"legacyCount":legacy}))
+        Ok(json!({"slots":slots}))
     }
     fn archive_document(&self, id: &str, name: &str) -> Result<(Value, String)> {
         let (connection, client) = self.archive_connection(id)?;
-        if name == "legacy" {
-            let files = client.list(connection)?;
-            let mut entries = Vec::new();
-            let mut signatures = Vec::new();
-            let mut bytes = 0;
-            for item in files
-                .as_array()
-                .ok_or_else(|| Error::new(502, "云端目录无效"))?
-            {
-                let filename = item["name"].as_str().unwrap_or("");
-                let Some(project_id) = filename.strip_suffix(".story.json") else {
-                    continue;
-                };
-                let path = connection.path(project_id)?;
-                let file = client
-                    .file(connection, &path)?
-                    .ok_or_else(|| Error::new(409, "旧版云端项目已变化，请重新预览"))?;
-                if item["sha"].as_str().is_some_and(|sha| sha != file.sha) {
-                    return Err(Error::new(409, "旧版云端项目已变化，请重新预览"));
-                }
-                let project = validate_story(&file.text)?;
-                if project["id"].as_str() != Some(project_id) {
-                    return Err(Error::new(400, "旧版项目标识不匹配"));
-                }
-                bytes += file.text.len();
-                if bytes > MAX_LIBRARY_BYTES {
-                    return Err(Error::new(413, "旧版云端项目合计超过 50 MB"));
-                }
-                entries.push(LibraryProject {
-                    file_name: filename.into(),
-                    project,
-                });
-                signatures.push((filename.to_owned(), file.sha));
-            }
-            if entries.is_empty() {
-                return Err(Error::new(404, "旧版云端项目不存在"));
-            }
-            signatures.sort();
-            entries.sort_by(|a, b| a.file_name.cmp(&b.file_name));
-            let latest = client.list(connection)?;
-            let mut after: Vec<_> = latest
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter_map(|v| {
-                    v["name"]
-                        .as_str()
-                        .filter(|n| n.ends_with(".story.json"))
-                        .map(|n| (n.to_owned(), v["sha"].as_str().unwrap_or("").to_owned()))
-                })
-                .collect();
-            after.sort();
-            if after != signatures {
-                return Err(Error::new(409, "旧版云端项目列表变化，请重新预览"));
-            }
-            let signature = hash(&serde_json::to_string(&signatures)?);
-            return Ok((
-                json!({"format":"xuxian.library-save","version":1,"name":"旧版云端项目合集","note":"从旧版逐项目云端文件手动读取；旧文件保持原样","savedAt":null,"projects":entries}),
-                signature,
-            ));
-        }
         let file = client
             .file(connection, &archive_path(connection, name)?)?
             .ok_or_else(|| Error::new(404, "云存档已删除，请刷新列表"))?;

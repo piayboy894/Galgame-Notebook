@@ -5,6 +5,7 @@ import {
   selectedRoots,
 } from "../domain/scenes.js";
 import { groupDialog } from "./scenes.js";
+import { isAndroid } from "../platform/runtime";
 import { clone, uid, safeColor, PALETTE } from "../domain/primitives.js";
 import { flattenRows, regenRowIds, line } from "../domain/project.js";
 import {
@@ -65,6 +66,7 @@ export function syncRowSelection() {
   bar.innerHTML = count
     ? `<span class="selected-count">${count} 项</span><button class="selection-action" data-act="group-selected" title="建立场景组 · Ctrl G">${ico("layers")}<span>建组</span></button><button class="selection-action" data-act="copy-rows" title="复制所选行 · Ctrl C">${ico("copy")}<span>复制</span></button><button class="selection-action" data-act="paste-rows" title="粘贴到所选行之后 · Ctrl V">${ico("layers")}<span>粘贴</span></button><button class="selection-action delete-action" data-act="delete-selected" title="删除所选行 · Delete">${ico("trash")}<span>删除</span></button><button class="selection-clear" data-act="clear-rows" title="清除选择" aria-label="清除选择">${ico("close")}</button>`
     : "";
+  document.dispatchEvent(new Event("editor:selection"));
 }
 
 export function selectRow(id, { shift = false, toggle = false } = {}) {
@@ -802,7 +804,7 @@ function setupRowDrag() {
   sc.addEventListener(
     "touchstart",
     (e) => {
-      if (e.touches.length !== 1) return;
+      if (isAndroid || e.touches.length !== 1) return; // Touch scrolls; mouse keeps drag ordering.
       const rowInfo = eligible(e.target);
       if (rowInfo) {
         const t = e.changedTouches[0];
@@ -849,6 +851,11 @@ export function addRow(type = "dialogue", afterId = null) {
 }
 export function focusRow(id) {
   requestAnimationFrame(() => {
+    const intent = new CustomEvent("editor:focus-row", {
+      detail: { id },
+      cancelable: true,
+    });
+    if (!document.dispatchEvent(intent)) return;
     const element = $(`[data-row="${id}"],[data-branch-row="${id}"]`);
     if (!element) return;
     element.scrollIntoView({ block: "nearest" });

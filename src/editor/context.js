@@ -53,6 +53,8 @@ export const state = {
   libraryBusy: false,
   libraryAtRoot: true,
   restoredDraft: false,
+  lastWritingView: null,
+  libraryRevision: "legacy",
   dragDepth: 0,
 };
 

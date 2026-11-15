@@ -1,4 +1,5 @@
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
+import { mobileRowControls } from "./mobile-presentation.js";
 import { branchRowCount, flattenRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
 import {
@@ -101,7 +102,7 @@ export function rowHTML(row, i) {
   if (row.type === "group") return groupHTML(row);
   const selected = state.selectedRowIds.has(row.id);
   const num = `<div class="row-number"><span class="drag-handle" data-drag-row="${attr(row.id)}" title="拖动排序">${ico("grip")}</span><button class="row-select" data-select-row="${attr(row.id)}" aria-pressed="${selected}" aria-label="选择第 ${i + 1} 行" title="选择行 · Shift 连选 · Ctrl 单选 · Delete 删除">${String(i + 1).padStart(2, "0")}</button></div>`;
-  const menu = `<button class="icon-btn row-menu" data-act="row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico("dots")}</button>`;
+  const menu = `<button class="icon-btn row-menu" data-act="row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico("dots")}</button>${mobileRowControls(row)}`;
   if (row.type === "effect")
     return `<div class="script-row effect-row ${selected ? "selected" : ""}" data-row="${attr(row.id)}"><div class="effect-gutter">${effectButton(row.id)}</div><textarea class="cell autosize effect-text" rows="1" data-row-field="text" placeholder="画面效果描述" aria-label="画面效果描述">${esc(row.text)}</textarea>${menu}</div>`;
   if (row.type === "note")
@@ -136,7 +137,7 @@ export function branchLineHTML(parent, op, row, i) {
     row.type === "effect"
       ? effectButton(row.id)
       : `<button class="row-select" data-select-row="${attr(row.id)}" aria-pressed="${selected}" title="选择此行 · Shift 连选 · Ctrl 单选" aria-label="选择分支对白 ${i + 1}">${num}</button>`;
-  const menu = `<button class="icon-btn branch-row-menu" data-act="branch-row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico("dots")}</button>`;
+  const menu = `<button class="icon-btn branch-row-menu" data-act="branch-row-menu" data-id="${attr(row.id)}" title="行操作" aria-label="行操作">${ico("dots")}</button>${mobileRowControls(row)}`;
   if (row.type === "effect")
     return `<div class="branch-script-row branch-effect ${selected ? "selected" : ""}" data-branch-row="${attr(row.id)}"><div class="branch-gutter">${rowHead}</div><textarea class="cell autosize effect-text" data-branch-field="text" rows="1" placeholder="画面效果描述" aria-label="画面效果描述">${esc(row.text)}</textarea>${menu}</div>`;
   if (row.type === "note")

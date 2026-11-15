@@ -58,6 +58,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
           script: |
+            adb shell settings put secure show_ime_with_hard_keyboard 1
             src-tauri/gen/android/gradlew --project-dir src-tauri/gen/android connectedUniversalDebugAndroidTest -x rustBuildUniversalDebug -PabiList=x86_64 -ParchList=x86_64 -PtargetList=x86_64 --console=plain
       - uses: actions/upload-artifact@v4
         if: always()

@@ -34,21 +34,45 @@ impl Remote for MemoryRemote {
     fn file(&self, _: &Connection, path: &str) -> Result<Option<RemoteFile>> {
         Ok(self.0.lock().unwrap().files.get(path).cloned())
     }
-    fn put(&self, _: &Connection, path: &str, text: &str, sha: Option<&str>) -> Result<()> {
+    fn write_archive(
+        &self,
+        _: &Connection,
+        path: &str,
+        text: Option<&str>,
+        metadata: Option<Value>,
+        expected: Option<&str>,
+    ) -> Result<()> {
         let mut state = self.0.lock().unwrap();
         if state.fail_put {
             return Err(Error::new(503, "network failed"));
         }
-        if state.files.get(path).map(|file| file.sha.as_str()) != sha {
+        if state.files.get(path).map(|file| file.sha.as_str()) != expected {
             return Err(Error::new(409, "changed"));
         }
-        state.files.insert(
-            path.into(),
-            RemoteFile {
-                sha: hash(text),
-                text: text.into(),
-            },
-        );
+        let index = path.trim_end_matches(".json").to_owned() + ".meta.json";
+        if let Some(text) = text {
+            let sha = hash(text);
+            let mut meta = metadata.unwrap();
+            meta["dataSha"] = json!(sha);
+            let metadata = meta.to_string();
+            state.files.insert(
+                path.into(),
+                RemoteFile {
+                    sha,
+                    text: text.into(),
+                },
+            );
+            state.files.insert(
+                index,
+                RemoteFile {
+                    sha: hash(&metadata),
+                    text: metadata,
+                },
+            );
+        } else {
+            state.files.remove(path);
+            state.files.remove(&index);
+        }
         state.puts += 1;
         Ok(())
     }
@@ -58,9 +82,9 @@ impl Remote for MemoryRemote {
                 .lock()
                 .unwrap()
                 .files
-                .keys()
-                .filter(|path| path.starts_with(&(c.directory.clone() + "/")))
-                .map(|path| json!({"name":path.rsplit('/').next().unwrap(),"path":path}))
+                .iter()
+                .filter(|(path,_)| path.starts_with(&(c.directory.clone() + "/")))
+                .map(|(path,file)| json!({"name":path.rsplit('/').next().unwrap(),"path":path,"sha":file.sha}))
                 .collect(),
         ))
     }
@@ -86,13 +110,12 @@ struct Fixture {
     store: Store,
     engine: Engine,
     remote: MemoryRemote,
-    opened: Opened,
 }
 impl Fixture {
     fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
         let mut store = Store::new(dir.path().join("projects")).unwrap();
-        let opened = store.create(&story("local")).unwrap();
+        store.create(&story("local")).unwrap();
         let remote = MemoryRemote(Arc::new(Mutex::new(Data {
             files: HashMap::new(),
             private: true,
@@ -106,294 +129,214 @@ impl Fixture {
         )
         .unwrap();
         engine
-            .configure("project_test", connection(), "fake-token-never-persist")
+            .configure("", connection(), "fake-token-never-persist")
             .unwrap();
         Self {
             _dir: dir,
             store,
             engine,
             remote,
-            opened,
         }
     }
-    fn inspect(&mut self) -> Value {
-        self.engine
-            .inspect(&self.store, &self.opened.binding_id, &self.opened.stamp)
-            .unwrap()
-    }
-    fn execute(&mut self, plan: &Value, choice: &str) -> Value {
-        let result = self
-            .engine
-            .execute(&mut self.store, plan["planId"].as_str().unwrap(), choice)
-            .unwrap();
-        self.opened = self
-            .store
-            .open(result["opened"]["name"].as_str().unwrap())
-            .unwrap();
-        result
-    }
-    fn set_remote(&self, title: &str) {
-        let text = story(title);
-        self.remote.0.lock().unwrap().files.insert(
-            connection().path("project_test").unwrap(),
-            RemoteFile {
-                sha: hash(&text),
-                text,
-            },
-        );
-    }
-    fn save_local(&mut self, title: &str) {
-        self.opened = self
-            .store
-            .save(
-                &self.opened.binding_id,
-                &story(title),
-                Some(self.opened.stamp.clone()),
-                false,
-            )
-            .unwrap();
-    }
-    fn first_sync(&mut self) {
-        let plan = self.inspect();
-        self.execute(&plan, "");
-    }
-}
-
-#[test]
-fn decision_handles_both_sides_and_first_sync_without_guessing() {
-    assert_eq!(decide("a", None, None), "upload");
-    assert_eq!(decide("a", None, Some("a")), "deleted");
-    assert_eq!(decide("a", Some("a"), None), "current");
-    assert_eq!(decide("a", Some("b"), None), "conflict");
-    assert_eq!(decide("b", Some("a"), Some("a")), "upload");
-    assert_eq!(decide("a", Some("b"), Some("a")), "download");
-    assert_eq!(decide("b", Some("c"), Some("a")), "conflict");
 }
 #[test]
-fn uploads_then_skips_unchanged_and_does_not_persist_the_token() {
+fn manual_archives_always_save_every_project_and_never_choose_a_direction() {
     let mut f = Fixture::new();
-    f.first_sync();
-    let plan = f.inspect();
-    assert_eq!(plan["action"], "current");
-    f.execute(&plan, "");
-    assert_eq!(f.remote.0.lock().unwrap().puts, 1);
-    let disk = fs::read_to_string(f.engine.root.join("settings.json")).unwrap();
-    assert!(!disk.contains("fake-token"));
-    assert!(!f.opened.text.contains("token"));
-    assert!(f.engine.settings("project_test").unwrap()["linked"]["lastSync"].is_number());
-}
-#[test]
-fn remote_only_edits_are_downloaded_with_backup() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.set_remote("remote");
-    let plan = f.inspect();
-    assert_eq!(plan["action"], "download");
-    f.execute(&plan, "");
-    assert_eq!(validate_story(&f.opened.text).unwrap()["title"], "remote");
-    assert!(fs::read_dir(f.store.root().join("_备份"))
-        .unwrap()
-        .next()
-        .is_some());
-}
-#[test]
-fn conflicts_require_choice_and_keep_remote_copy_before_upload() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.save_local("new local");
-    f.set_remote("new remote");
-    let plan = f.inspect();
-    assert_eq!(plan["action"], "conflict");
-    let result = f.execute(&plan, "local");
-    assert!(result["conflictCopy"]
-        .as_str()
-        .unwrap()
-        .contains("GitHub 冲突副本"));
-    let copy = fs::read_to_string(
-        f.store
-            .root()
-            .join(result["conflictCopy"].as_str().unwrap()),
-    )
-    .unwrap();
-    assert!(copy.contains("new remote"));
-    assert_ne!(validate_story(&copy).unwrap()["id"], "project_test");
-    assert!(f.opened.text.contains("new local"));
-}
-#[test]
-fn choosing_remote_keeps_local_in_automatic_backup() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.save_local("new local");
-    f.set_remote("new remote");
-    let plan = f.inspect();
-    f.execute(&plan, "remote");
-    assert!(f.opened.text.contains("new remote"));
-    assert!(fs::read_dir(f.store.root().join("_备份"))
-        .unwrap()
-        .any(|entry| fs::read_to_string(entry.unwrap().path())
-            .unwrap()
-            .contains("new local")));
-}
-#[test]
-fn remote_change_after_inspection_or_local_external_edit_stops_execution() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.save_local("change");
-    let plan = f.inspect();
-    f.set_remote("racing");
-    assert_eq!(
-        f.engine
-            .execute(&mut f.store, plan["planId"].as_str().unwrap(), "")
-            .unwrap_err()
-            .status,
-        409
-    );
-    let plan = f.inspect();
-    fs::write(f.store.root().join(&f.opened.name), story("external")).unwrap();
-    assert_eq!(
-        f.engine
-            .execute(&mut f.store, plan["planId"].as_str().unwrap(), "remote")
-            .unwrap_err()
-            .status,
-        409
-    );
-}
-#[test]
-fn remote_deletion_is_not_silently_recreated() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.remote.0.lock().unwrap().files.clear();
-    let plan = f.inspect();
-    assert_eq!(plan["action"], "deleted");
-    assert!(f
+    let mut second: Value = serde_json::from_str(&story("第二个项目")).unwrap();
+    second["id"] = json!("project_two");
+    f.store.create(&second.to_string()).unwrap();
+    let id = connection().key();
+    let saved = f
         .engine
-        .execute(&mut f.store, plan["planId"].as_str().unwrap(), "")
-        .is_err());
-    assert!(f.remote.0.lock().unwrap().files.is_empty());
-    let plan = f.inspect();
-    f.execute(&plan, "local");
-    assert!(!f.remote.0.lock().unwrap().files.is_empty());
-}
-#[test]
-fn changing_visibility_stops_sync_and_configuration_rejects_public() {
-    let mut f = Fixture::new();
-    let plan = f.inspect();
-    f.remote.0.lock().unwrap().private = false;
-    assert!(f
-        .engine
-        .execute(&mut f.store, plan["planId"].as_str().unwrap(), "")
-        .is_err());
-    assert!(f
-        .engine
-        .configure("project_test", connection(), "another-token")
-        .is_err());
-    assert_eq!(f.remote.0.lock().unwrap().puts, 0);
-}
-#[test]
-fn invalid_remote_story_or_other_project_is_never_applied() {
-    let mut f = Fixture::new();
-    let path = connection().path("project_test").unwrap();
-    for text in [
-        "not json".to_owned(),
-        story("remote").replace("project_test", "other_project"),
-    ] {
-        f.remote.0.lock().unwrap().files.insert(
-            path.clone(),
-            RemoteFile {
-                sha: hash(&text),
-                text,
-            },
-        );
-        assert!(f
-            .engine
-            .inspect(&f.store, &f.opened.binding_id, &f.opened.stamp)
-            .is_err());
-        assert!(f.opened.text.contains("local"));
-    }
-}
-#[test]
-fn restore_is_scoped_to_directory_and_does_not_duplicate_existing_projects() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    let key = connection().key();
-    assert!(f
-        .engine
-        .restore(&mut f.store, &key, "../outside.story.json", "")
-        .is_err());
-    let preview = f.engine.preview(&key, "project_test.story.json").unwrap();
-    assert!(f
-        .engine
-        .restore(
-            &mut f.store,
-            &key,
-            "project_test.story.json",
-            preview["sha"].as_str().unwrap()
+        .archive_save(&f.store, &id, "", "", "全库存档", "章节完成")
+        .unwrap();
+    let name = saved["fileName"].as_str().unwrap();
+    let preview = f.engine.archive_preview(&id, name).unwrap();
+    assert_eq!(preview["projectCount"], 2);
+    let count = f.remote.0.lock().unwrap().puts;
+    let listing = f.engine.archive_list(&id).unwrap();
+    assert_eq!(listing["slots"][0]["name"], "全库存档");
+    assert_eq!(f.remote.0.lock().unwrap().puts, count);
+    f.engine
+        .archive_save(
+            &f.store,
+            &id,
+            name,
+            preview["sha"].as_str().unwrap(),
+            "我选的覆盖名称",
+            "备注",
         )
-        .is_err());
-    let dir = tempfile::tempdir().unwrap();
-    let mut other = Store::new(dir.path().into()).unwrap();
-    let restored = f
+        .unwrap();
+    assert_eq!(f.remote.0.lock().unwrap().puts, count + 1); // Equal content is still an explicit save.
+    assert!(!fs::read_to_string(f.engine.root.join("settings.json"))
+        .unwrap()
+        .contains("fake-token-never-persist"));
+}
+#[test]
+fn manual_load_replaces_the_whole_library_and_keeps_all_previous_projects_in_backup() {
+    let mut f = Fixture::new();
+    let id = connection().key();
+    let saved = f
         .engine
-        .restore(
-            &mut other,
-            &key,
-            "project_test.story.json",
+        .archive_save(&f.store, &id, "", "", "读取目标", "")
+        .unwrap();
+    let preview = f
+        .engine
+        .archive_preview(&id, saved["fileName"].as_str().unwrap())
+        .unwrap();
+    let mut extra: Value = serde_json::from_str(&story("仅本机存在")).unwrap();
+    extra["id"] = json!("extra");
+    f.store.create(&extra.to_string()).unwrap();
+    assert_eq!(f.store.capture_library().unwrap().len(), 2);
+    let result = f
+        .engine
+        .archive_load(
+            &mut f.store,
+            &id,
+            preview["fileName"].as_str().unwrap(),
             preview["sha"].as_str().unwrap(),
         )
         .unwrap();
-    assert!(restored["opened"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("local"));
+    assert_eq!(f.store.capture_library().unwrap().len(), 1);
+    let local = f
+        .store
+        .preview_library_backup(result["backupName"].as_str().unwrap())
+        .unwrap();
+    assert_eq!(local["projectCount"], 2);
 }
 #[test]
-fn failed_upload_preserves_local_and_does_not_advance_baseline() {
-    let mut f = Fixture::new();
-    f.first_sync();
-    f.save_local("pending");
-    f.remote.0.lock().unwrap().fail_put = true;
-    let plan = f.inspect();
+fn overwrite_and_delete_require_the_previewed_slot_and_leave_other_software_untouched() {
+    let f = Fixture::new();
+    let id = connection().key();
+    f.remote.0.lock().unwrap().files.insert(
+        "other-app/settings.json".into(),
+        RemoteFile {
+            sha: "other".into(),
+            text: "keep".into(),
+        },
+    );
+    let saved = f
+        .engine
+        .archive_save(&f.store, &id, "", "", "A", "")
+        .unwrap();
+    let name = saved["fileName"].as_str().unwrap();
+    let preview = f.engine.archive_preview(&id, name).unwrap();
+    assert_eq!(
+        f.engine
+            .archive_save(&f.store, &id, name, "stale", "B", "")
+            .unwrap_err()
+            .status,
+        409
+    );
+    assert_eq!(
+        f.engine
+            .archive_delete(&id, name, "stale")
+            .unwrap_err()
+            .status,
+        409
+    );
     assert!(f
         .engine
-        .execute(&mut f.store, plan["planId"].as_str().unwrap(), "")
+        .archive_delete(&id, "../other-app/settings.json", "other")
         .is_err());
-    assert_eq!(f.inspect()["action"], "upload");
-    assert!(f.opened.text.contains("pending"));
+    f.engine
+        .archive_delete(&id, name, preview["sha"].as_str().unwrap())
+        .unwrap();
+    assert_eq!(f.remote.0.lock().unwrap().files.len(), 1);
+    assert_eq!(f.store.capture_library().unwrap().len(), 1);
 }
 #[test]
-fn canonical_hash_ignores_only_updated_time_and_formatting() {
-    let a = story("same");
-    let mut b: Value = serde_json::from_str(&a).unwrap();
-    b["updatedAt"] = json!("later");
+fn archive_errors_and_public_repositories_do_not_modify_local_or_cloud_data() {
+    let f = Fixture::new();
+    let id = connection().key();
+    f.remote.0.lock().unwrap().fail_put = true;
+    assert!(f
+        .engine
+        .archive_save(&f.store, &id, "", "", "A", "")
+        .is_err());
+    assert!(f.remote.0.lock().unwrap().files.is_empty());
+    assert_eq!(f.store.capture_library().unwrap().len(), 1);
+    f.remote.0.lock().unwrap().private = false;
+    assert_eq!(f.engine.archive_list(&id).unwrap_err().status, 403);
+}
+#[test]
+fn legacy_cloud_projects_are_read_as_one_explicit_library_save_without_changing_old_files() {
+    let mut f = Fixture::new();
+    let id = connection().key();
+    let text = story("旧版云端");
+    f.remote.0.lock().unwrap().files.insert(
+        connection().path("project_test").unwrap(),
+        RemoteFile {
+            sha: hash(&text),
+            text,
+        },
+    );
+    assert_eq!(f.engine.archive_list(&id).unwrap()["legacyCount"], 1);
+    let preview = f.engine.archive_preview(&id, "legacy").unwrap();
+    assert_eq!(preview["projectCount"], 1);
+    f.engine
+        .archive_load(
+            &mut f.store,
+            &id,
+            "legacy",
+            preview["sha"].as_str().unwrap(),
+        )
+        .unwrap();
     assert_eq!(
-        content_hash(&a).unwrap(),
-        content_hash(&serde_json::to_string_pretty(&b).unwrap()).unwrap()
+        f.store.capture_library().unwrap()[0].project["title"],
+        "旧版云端"
     );
-    b["title"] = json!("different");
-    assert_ne!(
-        content_hash(&a).unwrap(),
-        content_hash(&b.to_string()).unwrap()
+    assert_eq!(f.remote.0.lock().unwrap().files.len(), 1);
+}
+#[test]
+fn configuration_is_global_private_and_preserves_legacy_metadata_without_using_it() {
+    let mut f = Fixture::new();
+    f.engine.settings.legacy.insert(
+        "projects".into(),
+        json!({"old":{"connection":"old-key","baseHash":"unused"}}),
+    );
+    f.engine
+        .configure("ignored-project", connection(), "")
+        .unwrap();
+    assert!(f.engine.settings("ignored-project").unwrap()["linked"].is_null());
+    let saved: Value =
+        serde_json::from_str(&fs::read_to_string(f.engine.root.join("settings.json")).unwrap())
+            .unwrap();
+    assert_eq!(saved["projects"]["old"]["baseHash"], "unused");
+    f.remote.0.lock().unwrap().private = false;
+    assert_eq!(
+        f.engine
+            .configure("", connection(), "another-fixture")
+            .unwrap_err()
+            .status,
+        400
+    );
+    assert_eq!(
+        f.engine
+            .credentials
+            .get(&connection().key())
+            .unwrap()
+            .as_deref(),
+        Some("fake-token-never-persist")
     );
 }
 #[test]
-fn unsafe_paths_are_rejected() {
-    let mut first = connection();
-    first.branch = "a/b".into();
-    first.directory = "c".into();
-    let mut second = connection();
-    second.branch = "a".into();
-    second.directory = "b/c".into();
-    assert_ne!(first.key(), second.key());
-    for path in [
+fn rejects_unsafe_shared_repository_paths_before_any_configuration_write() {
+    let mut f = Fixture::new();
+    for directory in [
         "../other",
-        "/absolute",
-        "xuxian//projects",
-        "xuxian/../../code",
+        "xuxian/../other",
         ".github/workflows",
+        "xuxian//projects",
+        "/absolute",
         "xuxian\\projects",
     ] {
         let mut c = connection();
-        c.directory = path.into();
-        assert!(c.validate().is_err(), "{path}");
+        c.directory = directory.into();
+        assert_eq!(
+            f.engine.configure("", c, "fixture").unwrap_err().status,
+            400
+        );
     }
+    assert!(f.remote.0.lock().unwrap().files.is_empty());
 }

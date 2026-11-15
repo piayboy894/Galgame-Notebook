@@ -11,7 +11,13 @@ let previousFocus: HTMLElement | null = null;
 function setEditorInert(inert: boolean): void {
   for (const selector of [".app", "#project-library"]) {
     const element = document.querySelector<HTMLElement>(selector);
-    if (element) element.inert = inert;
+    if (element)
+      element.inert =
+        inert ||
+        (selector === ".app" &&
+          !document
+            .querySelector("#project-library")
+            ?.classList.contains("hidden"));
   }
 }
 

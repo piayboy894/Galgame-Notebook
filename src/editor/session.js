@@ -1,4 +1,5 @@
 import { findRow } from "../domain/scenes.js";
+import { renderMobileSettings } from "./mobile-presentation.js";
 import { renderLocations } from "./scenes.js";
 import {
   flattenRows,
@@ -149,6 +150,7 @@ export function redo() {
 }
 
 export function persist() {
+  if (!state.project) return;
   const data = {
     project: state.project,
     sourceName: state.sourceName,
@@ -158,6 +160,8 @@ export function persist() {
     view: state.view,
     zoom: state.zoom,
     boardPresentation: state.boardPresentation,
+    lastWritingView: state.lastWritingView,
+    libraryRevision: state.libraryRevision,
     savedAt: now(),
   };
   try {
@@ -225,6 +229,7 @@ export function updateTop() {
       " 行 · " +
       textCount(currentStage()) +
       " 字";
+  document.dispatchEvent(new Event("editor:status"));
 }
 
 export function validateView() {
@@ -346,6 +351,8 @@ export function toggleStage(id) {
 
 export function render() {
   validateView();
+  if (state.view.type === "stage")
+    state.lastWritingView = { ...state.view, projectId: state.project.id };
   const key =
     state.view.type +
     ":" +
@@ -368,6 +375,8 @@ export function render() {
   else if (state.view.type === "stage") renderStage(e);
   else if (state.view.type === "characters") renderCharacters(e);
   else if (state.view.type === "locations") renderLocations(e);
+  else if (state.view.type === "mobile-settings") renderMobileSettings(e);
+  document.dispatchEvent(new Event("editor:render"));
   requestAnimationFrame(() => {
     $$("textarea.autosize").forEach(autoSize);
     const sc = $(".script-scroll") || $(".page-scroll");
@@ -379,6 +388,12 @@ export async function boot() {
   let restored = false;
   try {
     let data = JSON.parse(localStorage.getItem(STORAGE) || "null");
+    if (isNative) {
+      const library = await bridgeCall("projects/library-revision");
+      state.libraryRevision = library?.revision || "legacy";
+      if ((data?.libraryRevision || "legacy") !== state.libraryRevision)
+        data = null;
+    }
     if (isAndroid) {
       try {
         const nativeResult = await readMobileDraft();
@@ -386,6 +401,7 @@ export async function boot() {
         const nativeDraft = nativeResult.draft;
         if (
           nativeDraft?.project &&
+          (nativeDraft.libraryRevision || "legacy") === state.libraryRevision &&
           (!data?.project || String(nativeDraft.savedAt) > String(data.savedAt))
         )
           data = nativeDraft;
@@ -400,6 +416,7 @@ export async function boot() {
       state.dirty = data.dirty !== false;
       state.exported = data.exported === true;
       state.view = data.view || { type: "board" };
+      state.lastWritingView = data.lastWritingView || null;
       state.boardPresentation = ["auto", "list", "graph"].includes(
         data.boardPresentation,
       )

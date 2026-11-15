@@ -146,13 +146,17 @@ export function showProjectLibrary(asRoot = false) {
   );
   closeMenu();
   $("#project-library").classList.remove("hidden");
+  $(".app").inert = true;
   $("#library-close").title = state.dirty ? "返回未保存的草稿" : "返回编辑器";
+  document.dispatchEvent(new Event("editor:library"));
   return refreshProjectLibrary();
 }
 
 export function closeProjectLibrary() {
   state.libraryAtRoot = false;
   $("#project-library").classList.add("hidden");
+  $(".app").inert = false;
+  document.dispatchEvent(new Event("editor:library"));
 }
 
 export function renderProjectLibrary() {
@@ -449,6 +453,7 @@ export function adopt(
   binding = null,
 ) {
   $("#project-library")?.classList.add("hidden");
+  $(".app").inert = false;
   state.collapsedOptionIds.clear();
   state.collapsedGroupIds.clear();
   state.project = p;

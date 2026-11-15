@@ -4,17 +4,17 @@
 
 - 最低 Android 8.0（API 26），目标 Android 16（API 36）。APK 包含 arm64-v8a、x86_64，原生库和 APK 验证 16 KB 页兼容。
 - 不锁定方向或屏幕比例；声明可缩放、最小 280×240 dp 窗口、尺寸变化支持及非必需触屏。支持多窗口、三星分屏、DeX 的鼠标和外接键盘。
-- 使用窗口实际宽高，而非设备型号判断布局。600 CSS px 以下默认章节列表，随时切换路线图；窄编辑行、分支和组改用纵向布局，宽窗口保留表格。低高度窗口允许滚动访问内容。
-- 系统状态栏、导航栏、刘海、DeX 标题栏和软键盘由原生窗口 Insets 处理，内容区随窗口可用空间变化。常见方向、密度和键盘配置变化不重建 Activity。
+- 使用窗口实际宽高，而非设备型号判断布局。600 CSS px 以下使用底部导航，默认章节列表；对白在列表内直接编辑，表情和动作行内展开。平板宽窗口提供导航栏与完整编辑字段。低高度窗口允许滚动访问内容。
+- 系统状态栏、导航栏、刘海、DeX 标题栏和软键盘由原生窗口 Insets 处理；真实 IME 状态驱动键盘工具栏，不根据窗口高度猜测，内容区随窗口可用空间变化。常见方向、密度和键盘配置变化不重建 Activity。
 - 触屏点击行号增减多选，选中后点建组；鼠标右键、Ctrl+G、Ctrl+S 等快捷键保留。系统返回按弹窗、菜单、阶段、章节、项目与项目库逐级处理，根界面返回后台。
 
 ## 数据
 
 项目位于应用内部 `projects/`，使用与桌面相同的 Rust 原子保存、文件哈希冲突检测、自动备份和 JSON v4。没有申请管理全部文件或读写整个外部存储的权限。导入／导出使用系统 Storage Access Framework，可选系统文件夹、云盘提供商或外接存储。
 
-Android 额外将编辑草稿原子保存到应用内部，启动时与 WebView 本机草稿比较恢复。会话 epoch 和递增序号阻止旧写入覆盖新草稿；WebView 重载后开启新会话。进入后台立即刷新草稿。源文件保存和 GitHub 同步仍由用户点击触发。
+Android 额外将编辑草稿原子保存到应用内部，启动时与 WebView 本机草稿比较恢复。会话 epoch 和递增序号阻止旧写入覆盖新草稿；WebView 重载后开启新会话。进入后台立即刷新草稿。源文件保存和全局云存档均由用户点击触发。项目库代次用于拒绝整库读档前遗留的编辑草稿。
 
-GitHub 同步使用原有三方比较和目录约束。Token 经 Android Keystore 中不可导出的 AES-256-GCM 密钥加密，仅密文写 SharedPreferences，不写剧本和普通设置。新设备单独填写令牌；应用禁用自动系统备份，卸载前请先 GitHub 同步或导出。应用升级复用签名和包名，保留本机项目与凭据。
+GitHub 云存档按整个项目库手动管理，不进行三方比较或自动选择方向。整库读取前保留可取回的本机备份，详见 [云存档说明](github-sync.md)。Token 经 Android Keystore 中不可导出的 AES-256-GCM 密钥加密，仅密文写 SharedPreferences，不写剧本和普通设置。新设备单独填写令牌；应用禁用自动系统备份，卸载前请先手动云存档或导出。应用升级复用签名和包名，保留本机项目与凭据。
 
 ## 安装和更新
 
@@ -31,3 +31,5 @@ GitHub 同步使用原有三方比较和目录约束。Token 经 Android Keystor
 验证包括原有桌面回归、手机／平板／DeX／键盘等窗口尺寸切换、触屏建组、文件适配、后台草稿、更新系统确认流程，以及 Android 模拟器中原生 Keystore、系统文件选择器和 Activity 恢复。模拟器不能代替三星真机验证；三星分屏和 DeX 的厂商行为需在实际设备上最终验收。
 
 官方依据：[Android 多窗口](https://developer.android.com/develop/adaptive-apps/guides/support-multi-window-mode)、[方向和比例](https://developer.android.com/develop/adaptive-apps/guides/app-orientation-aspect-ratio-resizability)、[Samsung DeX 优化](https://developer.samsung.com/samsung-dex/modify-optimizing.html)、[Tauri Android 插件](https://v2.tauri.app/develop/plugins/develop-mobile/)、[Android 签名](https://v2.tauri.app/distribute/sign/android/)。
+
+手机／平板输入与交互设计依据见 [移动交互设计](mobile-interaction.md)。应用显示名称和 Activity 标题均为「叙线」。

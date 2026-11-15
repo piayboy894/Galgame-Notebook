@@ -11,11 +11,11 @@
 | 层 | 目录 | 责任 |
 | --- | --- | --- |
 | 领域 | src/domain | 新建项目、JSON v1–v4 转换、行与阶段结构，不依赖原生 API |
-| 应用服务 | src/application | 软件更新与 GitHub 数据同步状态机，协调保存、检查、冲突处理和执行 |
+| 应用服务 | src/application | 软件更新与全局云存档，明确执行用户选择的存档／读档方向 |
 | 界面 | src/editor、src/ui、src/styles | 路线图、脚本、项目库、对话框与事件 |
 | 平台适配 | src/platform | Tauri IPC、平台识别、生命周期和更新端口 |
-| 存储核心 | crates/story-store | 原子保存、SHA-256 冲突检查、备份、回收站、复制及迁移 |
-| 数据同步 | crates/github-sync | GitHub Contents API、共同版本比较、SHA 校验、目录约束和项目关联；凭据由原生层注入 |
+| 存储核心 | crates/story-store | 原子保存、SHA-256 检查、整库替换与中断恢复、备份、回收站、复制及迁移 |
+| 数据同步 | crates/github-sync | GitHub Contents/Git Data API、整库存档、原子提交、目录约束；凭据由原生层注入 |
 | 原生入口 | src-tauri | 系统目录、命令注册；桌面单实例；Android 草稿、文件选择器、Keystore 和安装器桥接 |
 | 发布 | .github/workflows、scripts | 版本同步、双平台构建及签名；安装包齐备后发布 |
 

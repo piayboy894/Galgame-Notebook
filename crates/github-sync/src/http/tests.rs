@@ -75,31 +75,22 @@ fn reads_raw_content_when_contents_api_omits_base64() {
     assert!(requests.lock().unwrap()[1].contains("application/vnd.github.raw+json"));
 }
 #[test]
-fn authenticates_requests_decodes_content_and_uses_sha_compare_and_swap() {
+fn authenticates_requests_and_decodes_scoped_content() {
     let text = "{\"title\":\"剧本\"}";
     let sha = git_blob_sha(text.as_bytes());
-    let (base, requests, handle) = server(vec![
-        (
-            200,
-            json!({"type":"file","size":text.len(),"sha":sha,"encoding":"base64","content":STANDARD.encode(text)}),
-        ),
-        (200, json!({"content":{"sha":"new"}})),
-    ]);
+    let (base, requests, handle) = server(vec![(
+        200,
+        json!({"type":"file","size":text.len(),"sha":sha,"encoding":"base64","content":STANDARD.encode(text)}),
+    )]);
     let client = GithubClient::with_base("test-secret-only", &base).unwrap();
-    let c = connection();
-    let file = client
-        .file(&c, "xuxian/projects/project_test.story.json")
-        .unwrap()
-        .unwrap();
-    assert_eq!(file.text, text);
-    client
-        .put(
-            &c,
-            "xuxian/projects/project_test.story.json",
-            text,
-            Some(&file.sha),
-        )
-        .unwrap();
+    assert_eq!(
+        client
+            .file(&connection(), "xuxian/projects/project_test.story.json")
+            .unwrap()
+            .unwrap()
+            .text,
+        text
+    );
     handle.join().unwrap();
     let requests = requests.lock().unwrap();
     assert!(requests[0]
@@ -107,9 +98,6 @@ fn authenticates_requests_decodes_content_and_uses_sha_compare_and_swap() {
     assert!(requests[0]
         .to_ascii_lowercase()
         .contains("authorization: bearer test-secret-only"));
-    let body: Value = serde_json::from_str(requests[1].split("\r\n").last().unwrap()).unwrap();
-    assert_eq!(body["sha"], sha);
-    assert_eq!(body["branch"], "main");
 }
 #[test]
 fn rejects_racing_content_and_redacts_remote_errors() {
@@ -129,9 +117,85 @@ fn rejects_racing_content_and_redacts_remote_errors() {
         409
     );
     let error = client
-        .put(&connection(), "xuxian/projects/a.story.json", "{}", None)
+        .write_archive(
+            &connection(),
+            "xuxian/projects/a.xuxian-save.json",
+            Some("{}"),
+            Some(json!({})),
+            None,
+        )
         .unwrap_err();
     assert_eq!(error.status, 401);
     assert!(!error.message.contains("test-secret-only"));
+    handle.join().unwrap();
+}
+
+#[test]
+fn global_save_commits_data_and_index_atomically_without_forcing_the_branch() {
+    let text = "{\"all\":true}";
+    let sha = git_blob_sha(text.as_bytes());
+    let (base, requests, handle) = server(vec![
+        (200, json!({"object":{"sha":"base-head"}})),
+        (200, json!({"tree":{"sha":"base-tree"}})),
+        (404, json!({})),
+        (200, json!({"sha":sha})),
+        (200, json!({"sha":"new-tree"})),
+        (200, json!({"sha":"new-commit"})),
+        (200, json!({"object":{"sha":"new-commit"}})),
+    ]);
+    let client = GithubClient::with_base("fixture-token", &base).unwrap();
+    client
+        .write_archive(
+            &connection(),
+            "xuxian/projects/library-00000000000000000000000000000000.xuxian-save.json",
+            Some(text),
+            Some(json!({"name":"全库"})),
+            None,
+        )
+        .unwrap();
+    handle.join().unwrap();
+    let captured = requests.lock().unwrap();
+    let body = |index: usize| {
+        serde_json::from_str::<Value>(captured[index].split("\r\n").last().unwrap()).unwrap()
+    };
+    assert!(captured[2].contains("ref=base-head"));
+    let tree = body(4);
+    assert_eq!(tree["base_tree"], "base-tree");
+    assert_eq!(tree["tree"].as_array().unwrap().len(), 2);
+    assert_eq!(tree["tree"][0]["sha"], sha);
+    assert_eq!(
+        serde_json::from_str::<Value>(tree["tree"][1]["content"].as_str().unwrap()).unwrap()
+            ["dataSha"],
+        sha
+    );
+    assert_eq!(body(5)["parents"], json!(["base-head"]));
+    assert_eq!(body(6)["force"], false);
+}
+#[test]
+fn racing_repository_commit_fails_instead_of_replacing_other_apps_commits() {
+    let text = "{}";
+    let (base, _, handle) = server(vec![
+        (200, json!({"object":{"sha":"base-head"}})),
+        (200, json!({"tree":{"sha":"base-tree"}})),
+        (404, json!({})),
+        (200, json!({"sha":git_blob_sha(text.as_bytes())})),
+        (200, json!({"sha":"new-tree"})),
+        (200, json!({"sha":"new-commit"})),
+        (422, json!({"message":"not fast forward"})),
+    ]);
+    let client = GithubClient::with_base("fixture-token", &base).unwrap();
+    assert_eq!(
+        client
+            .write_archive(
+                &connection(),
+                "xuxian/projects/library-00000000000000000000000000000000.xuxian-save.json",
+                Some(text),
+                Some(json!({"name":"全库"})),
+                None
+            )
+            .unwrap_err()
+            .status,
+        409
+    );
     handle.join().unwrap();
 }

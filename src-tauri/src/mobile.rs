@@ -106,10 +106,16 @@ pub async fn mobile_command(
                 }
             })
         }
-        "mobile/import" | "mobile/export" | "mobile/background" => {
+        "mobile/import"
+        | "mobile/export"
+        | "mobile/background"
+        | "mobile/input-state"
+        | "mobile/hide-keyboard" => {
             let command = match endpoint.as_str() {
                 "mobile/import" => "importProject",
                 "mobile/export" => "exportFile",
+                "mobile/input-state" => "inputState",
+                "mobile/hide-keyboard" => "hideKeyboard",
                 _ => "background",
             };
             if endpoint == "mobile/export"

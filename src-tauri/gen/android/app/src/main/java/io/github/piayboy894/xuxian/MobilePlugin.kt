@@ -2,10 +2,13 @@ package io.github.piayboy894.xuxian
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import java.io.File
 import android.provider.OpenableColumns
 import android.security.keystore.KeyGenParameterSpec
@@ -31,6 +34,10 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONObject
+
+fun deviceInputState(activity: Activity, insets: WindowInsetsCompat? = ViewCompat.getRootWindowInsets(activity.window.decorView)): JSObject =
+  JSObject().put("imeVisible",insets?.isVisible(WindowInsetsCompat.Type.ime()) == true)
+    .put("hardwareKeyboard",activity.resources.configuration.keyboard == Configuration.KEYBOARD_QWERTY && activity.resources.configuration.hardKeyboardHidden != Configuration.HARDKEYBOARDHIDDEN_YES)
 
 @InvokeArg class SecretArgs { lateinit var key: String; var value: String = "" }
 @InvokeArg class ExportArgs { lateinit var name: String; lateinit var text: String }
@@ -105,6 +112,11 @@ class MobilePlugin(initialActivity: Activity): Plugin(initialActivity) {
     vault.delete(args.key); JSObject().put("deleted",true)
   }
   @Command fun background(invoke: Invoke) { invoke.resolve(JSObject().put("backgrounded",activity.moveTaskToBack(true))) }
+  @Command fun inputState(invoke: Invoke) { invoke.resolve(deviceInputState(activity)) }
+  @Command fun hideKeyboard(invoke: Invoke) {
+    ViewCompat.getWindowInsetsController(activity.window.decorView)?.hide(WindowInsetsCompat.Type.ime())
+    invoke.resolve()
+  }
   @Command fun installUpdate(invoke: Invoke) {
     try {
       if(!context.packageManager.canRequestPackageInstalls()) {

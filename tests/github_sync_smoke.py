@@ -7,7 +7,7 @@ PROJECT=json.loads((ROOT/'examples/示例剧本.story.json').read_text())
 MOCK=r'''initial=>{
   window.isTauri=true;let files={'sample.story.json':structuredClone(initial)},serial=0,configured=false,connection=null;
   const bindings=new Map();let currentName='sample.story.json';
-  window.syncCalls=[];window.archives={};window.localBackups=[];window.archiveMode='normal';window.archiveDelay=0;window.libraryRevision='legacy';window.legacyCount=0;
+  window.syncCalls=[];window.archives={};window.archiveMode='normal';window.archiveDelay=0;window.libraryRevision='legacy';window.legacyCount=4;
   const expose=()=>window.libraryFiles=files;expose();
   window.installLibraryFixture=(values,revision)=>{files=structuredClone(values);expose();window.libraryRevision=revision;};
   const clone=value=>structuredClone(value);
@@ -15,9 +15,8 @@ MOCK=r'''initial=>{
   window.addSecondProject=()=>{const next=clone(initial);next.id='project_second';next.title='第二个独立项目';files['second.story.json']=next;expose();};
   window.addThirdProject=()=>{const next=clone(initial);next.id='project_third';next.title='仅本机第三个项目';files['third.story.json']=next;expose();};
   const loadLibrary=archive=>{
-    window.localBackups.unshift({name:'local-'+(++serial),savedAt:1794800000000,projects:Object.entries(files).map(([fileName,project])=>({fileName,project:clone(project)}))});
     files=Object.fromEntries(archive.projects.map(item=>[item.fileName,clone(item.project)]));expose();bindings.clear();window.libraryRevision='generation-'+(++serial);
-    return{opened:null,projectCount:archive.projects.length,revision:window.libraryRevision,backupName:window.localBackups[0].name};
+    return{opened:null,projectCount:archive.projects.length,revision:window.libraryRevision};
   };
   window.__TAURI_INTERNALS__={metadata:{currentWindow:{label:'main'},currentWebview:{label:'main'}},transformCallback:()=>++serial,
     invoke:async(command,args={})=>{
@@ -28,9 +27,6 @@ MOCK=r'''initial=>{
         if(endpoint==='projects/open')return opened(body.fileName);
         if(endpoint==='save'){const name=bindings.get(body.bindingId)||currentName;files[name]=JSON.parse(body.text);expose();return opened(name);}
         if(endpoint==='projects/create'){const p=JSON.parse(body.text),name='created-'+(++serial)+'.story.json';files[name]=p;expose();return opened(name);}
-        if(endpoint==='projects/library-backups')return window.localBackups.map(({name,savedAt})=>({name,savedAt}));
-        if(endpoint==='projects/library-backup-preview'){const backup=window.localBackups.find(v=>v.name===body.name);return{...clone(backup),hash:'local-sha',projectCount:backup.projects.length,projects:backup.projects.map(v=>({fileName:v.fileName,title:v.project.title}))};}
-        if(endpoint==='projects/library-load-backup'){const backup=clone(window.localBackups.find(v=>v.name===body.name));return loadLibrary(backup);}
       }
       if(command==='github_sync_command'){
         if(endpoint==='sync/settings')return{connections:configured?[{id:'connection',connection,hasToken:true}]:[],linked:null};
@@ -76,7 +72,7 @@ with sync_playwright() as p:
     assert not any(call.startswith('sync/') for call in page.evaluate('window.syncCalls'))
     page.locator('#project-name').fill('当前尚未保存的改动');page.evaluate('window.addSecondProject()');page.locator('#open-btn').click();page.locator('#library-github').click()
     expect(page.get_by_role('dialog',name='全局云存档连接',exact=True)).to_be_visible();page.locator('#sync-repository').fill('https://github.com/writer/shared-data');page.locator('#sync-token').fill('fixture-token');page.locator('#sync-configure').click()
-    expect(page.locator('#archive-new')).to_be_visible();assert 'fixture-token' not in page.evaluate('JSON.stringify(localStorage)');assert 'fixture-token' not in page.evaluate('JSON.stringify(window.XuXian.snapshot())')
+    expect(page.locator('#archive-new')).to_be_visible();expect(page.locator('#archive-legacy')).to_have_count(0);expect(page.locator('#archive-local')).to_have_count(0);assert 'fixture-token' not in page.evaluate('JSON.stringify(localStorage)');assert 'fixture-token' not in page.evaluate('JSON.stringify(window.XuXian.snapshot())')
     stale=page.evaluate('JSON.parse(localStorage.getItem("xuxian.draft.v1"))');stale['project']['title']='不应复活的旧草稿'
     page.locator('#archive-new').click();page.locator('#archive-name').fill('全库 A');page.locator('#archive-note').fill('<img src=x onerror=alert(1)> 两个项目')
     page.evaluate('window.archiveDelay=100');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('1 个云存档')
@@ -84,30 +80,34 @@ with sync_playwright() as p:
     assert page.evaluate('Object.values(window.archives)[0].projects.some(v=>v.project.title==="当前尚未保存的改动")')
     calls=page.evaluate('window.syncCalls');assert calls.index('save')<calls.index('sync/archive-save')
     page.locator('[data-archive-slot="0"]').click();expect(page.get_by_role('dialog')).to_contain_text('2 个项目');expect(page.locator('#modal-root img')).to_have_count(0)
-    before=page.evaluate('window.syncCalls.filter(c=>c==="sync/archive-load").length');page.locator('#archive-load').click();expect(page.get_by_role('dialog')).to_contain_text('本机整个项目库');page.locator('#archive-load-cancel').click()
+    before=page.evaluate('window.syncCalls.filter(c=>c==="sync/archive-load").length');page.locator('#archive-load').click();expect(page.get_by_role('dialog')).to_contain_text('本机整个项目库');expect(page.get_by_role('dialog')).to_contain_text('不会先保存');page.locator('#archive-load-cancel').click()
     assert before==page.evaluate('window.syncCalls.filter(c=>c==="sync/archive-load").length')
     page.evaluate('window.addThirdProject()');page.locator('[data-archive-slot="0"]').click();page.locator('#archive-overwrite').click();page.locator('#archive-name').fill('全库 A 覆盖');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('1 个云存档')
     assert page.evaluate('Object.values(window.archives)[0].projects.length')==3
     page.locator('#archive-new').click();page.locator('#archive-name').fill('全库 B');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('2 个云存档')
     # Load the first save after changing local data; no direction or merge is chosen for us.
+    page.locator('[data-act="modal-close"]').first.click();page.locator('#library-close').click()
+    page.locator('#project-name').fill('读档时应丢弃的未保存改动');page.locator('#open-btn').click();page.locator('#library-github').click()
     page.evaluate('delete window.libraryFiles["second.story.json"]')
+    writes_before=page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create"||c.includes("backup")).length')
     page.locator('[data-archive-slot="0"]').click();page.evaluate('window.archiveMode="race"');page.locator('#archive-load').click();page.locator('#archive-load-confirm').click();expect(page.locator('#archive-message')).to_contain_text('变化')
     assert page.evaluate('Object.keys(window.libraryFiles).length')==2
+    assert page.evaluate('window.XuXian.snapshot().title')=='读档时应丢弃的未保存改动'
     page.evaluate('window.archiveMode="normal"');page.locator('#archive-load-confirm').click();expect(page.locator('.library-open')).to_have_count(3)
-    assert page.evaluate('window.localBackups[0].projects.length')==2
-    page.locator('#library-github').click();page.locator('#archive-local').click();page.locator('[data-local-archive="0"]').click();page.locator('#archive-load-confirm').click();expect(page.locator('.library-open')).to_have_count(2)
+    assert writes_before==page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create"||c.includes("backup")).length')
+    assert all(value['title']!='读档时应丢弃的未保存改动' for value in page.evaluate('window.libraryFiles').values())
     page.locator('#library-github').click();page.locator('[data-archive-slot="0"]').click();page.locator('#archive-delete').click();page.locator('#archive-delete-cancel').click()
     assert len(page.evaluate('Object.keys(window.archives)'))==2
     page.locator('[data-archive-slot="0"]').click();page.locator('#archive-delete').click();page.locator('#archive-delete-confirm').click();expect(page.locator('[data-archive-slot]')).to_have_count(1)
-    assert page.evaluate('Object.keys(window.libraryFiles).length')==2
+    assert page.evaluate('Object.keys(window.libraryFiles).length')==3
     page.evaluate('window.archiveMode="offline"');page.locator('#archive-refresh').click();expect(page.locator('#archive-message')).to_contain_text('无法连接')
     page.evaluate('window.archiveMode="normal"');page.locator('#archive-refresh').click();expect(page.locator('[data-archive-slot]')).to_have_count(1)
     calls=page.evaluate('window.syncCalls');assert not any(c in ('sync/inspect','sync/execute','sync/restore') for c in calls)
     native_files=page.evaluate('window.libraryFiles');revision=page.evaluate('window.libraryRevision')
     fresh=browser.new_context(viewport={'width':1360,'height':1000})
     fresh.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)});window.installLibraryFixture({json.dumps(native_files,ensure_ascii=False)},{json.dumps(revision)});localStorage.setItem("xuxian.draft.v1",JSON.stringify({json.dumps(stale,ensure_ascii=False)}));')
-    restored=fresh.new_page();restored.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(restored.locator('.library-open')).to_have_count(2)
+    restored=fresh.new_page();restored.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(restored.locator('.library-open')).to_have_count(3)
     assert restored.evaluate('window.XuXian.snapshot().title')!='不应复活的旧草稿'
     fresh.close()
     assert not errors,errors
-    browser.close();print('PASS: global whole-library slots, explicit create/overwrite/load, cancel, race protection, no project sync, secret isolation and two-project snapshots')
+    browser.close();print('PASS: global slots, direct load without saving/backups, no legacy collection, cancellation, stale-preview protection, secret isolation and full-library snapshots')

@@ -15,6 +15,9 @@ struct Swap {
     root: String,
     stage: String,
     backup: String,
+    // Old releases retained this directory. New loads only keep it until commit/rollback.
+    #[serde(default)]
+    discard_previous: bool,
 }
 fn root_name(root: &Path) -> Result<String> {
     root.file_name()
@@ -39,7 +42,7 @@ fn safe_child(name: &str, prefix: &str) -> bool {
 fn regular_directory(path: &Path) -> Result<()> {
     let meta = fs::symlink_metadata(path)?;
     if !meta.is_dir() || meta.file_type().is_symlink() {
-        return Err(Error::new(400, "项目库备份必须是本机普通目录"));
+        return Err(Error::new(400, "项目库事务目录必须是本机普通目录"));
     }
     Ok(())
 }
@@ -62,7 +65,14 @@ pub(super) fn recover(root: &Path) -> Result<()> {
     let swap: Swap = serde_json::from_slice(&fs::read(&journal)?)?;
     if swap.root != root_name(root)?
         || !safe_child(&swap.stage, ".xuxian-library-stage-")
-        || !safe_child(&swap.backup, "项目库备份-")
+        || !safe_child(
+            &swap.backup,
+            if swap.discard_previous {
+                ".xuxian-library-previous-"
+            } else {
+                "项目库备份-"
+            },
+        )
     {
         return Err(Error::new(400, "项目库恢复记录路径无效"));
     }
@@ -75,8 +85,12 @@ pub(super) fn recover(root: &Path) -> Result<()> {
         regular_directory(&backup)?;
         fs::rename(&backup, root)?;
     }
-    // A present root is either the intact original or the complete new library. Keep every backup.
+    // Once the new root is present, dispose of the replaced library. An interrupted pre-commit
+    // swap rolls back above. Existing journals from older releases retain their historical backup.
     remove_stage(&stage)?;
+    if swap.discard_previous {
+        remove_stage(&backup)?;
+    }
     fs::remove_file(journal)?;
     Ok(())
 }
@@ -163,12 +177,13 @@ impl Store {
                 "本机项目库刚被其他程序修改，请重新确认读档",
             ));
         }
-        let backup_name = format!("项目库备份-{}-{}", millis(), nonce());
+        let backup_name = format!(".xuxian-library-previous-{}", nonce());
         let backup = parent.join(&backup_name);
         let swap = Swap {
             root: root_name(&self.root)?,
             stage: root_name(stage.path())?,
             backup: backup_name.clone(),
+            discard_previous: true,
         };
         let record = journal(&self.root)?;
         atomic_write(&record, &serde_json::to_string(&swap)?)?;
@@ -177,66 +192,20 @@ impl Store {
             if fs::rename(&backup, &self.root).is_err() {
                 return Err(Error::new(
                     500,
-                    "项目库替换未完成，完整原件已保留；重启后会恢复，请勿删除项目库备份",
+                    "项目库替换未完成，重启后会恢复，请勿删除事务临时文件",
                 ));
             }
             let _ = fs::remove_file(&record);
             return Err(error.into());
         }
         self.bindings.clear();
-        let _ = fs::remove_file(record);
+        // A cleanup failure must not report a failed load after the library has already changed.
+        // Retain the journal so startup can finish deleting the temporary previous directory.
+        let cleanup_pending = recover(&self.root).is_err();
         let opened: Option<Opened> = None;
         Ok(
-            json!({"opened":opened,"projectCount":entries.len(),"backupName":backup_name,"revision":revision}),
+            json!({"opened":opened,"projectCount":entries.len(),"cleanupPending":cleanup_pending,"revision":revision}),
         )
-    }
-    fn backup_store(&self, name: &str) -> Result<Self> {
-        if !safe_child(name, "项目库备份-") {
-            return Err(Error::new(400, "本机备份标识无效"));
-        }
-        let path = self
-            .root
-            .parent()
-            .ok_or_else(|| Error::new(400, "项目库目录无效"))?
-            .join(name);
-        regular_directory(&path)?;
-        Ok(Self {
-            root: path,
-            bindings: HashMap::new(),
-        })
-    }
-    pub fn library_backups(&self) -> Result<Value> {
-        let mut items = Vec::new();
-        for entry in fs::read_dir(
-            self.root
-                .parent()
-                .ok_or_else(|| Error::new(400, "项目库目录无效"))?,
-        )? {
-            let entry = entry?;
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if safe_child(&name, "项目库备份-") && regular_directory(&entry.path()).is_ok() {
-                let at = name
-                    .strip_prefix("项目库备份-")
-                    .and_then(|tail| tail.split('-').next())
-                    .and_then(|v| v.parse::<u64>().ok());
-                items.push(json!({"name":name,"savedAt":at}));
-            }
-        }
-        items.sort_by_key(|v| std::cmp::Reverse(v["savedAt"].as_u64()));
-        Ok(Value::Array(items))
-    }
-    pub fn preview_library_backup(&self, name: &str) -> Result<Value> {
-        let entries = self.backup_store(name)?.capture_library()?;
-        Ok(
-            json!({"name":name,"hash":fingerprint(&entries)?,"projectCount":entries.len(),"projects":entries.iter().map(|v|json!({"title":v.project["title"],"fileName":v.file_name})).collect::<Vec<_>>()}),
-        )
-    }
-    pub fn load_library_backup(&mut self, name: &str, expected: &str) -> Result<Value> {
-        let entries = self.backup_store(name)?.capture_library()?;
-        if fingerprint(&entries)? != expected {
-            return Err(Error::new(409, "本机备份已变化，请重新预览"));
-        }
-        self.restore_library(&entries)
     }
 }
 
@@ -253,7 +222,7 @@ mod tests {
         }
     }
     #[test]
-    fn restores_the_entire_library_and_keeps_a_complete_recoverable_backup() {
+    fn replaces_the_entire_library_without_retaining_old_projects_or_backups() {
         let temp = tempfile::tempdir().unwrap();
         let mut store = Store::new(temp.path().join("projects")).unwrap();
         let opened = store.create(&project("old", "旧项目").to_string()).unwrap();
@@ -267,17 +236,10 @@ mod tests {
             .unwrap();
         assert_eq!(store.capture_library().unwrap().len(), 2);
         assert!(store.read_bound(&opened.binding_id).is_err());
-        let backup = result["backupName"].as_str().unwrap();
-        assert_eq!(
-            fs::read_to_string(temp.path().join(backup).join("_备份/history.txt")).unwrap(),
-            "keep"
-        );
-        let preview = store.preview_library_backup(backup).unwrap();
-        assert_eq!(preview["projectCount"], 1);
-        store
-            .load_library_backup(backup, preview["hash"].as_str().unwrap())
-            .unwrap();
-        assert_eq!(store.capture_library().unwrap()[0].project["id"], "old");
+        assert!(result.get("backupName").is_none());
+        assert_eq!(result["cleanupPending"], false);
+        assert!(!store.root.join("_备份").exists());
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 1);
     }
     #[test]
     fn rejects_malformed_paths_duplicates_and_corrupt_entries_without_touching_local_data() {
@@ -319,7 +281,7 @@ mod tests {
         store.create(&project("old", "原件").to_string()).unwrap();
         drop(store);
         let stage_name = ".xuxian-library-stage-fixture";
-        let backup_name = "项目库备份-1-fixture";
+        let backup_name = ".xuxian-library-previous-fixture";
         fs::create_dir(temp.path().join(stage_name)).unwrap();
         fs::write(
             journal(&root).unwrap(),
@@ -327,6 +289,7 @@ mod tests {
                 root: "projects".into(),
                 stage: stage_name.into(),
                 backup: backup_name.into(),
+                discard_previous: true,
             })
             .unwrap(),
         )
@@ -335,5 +298,39 @@ mod tests {
         let recovered = Store::new(root.clone()).unwrap();
         assert_eq!(recovered.capture_library().unwrap()[0].project["id"], "old");
         assert!(!journal(&root).unwrap().exists());
+        assert_eq!(fs::read_dir(temp.path()).unwrap().count(), 1);
+    }
+    #[test]
+    fn completes_cleanup_after_a_committed_load_and_preserves_old_release_backups() {
+        for old_release in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let root = temp.path().join("projects");
+            let mut store = Store::new(root.clone()).unwrap();
+            store
+                .create(&project("new", "读入的项目").to_string())
+                .unwrap();
+            let previous = if old_release {
+                "项目库备份-1-existing"
+            } else {
+                ".xuxian-library-previous-fixture"
+            };
+            fs::create_dir(temp.path().join(previous)).unwrap();
+            fs::write(
+                temp.path().join(previous).join("old.json"),
+                project("old", "原来的项目").to_string(),
+            )
+            .unwrap();
+            // An old-release journal has no discard_previous field.
+            let mut record = json!({"root":"projects","stage":".xuxian-library-stage-fixture","backup":previous});
+            if !old_release {
+                record["discardPrevious"] = json!(true);
+            }
+            fs::write(journal(&root).unwrap(), record.to_string()).unwrap();
+            drop(store);
+            let recovered = Store::new(root.clone()).unwrap();
+            assert_eq!(recovered.capture_library().unwrap()[0].project["id"], "new");
+            assert_eq!(temp.path().join(previous).exists(), old_release);
+            assert!(!journal(&root).unwrap().exists());
+        }
     }
 }

@@ -502,7 +502,7 @@ export function renderBoard(e) {
   )
     return renderBoardList(e);
   const { w, h } = boardGeometry();
-  e.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${state.project.routes.length} 条路线 · ${state.project.chapters.length} 章</span></div><div class="view-actions">${state.sim.active ? `<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn("条件", "flag", "sim-flags", "ghost small")}${ib("reset", "sim-reset", "重置演练")}</div>` : ""}${btn("角色", "users", "characters", "ghost")}${btn("地点", "map", "locations", "ghost")}${btn(state.sim.active ? "结束" : "演练", state.sim.active ? "stop" : "play", "sim-toggle", state.sim.active ? "active" : "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><div id="graph-viewport" class="graph-viewport ${state.connectFrom ? "connecting" : ""}"><div class="board-wrap" id="board-wrap" style="width:${w * state.zoom}px;height:${h * state.zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${state.zoom})">${state.project.routes
+  e.innerHTML = `<div class="view-head"><div class="view-title"><h1>路线图</h1><span class="count">${state.project.routes.length} 条路线 · ${state.project.chapters.length} 章</span></div><div class="view-actions">${state.sim.active ? `<span class="sim-indicator desktop-only">演练中</span><div class="sim-controls">${btn("条件", "flag", "sim-flags", "ghost small")}${ib("reset", "sim-reset", "重置演练")}</div>` : ""}${btn("角色", "users", "characters", "ghost")}${btn("地点", "map", "locations", "ghost")}${btn(state.sim.active ? "结束" : "演练", state.sim.active ? "stop" : "play", "sim-toggle", state.sim.active ? "active" : "ghost")}${btn("章节", "plus", "add-chapter", "primary")}${ib("dots", "board-menu", "路线设置")}</div></div><p class="graph-touch-hint">滑动浏览路线图 · 长按章节后拖动</p><div id="graph-viewport" class="graph-viewport ${state.connectFrom ? "connecting" : ""}"><div class="board-wrap" id="board-wrap" style="width:${w * state.zoom}px;height:${h * state.zoom}px"><div id="board" class="board" style="width:${w}px;height:${h}px;transform:scale(${state.zoom})">${state.project.routes
     .map((r, i) => {
       const x = 54 + i * 354,
         last = Math.max(112, ...routeChapters(r.id).map((c) => c.y)) + 173;
@@ -596,9 +596,176 @@ export function fitBoard() {
   render();
 }
 
+function commitChapterMove(c, pos, originalY, dx, dy) {
+  const ri = Math.max(
+    0,
+    Math.min(
+      state.project.routes.length - 1,
+      Math.round((pos.x + dx - 54) / 354),
+    ),
+  );
+  const routeId = state.project.routes[ri].id;
+  const y = freeY(
+    routeId,
+    Math.max(112, Math.round((originalY + dy - 112) / 20) * 20 + 112),
+    c.id,
+  );
+  if (routeId !== c.routeId || y !== c.y)
+    mutate(() => {
+      c.routeId = routeId;
+      c.y = y;
+    });
+}
+
+function attachTouchCardDrag(el) {
+  let session = null;
+  function suppressClick() {
+    state.dragSuppressUntil = Date.now() + 400;
+    state.dragSource = "chapter";
+  }
+  function cleanup() {
+    clearTimeout(session?.timer);
+    window.removeEventListener("touchmove", move, true);
+    window.removeEventListener("touchend", end, true);
+    window.removeEventListener("touchcancel", cancel, true);
+    window.removeEventListener("touchstart", secondTouch, true);
+    window.removeEventListener("blur", cancel);
+    window.removeEventListener("resize", cancel);
+    window.removeEventListener("keydown", escape, true);
+    document.removeEventListener("visibilitychange", cancel);
+    document.removeEventListener("editor:render", cancel);
+    el.classList.remove("dragging", "touch-drag-ready");
+    session = null;
+  }
+  function resetPosition(current) {
+    if (!current.active) return;
+    el.style.left = current.pos.x + "px";
+    el.style.top = current.pos.y + "px";
+    scheduleEdges();
+  }
+  function cancel() {
+    if (!session) return;
+    resetPosition(session);
+    suppressClick();
+    cleanup();
+  }
+  function secondTouch(e) {
+    if (e.touches.length !== 1) cancel();
+  }
+  function escape(e) {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    cancel();
+  }
+  function move(e) {
+    if (!session) return;
+    if (e.touches.length !== 1) return cancel();
+    const touch = [...e.touches].find((t) => t.identifier === session.id);
+    if (!touch) return cancel();
+    const dx = touch.clientX - session.x,
+      dy = touch.clientY - session.y;
+    if (!session.active) {
+      // Moving before the hold completes belongs to native scrolling, never chapter editing.
+      if (Math.hypot(dx, dy) > 10) cancel();
+      return;
+    }
+    if (e.cancelable) e.preventDefault();
+    session.dx = dx / state.zoom;
+    session.dy = dy / state.zoom;
+    session.moved ||= Math.hypot(dx, dy) > 7;
+    el.style.left = session.pos.x + session.dx + "px";
+    el.style.top = Math.max(100, session.pos.y + session.dy) + "px";
+    scheduleEdges();
+  }
+  function end(e) {
+    if (
+      !session ||
+      ![...e.changedTouches].some((t) => t.identifier === session.id)
+    )
+      return;
+    // Avoid a synthetic click landing on the next screen after a tap opens this chapter.
+    if (e.cancelable) e.preventDefault();
+    const current = session;
+    resetPosition(current);
+    suppressClick();
+    cleanup();
+    if (current.active) {
+      if (current.moved)
+        commitChapterMove(
+          current.chapter,
+          current.pos,
+          current.originalY,
+          current.dx,
+          current.dy,
+        );
+    } else go("chapter", current.chapter.id);
+  }
+  el.addEventListener(
+    "touchstart",
+    (e) => {
+      if (
+        session ||
+        e.touches.length !== 1 ||
+        e.target.closest("button,input,textarea,select,a")
+      )
+        return;
+      const chapter = C(el.dataset.id),
+        touch = e.changedTouches[0];
+      if (!chapter || !touch) return;
+      session = {
+        chapter,
+        id: touch.identifier,
+        x: touch.clientX,
+        y: touch.clientY,
+        originalY: chapter.y,
+        pos: nodePos(chapter),
+        active: false,
+        moved: false,
+        dx: 0,
+        dy: 0,
+      };
+      session.timer = setTimeout(() => {
+        if (!session || !el.isConnected || document.hidden) return cancel();
+        session.active = true;
+        el.classList.add("dragging", "touch-drag-ready");
+      }, 450);
+      // Passive touchstart leaves scrolling available. Only an activated hold prevents touchmove.
+      window.addEventListener("touchmove", move, {
+        capture: true,
+        passive: false,
+      });
+      window.addEventListener("touchend", end, {
+        capture: true,
+        passive: false,
+      });
+      window.addEventListener("touchcancel", cancel, true);
+      window.addEventListener("touchstart", secondTouch, true);
+      window.addEventListener("blur", cancel);
+      window.addEventListener("resize", cancel);
+      window.addEventListener("keydown", escape, true);
+      document.addEventListener("visibilitychange", cancel);
+      document.addEventListener("editor:render", cancel);
+    },
+    { passive: true },
+  );
+  el.addEventListener("contextmenu", (e) => {
+    if (!session?.active) return;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+}
+
 export function attachCardDrag(el) {
+  attachTouchCardDrag(el);
   el.addEventListener("pointerdown", (ev) => {
-    if (ev.button !== 0 || ev.target.closest("button")) return;
+    if (ev.button === 0) state.dragSuppressUntil = 0;
+    if (
+      ev.pointerType === "touch" ||
+      ev.button !== 0 ||
+      ev.target.closest("button")
+    )
+      return;
     const c = C(el.dataset.id);
     if (!c) return;
     const orig = {
@@ -634,23 +801,7 @@ export function attachCardDrag(el) {
       state.dragSuppressUntil = Date.now() + 250;
       state.dragSource = "chapter";
       if (moved) {
-        const ri = Math.max(
-            0,
-            Math.min(
-              state.project.routes.length - 1,
-              Math.round((pos.x + dx - 54) / 354),
-            ),
-          ),
-          routeId = state.project.routes[ri].id;
-        let y = Math.max(
-          112,
-          Math.round((orig.yPos + dy - 112) / 20) * 20 + 112,
-        );
-        y = freeY(routeId, y, c.id);
-        mutate(() => {
-          c.routeId = routeId;
-          c.y = y;
-        });
+        commitChapterMove(c, pos, orig.yPos, dx, dy);
       } else go("chapter", c.id);
     };
     const cancel = (e) => {

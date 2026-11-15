@@ -41,22 +41,25 @@ describe("explicit whole-library save slots", () => {
     expect(port.saveSlot).toHaveBeenCalledWith(request);
     expect(port.loadSlot).not.toHaveBeenCalled();
   });
-  it("saves current edits before explicitly loading and applying the whole library", async () => {
+  it("loads and applies the whole library without saving or backing up local edits", async () => {
     const { service, port, events } = setup();
     await service.load(target);
-    expect(events).toEqual(["save-local", "load-cloud", "apply-library"]);
+    expect(events).toEqual(["load-cloud", "apply-library"]);
+    expect(port.saveCurrent).not.toHaveBeenCalled();
     expect(port.loadSlot).toHaveBeenCalledWith(target);
     expect(port.saveSlot).not.toHaveBeenCalled();
   });
-  it("does not change cloud data or load when saving local edits is cancelled", async () => {
+  it("cancels a cloud save when saving local edits is cancelled, but can still load", async () => {
     const { service, port } = setup();
     vi.mocked(port.saveCurrent).mockResolvedValue(false);
     expect(
       await service.save({ ...target, name: "save", note: "" }),
     ).toBeNull();
-    expect(await service.load(target)).toBeNull();
-    expect(port.loadSlot).not.toHaveBeenCalled();
     expect(port.saveSlot).not.toHaveBeenCalled();
+    vi.mocked(port.saveCurrent).mockClear();
+    await service.load(target);
+    expect(port.loadSlot).toHaveBeenCalledWith(target);
+    expect(port.saveCurrent).not.toHaveBeenCalled();
   });
   it("deleting a selected slot never saves or applies a local project", async () => {
     const { service, port, events } = setup();
@@ -65,13 +68,22 @@ describe("explicit whole-library save slots", () => {
     expect(port.saveCurrent).not.toHaveBeenCalled();
     expect(port.applyLibrary).not.toHaveBeenCalled();
   });
+  it("keeps current edits when a load fails and allows an explicit retry", async () => {
+    const { service, port } = setup();
+    vi.mocked(port.loadSlot).mockRejectedValueOnce(Error("stale preview"));
+    await expect(service.load(target)).rejects.toThrow("stale preview");
+    expect(port.applyLibrary).not.toHaveBeenCalled();
+    expect(port.saveCurrent).not.toHaveBeenCalled();
+    await service.load(target);
+    expect(port.applyLibrary).toHaveBeenCalledTimes(1);
+  });
   it("blocks duplicate operations and recovers after a request fails", async () => {
     const { service, port } = setup();
     let finish: () => void = () => {};
-    vi.mocked(port.saveCurrent).mockImplementation(
+    vi.mocked(port.loadSlot).mockImplementation(
       () =>
         new Promise((resolve) => {
-          finish = () => resolve(true);
+          finish = () => resolve(target);
         }),
     );
     const first = service.load(target);

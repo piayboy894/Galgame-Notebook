@@ -5627,7 +5627,7 @@ dependencies = [
 
 [[package]]
 name = "xuxian-desktop"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "base64 0.22.1",
  "keyring",
@@ -5651,7 +5651,7 @@ dependencies = [
 
 [[package]]
 name = "xuxian-github-sync"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "base64 0.22.1",
  "reqwest 0.12.28",
@@ -5666,7 +5666,7 @@ dependencies = [
 
 [[package]]
 name = "xuxian-story-store"
-version = "2.4.0"
+version = "2.4.1"
 dependencies = [
  "serde",
  "serde_json",

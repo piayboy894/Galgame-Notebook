@@ -373,7 +373,7 @@ textarea {
   box-shadow: 0 3px 7px #18344304;
   cursor: grab;
   user-select: none;
-  touch-action: none;
+  touch-action: pan-x pan-y;
   transition:
     box-shadow 0.12s,
     border 0.12s;

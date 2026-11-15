@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fs, io::Write, path::PathBuf};
 use uuid::Uuid;
-use xuxian_story_store::{validate_story, Error, Store};
+use xuxian_story_store::{Error, Store};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -99,17 +99,6 @@ impl Connection {
             ))
             .unwrap(),
         )
-    }
-    fn path(&self, project_id: &str) -> Result<String> {
-        if project_id.is_empty()
-            || project_id.len() > 100
-            || !project_id
-                .bytes()
-                .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
-        {
-            return Err(Error::new(400, "剧本标识无效"));
-        }
-        Ok(format!("{}/{project_id}.story.json", self.directory))
     }
 }
 #[derive(Clone, Debug)]

@@ -34,7 +34,6 @@ export class LibraryArchiveService {
   }
   load(request: ArchiveTarget): Promise<any> {
     return this.run(async () => {
-      if (!(await this.port.saveCurrent())) return null;
       const result = await this.port.loadSlot(request);
       this.port.applyLibrary(result);
       return result;

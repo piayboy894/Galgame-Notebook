@@ -28,6 +28,7 @@ try {
     "tests/scenes_smoke.py",
     "tests/github_sync_smoke.py",
     "tests/android_smoke.py",
+    "tests/touch_graph_smoke.py",
   ]) {
     const child = spawn(process.env.PYTHON || "python", [path], {
       stdio: "inherit",

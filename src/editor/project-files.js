@@ -669,6 +669,10 @@ export async function revealSource() {
 }
 
 export async function saveSource(asNew = false, force = false) {
+  if (state.libraryOnly) {
+    toast("请先打开一个项目", true);
+    return false;
+  }
   if (state.saving) return false;
   state.saving = true;
   $("#save-btn").disabled = true;

@@ -106,6 +106,11 @@ with sync_playwright() as p:
     native_files=page.evaluate('window.libraryFiles');revision=page.evaluate('window.libraryRevision')
     expect(page.locator('#library-close')).to_be_hidden()
     assert page.evaluate('localStorage.getItem("xuxian.draft.v1")') is None
+    page.locator('[data-act="modal-close"]').first.click()
+    writes=page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create").length')
+    page.keyboard.press('Control+s');expect(page.locator('#toast')).to_contain_text('请先打开一个项目')
+    assert writes==page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create").length')
+    assert len(page.evaluate('window.libraryFiles'))==3
     fresh=browser.new_context(viewport={'width':1360,'height':1000})
     fresh.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)});window.installLibraryFixture({json.dumps(native_files,ensure_ascii=False)},{json.dumps(revision)});localStorage.setItem("xuxian.draft.v1",JSON.stringify({json.dumps(stale,ensure_ascii=False)}));')
     restored=fresh.new_page();restored.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(restored.locator('.library-open')).to_have_count(3)

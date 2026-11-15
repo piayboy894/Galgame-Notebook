@@ -9,7 +9,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiSelector
+import org.json.JSONArray
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,9 +69,21 @@ class AndroidPlatformTest {
       js(scenario,"document.querySelector('#view .stage-card[data-act=\"open-stage\"]').click();true")
       ready(scenario,"document.querySelector('textarea.dialogue-cell')")
       val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-      val inlineEditor=device.findObject(UiSelector().className("android.widget.EditText").instance(0))
-      assertTrue("Inline dialogue input is not accessible",inlineEditor.waitForExists(5000))
-      inlineEditor.click()
+      js(scenario,"document.querySelector('textarea.dialogue-cell').scrollIntoView({block:'center'});true")
+      ready(scenario,"(()=>{const r=document.querySelector('textarea.dialogue-cell').getBoundingClientRect();return r.width>0 && r.height>0 && r.top>=0 && r.bottom<=innerHeight;})()")
+      val field=JSONArray(js(scenario,"(()=>{const r=document.querySelector('textarea.dialogue-cell').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2,innerWidth];})()"))
+      val tap=IntArray(2)
+      scenario.onActivity { activity ->
+        val browser=webView(activity.findViewById(android.R.id.content))!!
+        browser.getLocationOnScreen(tap)
+        val scale=browser.width/field.getDouble(2)
+        tap[0]+=(field.getDouble(0)*scale).toInt()
+        tap[1]+=(field.getDouble(1)*scale).toInt()
+      }
+      // Touch the actual visible field. WebView's virtual accessibility descendants may lag
+      // behind navigation; DOM geometry is only used to locate, never to focus or show the IME.
+      assertTrue("Could not tap the inline dialogue",device.click(tap[0],tap[1]))
+      ready(scenario,"document.activeElement.matches('textarea.dialogue-cell')")
       ready(scenario,"document.documentElement.classList.contains('ime-visible') && getComputedStyle(document.querySelector('#mobile-keyboard-bar')).display!=='none'")
       assertEquals("0",js(scenario,"document.querySelectorAll('#modal-root .modal').length"))
       js(scenario,"window.__imeHidden=false;window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/hide-keyboard',body:{}}).then(()=>window.__imeHidden=true);true")

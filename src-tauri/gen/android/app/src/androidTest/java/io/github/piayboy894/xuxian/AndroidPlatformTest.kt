@@ -61,10 +61,12 @@ class AndroidPlatformTest {
       }
       // Exercise real IME insets and the inline editor, with no second editing screen.
       js(scenario,"document.querySelector('.library-open').click();true")
-      ready(scenario,"document.querySelector('[data-act=\"open-chapter\"]')")
-      js(scenario,"document.querySelector('[data-act=\"open-chapter\"]').click();true")
-      ready(scenario,"document.querySelector('[data-act=\"open-stage\"]')")
-      js(scenario,"document.querySelector('[data-act=\"open-stage\"]').click();true")
+      // The default editor exists underneath the project library while native I/O is pending.
+      // Wait for adoption; otherwise clicks navigate that old editor before adoption resets it.
+      ready(scenario,"document.querySelector('#project-library').classList.contains('hidden') && document.querySelector('#view [data-act=\"open-chapter\"]')")
+      js(scenario,"document.querySelector('#view [data-act=\"open-chapter\"]').click();true")
+      ready(scenario,"document.querySelector('#view .stage-card[data-act=\"open-stage\"]')")
+      js(scenario,"document.querySelector('#view .stage-card[data-act=\"open-stage\"]').click();true")
       ready(scenario,"document.querySelector('textarea.dialogue-cell')")
       val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
       val inlineEditor=device.findObject(UiSelector().className("android.widget.EditText").instance(0))

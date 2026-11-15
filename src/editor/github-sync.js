@@ -19,7 +19,7 @@ import {
   saveSource,
 } from "./project-files.js";
 import { closeModal, modal } from "./dialogs.js";
-import { persist, toast } from "./session.js";
+import { toast } from "./session.js";
 
 function setBusy(value) {
   state.syncBusy = value;
@@ -147,8 +147,7 @@ function applyLibrary(result) {
   state.libraryRevision = result.revision;
   state.lastWritingView = null;
   state.restoredDraft = false;
-  adopt(newProject(), "", null, false);
-  persist();
+  adopt(newProject(), "", null, false, null, null, true);
 }
 const archiveService = new LibraryArchiveService({
   saveCurrent: async () => (state.dirty ? saveSource() : true),

@@ -32,14 +32,16 @@ MOBILE=r'''({initial,draft})=>{
 }'''
 def fits(page):
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
-    for item in page.locator('.script-row textarea:visible,.branch-script-row textarea:visible').all():
-        rect=item.bounding_box();assert rect['x']>=-1 and rect['x']+rect['width']<=page.viewport_size['width']+1,rect
+    rects=page.locator('.script-row textarea:visible,.branch-script-row textarea:visible').evaluate_all('(elements)=>elements.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,width:r.width};})')
+    assert rects
+    for rect in rects:
+        assert rect['x']>=-1 and rect['x']+rect['width']<=page.viewport_size['width']+1,rect
 with sync_playwright() as p:
     executable=os.environ.get('CHROMIUM_PATH') or ('/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
     browser=p.chromium.launch(executable_path=executable,headless=True,args=['--no-sandbox'])
-    def start(initial,draft=None,width=390,height=844):
+    def start(initial,draft=None,width=390,height=844,revision='legacy'):
         context=browser.new_context(viewport={'width':width,'height':height},has_touch=True,is_mobile=True)
-        context.add_init_script(f'({BASE})({json.dumps(initial,ensure_ascii=False)});({MOBILE})({json.dumps({"initial":initial,"draft":draft},ensure_ascii=False)});')
+        context.add_init_script(f'({BASE})({json.dumps(initial,ensure_ascii=False)});window.libraryRevision={json.dumps(revision)};({MOBILE})({json.dumps({"initial":initial,"draft":draft},ensure_ascii=False)});')
         page=context.new_page();page.set_default_timeout(15000);errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
         page.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(page.locator('.library-open')).to_have_count(1)
         return context,page,errors
@@ -90,6 +92,18 @@ with sync_playwright() as p:
     # Touch and mouse can alternate in a compact split window without sticky touch-selection rules.
     page.set_viewport_size({'width':480,'height':760});first.tap();second.tap();expect(page.locator('.selected-count')).to_have_text('2 项');third.click();expect(page.locator('.selected-count')).to_have_text('1 项')
     page.keyboard.press('Control+/');expect(page.get_by_role('dialog',name='键盘快捷键')).to_be_visible();page.keyboard.press('Escape');assert not errors,errors;context.close()
+    # A restarted phone must read the loaded source, rather than an old clean demonstration cache.
+    loaded=json.loads(json.dumps(PROJECT));loaded['id']='cloud-loaded-project';loaded['title']='云端已保存项目'
+    old_clean={'project':PROJECT,'sourceName':'sample.story.json','dirty':False,'view':{'type':'board'},'libraryRevision':'loaded-library','savedAt':'2026-11-15T00:00:00Z'}
+    context,page,errors=start(loaded,old_clean,revision='loaded-library')
+    expect(page.locator('#project-name')).to_have_value('云端已保存项目');page.locator('#library-close').tap()
+    assert page.evaluate('window.XuXian.snapshot().id')=='cloud-loaded-project'
+    page.evaluate('window.dispatchEvent(new Event("pagehide"))');page.wait_for_function('window.nativeDraft?.project?.title==="云端已保存项目"')
+    loaded_draft=page.evaluate('window.nativeDraft');assert not errors,errors;context.close()
+    context,page,errors=start(loaded,loaded_draft,revision='loaded-library');expect(page.locator('#project-name')).to_have_value('云端已保存项目');assert not errors,errors;context.close()
+    # Older versions cached an empty editor after reading a library. Never restore that screen.
+    placeholder={**old_clean,'sourceName':''}
+    context,page,errors=start(loaded,placeholder,revision='loaded-library');expect(page.locator('#library-close')).to_be_hidden();expect(page.locator('.library-open')).to_contain_text('云端已保存项目');assert not errors,errors;context.close()
     context,page,errors=start(saved,draft);page.locator('#library-close').tap();expect(page.locator('[data-row="line_1"] textarea.dialogue-cell')).to_have_value('后台草稿与重启恢复测试')
     page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.stage-grid')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.board-list')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('#project-library')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');page.wait_for_function('window.androidCalls.includes("mobile/background")')
     assert not errors,errors;browser.close();print('PASS: inline phone editing, metadata disclosure, IME accessory, 11 window sizes/caret retention, touch sheets, Samsung hybrid keyboard/mouse selection and shortcuts, draft recovery and installer')

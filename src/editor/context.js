@@ -52,6 +52,7 @@ export const state = {
   libraryItems: [],
   libraryBusy: false,
   libraryAtRoot: true,
+  libraryOnly: true,
   restoredDraft: false,
   lastWritingView: null,
   libraryRevision: "legacy",

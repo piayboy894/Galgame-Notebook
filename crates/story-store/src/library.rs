@@ -274,6 +274,37 @@ mod tests {
         assert!(reopened.capture_library().unwrap().is_empty());
     }
     #[test]
+    fn loaded_projects_persist_across_full_store_restarts_and_do_not_reseed_the_demo() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("projects");
+        let demo = project("demo", "默认演示项目").to_string();
+        let mut expected = vec![
+            entry("云端甲.story.json", "cloud-a", "云端内容甲"),
+            entry("云端乙.story.json", "cloud-b", "云端内容乙"),
+        ];
+        expected.sort_by(|a, b| a.file_name.cmp(&b.file_name));
+        let mut store = Store::new(root.clone()).unwrap();
+        store.seed_once(&[&demo]).unwrap();
+        let result = store.restore_library(&expected).unwrap();
+        let revision = result["revision"].as_str().unwrap().to_owned();
+        drop(store);
+        for _ in 0..3 {
+            let mut reopened = Store::new(root.clone()).unwrap();
+            reopened.seed_once(&[&demo]).unwrap();
+            assert_eq!(reopened.library_revision().unwrap(), revision);
+            assert_eq!(
+                serde_json::to_value(reopened.capture_library().unwrap()).unwrap(),
+                serde_json::to_value(&expected).unwrap()
+            );
+            assert_eq!(
+                serde_json::from_str::<Value>(&reopened.open("云端甲.story.json").unwrap().text)
+                    .unwrap()["title"],
+                "云端内容甲"
+            );
+            assert!(!reopened.contains_project("demo").unwrap());
+        }
+    }
+    #[test]
     fn recovers_if_the_process_stops_between_directory_renames() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("projects");

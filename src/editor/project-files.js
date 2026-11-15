@@ -138,11 +138,12 @@ export function showProjectLibrary(asRoot = false) {
   if (!BRIDGE) $("#library-folder").classList.add("hidden");
   $("#library-close").classList.toggle(
     "hidden",
-    !state.sourceName &&
-      !state.bridgeBinding &&
-      !state.fileHandle &&
-      !state.dirty &&
-      !state.restoredDraft,
+    state.libraryOnly ||
+      (!state.sourceName &&
+        !state.bridgeBinding &&
+        !state.fileHandle &&
+        !state.dirty &&
+        !state.restoredDraft),
   );
   closeMenu();
   $("#project-library").classList.remove("hidden");
@@ -153,6 +154,7 @@ export function showProjectLibrary(asRoot = false) {
 }
 
 export function closeProjectLibrary() {
+  if (state.libraryOnly) return;
   state.libraryAtRoot = false;
   $("#project-library").classList.add("hidden");
   $(".app").inert = false;
@@ -451,12 +453,14 @@ export function adopt(
   isNew = false,
   stamp = null,
   binding = null,
+  libraryOnly = false,
 ) {
   $("#project-library")?.classList.add("hidden");
   $(".app").inert = false;
   state.collapsedOptionIds.clear();
   state.collapsedGroupIds.clear();
   state.project = p;
+  state.libraryOnly = libraryOnly;
   state.sourceName = name;
   state.fileHandle = handle;
   state.fileStamp = stamp;
@@ -665,6 +669,10 @@ export async function revealSource() {
 }
 
 export async function saveSource(asNew = false, force = false) {
+  if (state.libraryOnly) {
+    toast("请先打开一个项目", true);
+    return false;
+  }
   if (state.saving) return false;
   state.saving = true;
   $("#save-btn").disabled = true;

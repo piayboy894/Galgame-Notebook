@@ -151,6 +151,16 @@ export function redo() {
 
 export function persist() {
   if (!state.project) return;
+  if (state.libraryOnly) {
+    // A placeholder behind the project library is not a real editor session. Saving it used to
+    // offer an empty/default project after a cloud load, despite the source files being present.
+    try {
+      localStorage.removeItem(STORAGE);
+    } catch {
+      state.cacheOK = false;
+    }
+    return;
+  }
   const data = {
     project: state.project,
     sourceName: state.sourceName,
@@ -386,6 +396,12 @@ export function render() {
 
 export async function boot() {
   let restored = false;
+  let openedSource = null;
+  const isEditorDraft = (data) =>
+    data?.project &&
+    (data.dirty !== false ||
+      data.exported === true ||
+      Boolean(data.sourceName));
   try {
     let data = JSON.parse(localStorage.getItem(STORAGE) || "null");
     if (isNative) {
@@ -394,13 +410,14 @@ export async function boot() {
       if ((data?.libraryRevision || "legacy") !== state.libraryRevision)
         data = null;
     }
+    if (!isEditorDraft(data)) data = null;
     if (isAndroid) {
       try {
         const nativeResult = await readMobileDraft();
         if (nativeResult.warning) toast(nativeResult.warning, true);
         const nativeDraft = nativeResult.draft;
         if (
-          nativeDraft?.project &&
+          isEditorDraft(nativeDraft) &&
           (nativeDraft.libraryRevision || "legacy") === state.libraryRevision &&
           (!data?.project || String(nativeDraft.savedAt) > String(data.savedAt))
         )
@@ -409,10 +426,28 @@ export async function boot() {
         toast("本机草稿无法读取，请从项目库打开", true);
       }
     }
+    if (isNative && data?.sourceName) {
+      try {
+        const source = await bridgeCall("projects/open", {
+          fileName: data.sourceName,
+        });
+        const project = normalizeProject(JSON.parse(source.text));
+        if (data.dirty === false) {
+          // Clean caches are only navigation state. Saved content always comes from disk.
+          data = { ...data, project, fileStamp: source.stamp };
+          openedSource = source;
+        } else if (project.id === data.project.id) openedSource = source;
+        else data = { ...data, sourceName: "", fileStamp: null };
+      } catch {
+        if (data.dirty === false) data = null;
+        else data = { ...data, sourceName: "", fileStamp: null };
+      }
+    }
     if (data?.project) {
       state.project = normalizeProject(data.project);
       state.sourceName = data.sourceName || "";
-      state.fileStamp = data.fileStamp || null;
+      state.bridgeBinding = openedSource?.bindingId || null;
+      state.fileStamp = data.fileStamp || openedSource?.stamp || null;
       state.dirty = data.dirty !== false;
       state.exported = data.exported === true;
       state.view = data.view || { type: "board" };
@@ -436,30 +471,11 @@ export async function boot() {
     state.dirty = false;
   }
   state.restoredDraft = restored;
+  state.libraryOnly = !restored;
+  if (state.libraryOnly) persist();
   render();
   if (restored) {
-    if (isNative && state.sourceName) {
-      const restoredName = state.sourceName,
-        restoredId = state.project.id;
-      bridgeCall("projects/open", { fileName: state.sourceName })
-        .then((d) => {
-          if (
-            state.sourceName === restoredName &&
-            state.project.id === restoredId &&
-            JSON.parse(d.text).id === state.project.id
-          ) {
-            state.bridgeBinding = d.bindingId;
-            state.fileStamp = state.fileStamp || d.stamp;
-            if (
-              JSON.stringify(normalizeProject(JSON.parse(d.text))) !==
-              JSON.stringify(state.project)
-            )
-              state.dirty = true;
-            updateTop();
-          }
-        })
-        .catch(() => {});
-    } else restoreHandle();
+    if (!isNative) restoreHandle();
   }
   showProjectLibrary(true);
 }

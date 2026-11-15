@@ -104,10 +104,34 @@ with sync_playwright() as p:
     page.evaluate('window.archiveMode="normal"');page.locator('#archive-refresh').click();expect(page.locator('[data-archive-slot]')).to_have_count(1)
     calls=page.evaluate('window.syncCalls');assert not any(c in ('sync/inspect','sync/execute','sync/restore') for c in calls)
     native_files=page.evaluate('window.libraryFiles');revision=page.evaluate('window.libraryRevision')
+    expect(page.locator('#library-close')).to_be_hidden()
+    assert page.evaluate('localStorage.getItem("xuxian.draft.v1")') is None
+    page.locator('[data-act="modal-close"]').first.click()
+    writes=page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create").length')
+    page.keyboard.press('Control+s');expect(page.locator('#toast')).to_contain_text('请先打开一个项目')
+    assert writes==page.evaluate('window.syncCalls.filter(c=>c==="save"||c==="projects/create").length')
+    assert len(page.evaluate('window.libraryFiles'))==3
     fresh=browser.new_context(viewport={'width':1360,'height':1000})
     fresh.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)});window.installLibraryFixture({json.dumps(native_files,ensure_ascii=False)},{json.dumps(revision)});localStorage.setItem("xuxian.draft.v1",JSON.stringify({json.dumps(stale,ensure_ascii=False)}));')
     restored=fresh.new_page();restored.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'));expect(restored.locator('.library-open')).to_have_count(3)
     assert restored.evaluate('window.XuXian.snapshot().title')!='不应复活的旧草稿'
+    expect(restored.locator('#library-close')).to_be_hidden()
     fresh.close()
+    # Upgrades must ignore a clean, unbound default editor cached by older versions.
+    placeholder={**stale,'dirty':False,'exported':False,'sourceName':'','libraryRevision':revision}
+    placeholder['project']['title']='旧版留下的默认演示编辑器'
+    for cache in [placeholder,{**placeholder,'sourceName':'sample.story.json'}]:
+        reopened=browser.new_context(viewport={'width':1360,'height':1000})
+        reopened.add_init_script(f'({MOCK})({json.dumps(PROJECT,ensure_ascii=False)});window.installLibraryFixture({json.dumps(native_files,ensure_ascii=False)},{json.dumps(revision)});localStorage.setItem("xuxian.draft.v1",JSON.stringify({json.dumps(cache,ensure_ascii=False)}));')
+        tab=reopened.new_page();tab.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'))
+        expect(tab.locator('.library-open')).to_have_count(3)
+        if not cache['sourceName']:expect(tab.locator('#library-close')).to_be_hidden()
+        else:
+            expect(tab.locator('#project-name')).to_have_value(native_files['sample.story.json']['title'])
+            tab.locator('#library-close').click()
+            assert tab.evaluate('window.XuXian.snapshot().title')==native_files['sample.story.json']['title']
+            tab.locator('#save-btn').click();expect(tab.locator('#toast')).to_contain_text('已写回')
+            assert tab.evaluate('window.libraryFiles["sample.story.json"].title')==native_files['sample.story.json']['title']
+        reopened.close()
     assert not errors,errors
     browser.close();print('PASS: global slots, direct load without saving/backups, no legacy collection, cancellation, stale-preview protection, secret isolation and full-library snapshots')

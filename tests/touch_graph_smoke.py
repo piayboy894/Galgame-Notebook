@@ -46,6 +46,11 @@ with sync_playwright() as p:
     x,y=anchor();touch('touchStart',[point(x,y)]);touch('touchEnd',[])
     expect(page.locator('.stage-grid')).to_be_visible();assert positions()==original
     page.locator('#mobile-back').tap();expect(page.locator('#graph-viewport')).to_be_visible()
+    # Native scrolling can start before a small movement reaches our distance threshold.
+    x,y=anchor();touch('touchStart',[point(x,y)])
+    page.locator('#graph-viewport').evaluate('e=>e.scrollTop+=40');page.wait_for_timeout(550)
+    expect(page.locator('.touch-drag-ready')).to_have_count(0);touch('touchEnd',[])
+    expect(page.locator('#graph-viewport')).to_be_visible();assert positions()==original
     # Holding without moving is not a tap and must not accidentally open a chapter.
     x,y=anchor();touch('touchStart',[point(x,y)]);page.wait_for_timeout(550)
     touch('touchEnd',[]);expect(page.locator('#graph-viewport')).to_be_visible();assert positions()==original

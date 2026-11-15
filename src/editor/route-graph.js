@@ -618,6 +618,7 @@ function commitChapterMove(c, pos, originalY, dx, dy) {
 }
 
 function attachTouchCardDrag(el) {
+  const viewport = el.closest("#graph-viewport");
   let session = null;
   function suppressClick() {
     state.dragSuppressUntil = Date.now() + 400;
@@ -632,6 +633,7 @@ function attachTouchCardDrag(el) {
     window.removeEventListener("blur", cancel);
     window.removeEventListener("resize", cancel);
     window.removeEventListener("keydown", escape, true);
+    viewport?.removeEventListener("scroll", cancel);
     document.removeEventListener("visibilitychange", cancel);
     document.removeEventListener("editor:render", cancel);
     el.classList.remove("dragging", "touch-drag-ready");
@@ -744,6 +746,7 @@ function attachTouchCardDrag(el) {
       window.addEventListener("blur", cancel);
       window.addEventListener("resize", cancel);
       window.addEventListener("keydown", escape, true);
+      viewport?.addEventListener("scroll", cancel, { passive: true });
       document.addEventListener("visibilitychange", cancel);
       document.addEventListener("editor:render", cancel);
     },

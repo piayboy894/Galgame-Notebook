@@ -1,3 +1,4 @@
+import { normalizeDialogueSettings } from "./dialogue.js";
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
 import { rowChildren, normalizeProperties, LOCATION_FIELDS } from "./scenes.js";
 
@@ -97,6 +98,7 @@ export function newProject(title = "未命名剧本") {
     title,
     createdAt: now(),
     updatedAt: now(),
+    settings: normalizeDialogueSettings(),
     routes: [],
     characters: [],
     locations: [],
@@ -142,6 +144,7 @@ export function normalizeProject(raw) {
     title: str(raw.title, "未命名剧本"),
     createdAt: str(raw.createdAt, now()),
     updatedAt: str(raw.updatedAt, now()),
+    settings: normalizeDialogueSettings(raw.settings),
     routes: [],
     characters: [],
     locations: [],

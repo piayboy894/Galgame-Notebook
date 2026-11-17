@@ -746,6 +746,23 @@
   background: transparent;
   resize: none;
 }
+.phone-ui .script-row > .dialogue-field,
+.phone-ui .branch-script-row > .dialogue-field {
+  display: block;
+  grid-column: 1/-1;
+  grid-row: 2;
+  width: calc(100% - 24px);
+  margin: 0 12px 6px;
+}
+.phone-ui .dialogue-field textarea {
+  font-size: 16px;
+  line-height: 1.8;
+  padding: 4px 2px;
+  min-height: 48px;
+  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .phone-ui .script-row.effect-row:before,
 .phone-ui .branch-effect:before,
 .phone-ui .script-row.note-row:before,

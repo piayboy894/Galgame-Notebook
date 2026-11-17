@@ -1,3 +1,4 @@
+import { dialogueWrapChanges } from "../domain/dialogue.js";
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import {
   nativeCommand,
@@ -7,7 +8,14 @@ import {
 } from "../platform/runtime";
 import { normalizeProject, newProject } from "../domain/project.js";
 import { clone, uid, now } from "../domain/primitives.js";
-import { persist, render, ruleTitle, toast, updateTop } from "./session.js";
+import {
+  mutate,
+  persist,
+  render,
+  ruleTitle,
+  toast,
+  updateTop,
+} from "./session.js";
 import {
   $,
   $$,
@@ -673,7 +681,12 @@ export async function saveSource(asNew = false, force = false) {
     toast("请先打开一个项目", true);
     return false;
   }
-  if (state.saving) return false;
+  if (state.saving || state.composition) return false;
+  const changes = dialogueWrapChanges(state.project);
+  if (changes.length)
+    mutate(() => {
+      for (const { row, text } of changes) row.text = text;
+    });
   state.saving = true;
   $("#save-btn").disabled = true;
   try {

@@ -55,6 +55,9 @@ class AndroidPlatformTest {
       assertEquals("true",js(scenario,"window.__XUXIAN_ANDROID__===true"))
       scenario.onActivity { activity ->
         assertEquals("叙线",activity.title.toString())
+        val icon=activity.getDrawable(io.github.piayboy894.xuxian.R.mipmap.ic_launcher) as android.graphics.drawable.AdaptiveIconDrawable
+        val background=icon.background as android.graphics.drawable.ColorDrawable
+        assertEquals(android.graphics.Color.parseColor("#243239"),background.color)
         val groups=mutableListOf<KeyboardShortcutGroup>()
         activity.onProvideKeyboardShortcuts(groups,null,0)
         assertTrue(groups.any{it.label.toString()=="叙线" && it.items.any{key->key.keycode==KeyEvent.KEYCODE_S}})

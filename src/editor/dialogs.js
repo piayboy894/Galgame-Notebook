@@ -1,3 +1,4 @@
+import { projectSettingsDialog } from "./dialogue-settings.js";
 import { findRow } from "../domain/scenes.js";
 import { touchActions } from "./mobile-presentation.js";
 import { showTouchMenu } from "./touch-menu.js";
@@ -274,6 +275,7 @@ export function topMenu(anchor) {
             : []),
         ]
       : []),
+    { label: "项目设置", icon: "settings", click: projectSettingsDialog },
     { label: "地点预设", icon: "map", click: () => go("locations") },
     {
       label: "新建剧本",

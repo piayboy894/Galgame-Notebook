@@ -1,3 +1,8 @@
+import {
+  projectSettingsDialog,
+  prepareDialogueInput,
+  refreshDialogueMeter,
+} from "./dialogue-settings.js";
 import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
 import { findRow } from "../domain/scenes.js";
@@ -117,6 +122,9 @@ function dispatch(action, el) {
       break;
     case "board":
       go("board");
+      break;
+    case "project-settings":
+      projectSettingsDialog();
       break;
     case "locations":
       go("locations");
@@ -469,6 +477,8 @@ document.addEventListener("input", (ev) => {
       );
     return;
   }
+  if (!state.composition && !ev.isComposing) prepareDialogueInput(t);
+  refreshDialogueMeter(t);
   if (t.dataset.branchField && t.tagName !== "SELECT") {
     const id = t.closest("[data-branch-row]")?.dataset.branchRow,
       loc = rowLocation(id);
@@ -578,7 +588,17 @@ document.addEventListener("paste", (ev) => {
 
 document.addEventListener("compositionstart", () => (state.composition = true));
 
-document.addEventListener("compositionend", () => (state.composition = false));
+document.addEventListener("compositionend", (event) => {
+  state.composition = false;
+  setTimeout(() => {
+    if (
+      event.target.isConnected &&
+      !state.composition &&
+      prepareDialogueInput(event.target)
+    )
+      event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  }, 0);
+});
 
 document.addEventListener("keydown", (ev) => {
   if (state.syncBusy) {

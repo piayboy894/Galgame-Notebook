@@ -4,7 +4,6 @@ export function normalizeDialogueSettings(value) {
   return {
     dialogueLineLength:
       Number.isInteger(n) && n >= 0 && n <= MAX_DIALOGUE_LINE_LENGTH ? n : 0,
-    dialogueOverflow: value?.dialogueOverflow === "warn" ? "warn" : "wrap",
   };
 }
 const segmenter =
@@ -51,8 +50,7 @@ export function wrapDialogue(text, limit) {
 }
 export function dialogueWrapChanges(project) {
   const settings = normalizeDialogueSettings(project.settings);
-  if (!settings.dialogueLineLength || settings.dialogueOverflow !== "wrap")
-    return [];
+  if (!settings.dialogueLineLength) return [];
   const changes = [];
   function visit(rows) {
     for (const row of rows || []) {
@@ -70,4 +68,11 @@ export function dialogueWrapChanges(project) {
       for (const item of stage.objects || []) visit(item.rows);
     }
   return changes;
+}
+
+export function dialogueMarkdown(text, limit, indent = "") {
+  return wrapDialogue(text, limit)
+    .split(/\r\n?|\n/)
+    .map((line) => indent + line)
+    .join("  \n");
 }

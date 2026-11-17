@@ -1,3 +1,4 @@
+import { wrapDialogue, normalizeDialogueSettings } from "../domain/dialogue.js";
 import { projectSettingsDialog } from "./dialogue-settings.js";
 import { findRow } from "../domain/scenes.js";
 import { touchActions } from "./mobile-presentation.js";
@@ -1196,7 +1197,7 @@ export function previewRow(r) {
     return `<div class="preview-effect">${esc(r.text)}</div>`;
   if (r.type === "branch")
     return `<div class="preview-dialogue"><strong>选项</strong><p>${esc(r.text)}</p><div class="read-local-options">${r.options.map((o, i) => `<div class="read-local-option"><strong>${String.fromCharCode(65 + i)} · ${esc(o.text)}</strong>${(o.rows || []).map(previewRow).join("")}<small>${o.mode === "jump" ? "↳ 跳转至 " + esc(C(o.chapterId)?.title || "未设置章节") + (o.stageId ? " / " + esc(S(o.stageId)?.stage.title || "未设置阶段") : "") : "↳ 返回下一行"}</small></div>`).join("")}</div></div>`;
-  return `<div class="preview-dialogue"><strong>${esc(P(r.speakerId)?.name || "旁白")}</strong>${r.expression || r.action ? `<small> &nbsp; ${esc([r.expression, r.action].filter(Boolean).join(" · "))}</small>` : ""}<p>${esc(r.text)}</p></div>`;
+  return `<div class="preview-dialogue"><strong>${esc(P(r.speakerId)?.name || "旁白")}</strong>${r.expression || r.action ? `<small> &nbsp; ${esc([r.expression, r.action].filter(Boolean).join(" · "))}</small>` : ""}<p>${esc(wrapDialogue(r.text, normalizeDialogueSettings(state.project.settings).dialogueLineLength))}</p></div>`;
 }
 
 export function readStage() {

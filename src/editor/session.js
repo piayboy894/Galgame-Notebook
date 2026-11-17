@@ -1,3 +1,4 @@
+import { dialogueWrapChanges } from "../domain/dialogue.js";
 import { findRow } from "../domain/scenes.js";
 import { renderMobileSettings } from "./mobile-presentation.js";
 import { renderLocations } from "./scenes.js";
@@ -118,6 +119,9 @@ export function changed(renderNow = false) {
 export function mutate(fn, renderNow = true) {
   pushHistory();
   fn();
+  if (!state.composition)
+    for (const { row, text } of dialogueWrapChanges(state.project))
+      row.text = text;
   changed(renderNow);
 }
 

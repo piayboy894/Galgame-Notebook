@@ -1,4 +1,4 @@
-import { normalizeDialogueSettings } from "./dialogue.js";
+import { dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
 import { rowChildren, normalizeProperties, LOCATION_FIELDS } from "./scenes.js";
 
@@ -297,5 +297,6 @@ export function normalizeProject(raw) {
     };
   });
   if (p.chapters.length > 3000) throw Error("章节数量超过安全上限（3000）");
+  for (const { row, text } of dialogueWrapChanges(p)) row.text = text;
   return p;
 }

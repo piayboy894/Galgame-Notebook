@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dialogueMarkdown,
   dialogueWrapChanges,
   longestDialogueLine,
   normalizeDialogueSettings,
@@ -26,9 +27,9 @@ describe("project dialogue line limits", () => {
       b: any = newProject();
     a.settings = { dialogueLineLength: 20, dialogueOverflow: "warn" };
     expect(b.settings.dialogueLineLength).toBe(0);
-    expect(normalizeProject(JSON.parse(JSON.stringify(a))).settings).toEqual(
-      a.settings,
-    );
+    expect(normalizeProject(JSON.parse(JSON.stringify(a))).settings).toEqual({
+      dialogueLineLength: 20,
+    });
     delete b.settings;
     expect(normalizeProject(b).settings.dialogueLineLength).toBe(0);
     expect(
@@ -65,7 +66,8 @@ describe("project dialogue line limits", () => {
       "一二\n三",
       "四五\n六",
     ]);
-    p.settings.dialogueOverflow = "warn";
-    expect(dialogueWrapChanges(p)).toEqual([]);
+    expect(dialogueMarkdown("甲乙丙丁戊", 2, "    ")).toBe(
+      "    甲乙  \n    丙丁  \n    戊",
+    );
   });
 });

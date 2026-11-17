@@ -1,4 +1,8 @@
-import { dialogueWrapChanges } from "../domain/dialogue.js";
+import {
+  dialogueMarkdown,
+  normalizeDialogueSettings,
+  dialogueWrapChanges,
+} from "../domain/dialogue.js";
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import {
   nativeCommand,
@@ -870,8 +874,13 @@ export function appendMarkdownRows(out, rows, indent = "") {
           ? " 〔" +
             [row.expression, row.action].filter(Boolean).join(" · ") +
             "〕"
-          : ""),
-      indent + row.text,
+          : "") +
+        "  ",
+      dialogueMarkdown(
+        row.text,
+        normalizeDialogueSettings(state.project.settings).dialogueLineLength,
+        indent,
+      ),
       "",
     );
   }

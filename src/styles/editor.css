@@ -3038,15 +3038,3 @@ textarea {
 .dialogue-meter[hidden] {
   display: none;
 }
-.dialogue-meter.over-limit {
-  color: #a83a32;
-}
-.dialogue-cell[aria-invalid="true"] {
-  box-shadow: inset 0 0 0 1px #b04f45;
-}
-.dialogue-existing {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-}

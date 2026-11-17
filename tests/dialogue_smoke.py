@@ -12,29 +12,31 @@ with sync_playwright() as p:
     browser=p.chromium.launch(executable_path=executable,headless=True,args=['--no-sandbox'])
     def start(mobile=False):
         ctx=browser.new_context(viewport={'width':390 if mobile else 1360,'height':900},has_touch=mobile,is_mobile=mobile)
-        script=f'({BASE})({json.dumps(PROJECT,ensure_ascii=False)});'
+        script=f'({BASE})({json.dumps(PROJECT,ensure_ascii=False)});const originalInvoke=window.__TAURI_INTERNALS__.invoke;window.__TAURI_INTERNALS__.invoke=async(command,args)=>{{if(command==="export_file"){{window.exportedMarkdown=args.text;return{{saved:true}};}}return originalInvoke(command,args);}};'
         if mobile:script+=f'({MOBILE})({json.dumps({"initial":PROJECT,"draft":None},ensure_ascii=False)});'
         ctx.add_init_script(script);page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto(os.environ.get('APP_URL','http://127.0.0.1:1420'))
         page.locator('.library-open').click()
         return ctx,page,errors
     def stage(page):
         page.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click();page.locator('[data-act="open-stage"][data-id="stage_a1_1"]').click()
-    def settings(page,n,mode,existing=False,mobile=False):
+    def settings(page,n,mobile=False):
         if mobile:page.locator('[data-mobile-nav="settings"]').click();page.locator('[data-act="project-settings"]').click()
         else:page.locator('#menu-btn').click();page.get_by_role('menuitem',name='项目设置',exact=True).click()
-        page.locator('#dialogue-line-limit').fill(str(n));page.locator('#dialogue-overflow').select_option(mode)
-        if mode=='wrap':page.locator('#dialogue-format-existing').set_checked(existing)
+        page.locator('#dialogue-line-limit').fill(str(n))
         page.locator('#dialogue-setting-save').click()
-    ctx,page,errors=start();stage(page);settings(page,3,'warn')
+    ctx,page,errors=start();stage(page);settings(page,3)
     line=page.locator('[data-row="line_1"] textarea.dialogue-cell');line.fill('你好👨‍👩‍👧‍👦é!😊世界')
-    expect(line).to_have_attribute('aria-invalid','true');expect(page.locator('#dialogue-meter-line_1')).to_have_text('最长一行 8 / 3')
-    assert page.evaluate('window.XuXian.snapshot().chapters[0].stages[0].rows[0].text')=='你好👨‍👩‍👧‍👦é!😊世界'
-    settings(page,3,'wrap',True);expect(line).to_have_value('你好👨‍👩‍👧‍👦\né!😊\n世界')
+    expect(line).to_have_value('你好👨‍👩‍👧‍👦\né!😊\n世界')
+    expect(line).not_to_have_attribute('aria-invalid','true')
+    expect(page.locator('.over-limit')).to_have_count(0)
     line.evaluate('e=>{e.dispatchEvent(new CompositionEvent("compositionstart",{bubbles:true}));e.value="中文输入法候选";e.dispatchEvent(new InputEvent("input",{bubbles:true,isComposing:true}));}')
     expect(line).to_have_value('中文输入法候选')
     line.dispatch_event('compositionend');expect(line).to_have_value('中文输\n入法候\n选')
+    page.locator('[data-act="read-stage"]').click();expect(page.locator('.readable-preview')).to_contain_text('中文输\n入法候\n选');page.locator('[data-act="modal-close"]').first.click()
+    page.locator('#menu-btn').click();page.get_by_role('menuitem',name='导出可读剧本',exact=True).click();page.wait_for_function('Boolean(window.exportedMarkdown)')
+    assert '中文输  \n入法候  \n选' in page.evaluate('window.exportedMarkdown')
     page.keyboard.press('Control+s');expect(page.locator('#toast')).to_contain_text('已写回')
-    assert page.evaluate('window.libraryFiles["sample.story.json"].settings')=={'dialogueLineLength':3,'dialogueOverflow':'wrap'}
+    assert page.evaluate('window.libraryFiles["sample.story.json"].settings')=={'dialogueLineLength':3}
     page.locator('#open-btn').click();page.locator('#library-new-card').click();page.locator('#library-new-name').fill('独立项目 B');page.locator('#library-new-submit').click()
     assert page.evaluate('window.XuXian.snapshot().settings.dialogueLineLength')==0
     page.locator('#open-btn').click();page.locator('[data-project-file="sample.story.json"] .library-open').click();stage(page)
@@ -43,9 +45,9 @@ with sync_playwright() as p:
     page.locator('#archive-new').click();page.locator('#archive-name').fill('独立对白设置');page.locator('#archive-save').click();expect(page.locator('#archive-message')).to_contain_text('1 个云存档')
     assert sorted(page.evaluate('Object.values(window.archives)[0].projects.map(v=>v.project.settings.dialogueLineLength)'))==[0,3]
     assert not errors,errors;ctx.close()
-    ctx,page,errors=start(True);settings(page,5,'warn',mobile=True)
+    ctx,page,errors=start(True);settings(page,5,mobile=True)
     page.locator('[data-mobile-nav="outline"]').click();stage(page)
-    line=page.locator('[data-row="line_1"] textarea.dialogue-cell');line.fill('手机六个字呀');expect(line).to_have_attribute('aria-invalid','true')
+    line=page.locator('[data-row="line_1"] textarea.dialogue-cell');line.fill('手机六个字呀');expect(line).to_have_value('手机六个字\n呀');expect(line).not_to_have_attribute('aria-invalid','true')
     rect=line.bounding_box();assert rect['x']>=0 and rect['x']+rect['width']<=390
     page.screenshot(path=str(ROOT/'work/test-results/dialogue-limit-phone.png'),full_page=True)
     assert not errors,errors;browser.close()

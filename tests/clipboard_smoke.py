@@ -17,7 +17,8 @@ with sync_playwright() as playwright:
         '/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None
     )
     browser = playwright.chromium.launch(executable_path=executable, args=['--no-sandbox'])
-    page = browser.new_page(viewport={'width': 1360, 'height': 900})
+    context = browser.new_context(viewport={'width': 1360, 'height': 900})
+    page = context.new_page()
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
     page.goto(os.environ.get('APP_URL', 'http://127.0.0.1:1420'))
@@ -59,8 +60,6 @@ with sync_playwright() as playwright:
     paste()
     assert content(rows()[3]) == content(original[1])
     page.keyboard.press('Control+z')
-    # Consume the simulated host listener before testing native text pastes.
-    page.evaluate("() => document.dispatchEvent(new ClipboardEvent('paste', {bubbles:true}))")
     caret('line_3')
     paste()
     paste()
@@ -87,6 +86,22 @@ with sync_playwright() as playwright:
     paste()
     assert len(rows()) == len(result)
     expect(page.locator('#toast')).to_contain_text('请先复制脚本行')
+
+    # A different app can replace the OS clipboard without a copy event here.
+    gutter('line_2').click()
+    copy()
+    other = context.new_page()
+    other.set_content('<textarea>外部的普通文字</textarea>')
+    other.bring_to_front()
+    other.locator('textarea').focus()
+    other.keyboard.press('Control+a')
+    other.keyboard.press('Control+c')
+    page.bring_to_front()
+    gutter('line_3').click()
+    paste()
+    assert len(rows()) == len(result)
+    expect(page.locator('#toast')).to_contain_text('请先复制脚本行')
+    other.close()
 
     gutter('line_1').click()
     gutter('line_2').click(modifiers=['Shift'])

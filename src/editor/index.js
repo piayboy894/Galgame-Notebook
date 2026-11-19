@@ -81,6 +81,8 @@ import {
 import {
   addRow,
   branchRowMenu,
+  clearPasteGesture,
+  finishRowPasteShortcut,
   handleRowClipboardShortcut,
   copyRowsButton,
   deleteSelectedRows,
@@ -492,6 +494,7 @@ document.addEventListener("contextmenu", (event) => {
 });
 
 document.addEventListener("pointerdown", (ev) => {
+  clearPasteGesture();
   if (
     !ev.target.closest(".menu") &&
     !ev.target.closest("#menu-btn,#mobile-more")
@@ -606,6 +609,7 @@ document.addEventListener("change", (ev) => {
 document.addEventListener("copy", handleRowCopy);
 document.addEventListener("cut", forgetCopiedRows);
 document.addEventListener("paste", handleRowPaste);
+document.addEventListener("keyup", finishRowPasteShortcut);
 
 document.addEventListener("compositionstart", () => (state.composition = true));
 
@@ -622,6 +626,7 @@ document.addEventListener("compositionend", (event) => {
 });
 
 document.addEventListener("keydown", (ev) => {
+  clearPasteGesture();
   if (state.syncBusy) {
     ev.preventDefault();
     return;

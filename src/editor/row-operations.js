@@ -188,6 +188,9 @@ function collectRows(ids) {
 // WebViews that never dispatch a paste event for a focused button. After
 // leaving the window, require a typed system payload to establish ownership.
 let ownsSystemRows = false;
+let localOnlyRows = null;
+let pendingPaste = null;
+let pastedOnKeyUp = false;
 
 function writeRowClipboard(payload, event) {
   const data = event.clipboardData;
@@ -239,7 +242,10 @@ function copyRows(ids, event) {
       document.removeEventListener("copy", onCopy, true);
     }
   }
-  if (!written) navigator.clipboard?.writeText?.(payload.text).catch(() => {});
+  localOnlyRows = written ? null : payload;
+  if (!written) {
+    navigator.clipboard?.writeText?.(payload.text).catch(() => {});
+  }
   toast("已复制 " + payload.rows.length + " 行");
 }
 
@@ -284,9 +290,32 @@ export function handleRowClipboardShortcut(event, key) {
       copyRows(ids);
     } else forgetCopiedRows();
   } else if (target && ownsSystemRows && state.rowClipboard) {
-    event.preventDefault();
-    pasteRows(state.rowClipboard, target.ids);
+    if (localOnlyRows) {
+      // Neither the existence nor the contents of the system clipboard
+      // prove what an editor-only copy contained.
+      event.preventDefault();
+      pasteRows(localOnlyRows, target.ids);
+    } else {
+      // Let the trusted native paste report the current clipboard first.
+      // Some WebViews run no paste command at all on a focused row number.
+      pendingPaste = { element: event.target, rows: currentRows(), ids: new Set(target.ids) };
+    }
   }
+}
+
+export function clearPasteGesture() {
+  pendingPaste = null;
+  pastedOnKeyUp = false;
+}
+
+export function finishRowPasteShortcut(event) {
+  if (event.key.toLowerCase() !== "v" || !pendingPaste) return;
+  const pending = pendingPaste;
+  pendingPaste = null;
+  if (document.activeElement !== pending.element || !clipboardTarget(pending.element) ||
+      pending.rows !== currentRows() || !ownsSystemRows || !state.rowClipboard) return;
+  pastedOnKeyUp = true;
+  pasteRows(state.rowClipboard, pending.ids);
 }
 
 export function handleRowCopy(event) {
@@ -296,6 +325,8 @@ export function handleRowCopy(event) {
 }
 
 export function releaseRowClipboard() {
+  clearPasteGesture();
+  localOnlyRows = null;
   ownsSystemRows = false;
 }
 
@@ -305,6 +336,13 @@ export function forgetCopiedRows() {
 }
 
 export function handleRowPaste(event) {
+  pendingPaste = null;
+  if (pastedOnKeyUp) {
+    // A late native event belongs to the gesture already handled on keyup.
+    pastedOnKeyUp = false;
+    event.preventDefault();
+    return;
+  }
   const target = clipboardTarget(event.target);
   if (!target) return;
   const data = event.clipboardData;
@@ -328,6 +366,7 @@ export function handleRowPaste(event) {
   event.preventDefault();
   if (pasteRows(bundle, target.ids)) {
     state.rowClipboard = bundle;
+    localOnlyRows = null;
     ownsSystemRows = true;
   }
 }

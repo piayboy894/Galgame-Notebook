@@ -184,22 +184,32 @@ function collectRows(ids) {
   };
 }
 
-// Some WebViews only expose plain text. A normal text copy supersedes that
-// association, while the explicit “粘贴行” command can still use the last rows.
-let plainTextRepresentsRows = false;
-let localOnlyRows = null;
+// A shortcut within the editor can use the rows it just copied even on
+// WebViews that never dispatch a paste event for a focused button. After
+// leaving the window, require a typed system payload to establish ownership.
+let ownsSystemRows = false;
 
 function writeRowClipboard(payload, event) {
   const data = event.clipboardData;
   if (!data) return false;
   try {
     data.setData("text/plain", payload.text);
-    event.preventDefault();
-    data.setData(ROW_MIME, JSON.stringify(payload));
   } catch {
-    // Plain text may be the only writable format on this platform.
+    return false;
   }
-  return event.defaultPrevented;
+  event.preventDefault();
+  const serialized = JSON.stringify(payload);
+  // HTML survives clipboard bridges which strip private MIME types.
+  const html = '<pre data-xuxian-rows="' + encodeURIComponent(serialized) +
+    '">' + esc(payload.text) + '</pre>';
+  for (const [type, value] of [[ROW_MIME, serialized], ["text/html", html]]) {
+    try {
+      data.setData(type, value);
+    } catch {
+      // Each clipboard format is optional and independent of the others.
+    }
+  }
+  return true;
 }
 
 function copyRows(ids, event) {
@@ -210,7 +220,7 @@ function copyRows(ids, event) {
     text: rowText(bundle.rows, bundle.characters, bundle.locations),
   };
   state.rowClipboard = payload;
-  plainTextRepresentsRows = true;
+  ownsSystemRows = true;
   let written = false;
   if (event) written = writeRowClipboard(payload, event);
   else {
@@ -229,14 +239,7 @@ function copyRows(ids, event) {
       document.removeEventListener("copy", onCopy, true);
     }
   }
-  localOnlyRows = written ? null : payload;
-  if (!written) {
-    navigator.clipboard?.writeText?.(payload.text)
-      .then(() => {
-        if (localOnlyRows === payload) localOnlyRows = null;
-      })
-      .catch(() => {});
-  }
+  if (!written) navigator.clipboard?.writeText?.(payload.text).catch(() => {});
   toast("已复制 " + payload.rows.length + " 行");
 }
 
@@ -262,60 +265,75 @@ function clipboardTarget(target) {
   const ids = id && (editable || !state.selectedRowIds.has(id))
     ? new Set([id])
     : state.selectedRowIds;
-  return { ids, editable };
+  return { ids, editable, id };
+}
+
+function copySource(target) {
+  if (!target) return null;
+  // Copying a row requires a row selection. A caret alone is ordinary editing.
+  if (target.editable && !state.selectedRowIds.has(target.id)) return null;
+  return state.selectedRowIds.size ? state.selectedRowIds : null;
 }
 
 export function handleRowClipboardShortcut(event, key) {
-  if (key === "v" && !localOnlyRows) return;
   const target = clipboardTarget(event.target);
-  if (!target) return;
-  if (key === "v") {
+  if (key === "c") {
+    const ids = copySource(target);
+    if (ids) {
+      event.preventDefault();
+      copyRows(ids);
+    } else forgetCopiedRows();
+  } else if (target && ownsSystemRows && state.rowClipboard) {
     event.preventDefault();
-    pasteRows(localOnlyRows, target.ids);
-    return;
+    pasteRows(state.rowClipboard, target.ids);
   }
-  if (!target.ids.size) return;
-  event.preventDefault();
-  copyRows(target.ids);
 }
 
 export function handleRowCopy(event) {
-  const target = clipboardTarget(event.target);
-  if (target?.ids.size) copyRows(target.ids, event);
-  else forgetRowTextMatch();
+  const ids = copySource(clipboardTarget(event.target));
+  if (ids) copyRows(ids, event);
+  else forgetCopiedRows();
 }
 
-export function forgetRowTextMatch() {
-  localOnlyRows = null;
-  plainTextRepresentsRows = false;
+export function releaseRowClipboard() {
+  ownsSystemRows = false;
+}
+
+export function forgetCopiedRows() {
+  releaseRowClipboard();
+  state.rowClipboard = null;
 }
 
 export function handleRowPaste(event) {
   const target = clipboardTarget(event.target);
   if (!target) return;
   const data = event.clipboardData;
-  const text = (data?.getData("text/plain") || "").replace(/\r\n?/g, "\n");
-  let bundle = parseRows(data?.getData(ROW_MIME) || "");
-  if (!bundle && plainTextRepresentsRows) {
-    const cached = state.rowClipboard;
-    if (!data?.types.length || text === cached.text.replace(/\r\n?/g, "\n"))
-      bundle = cached;
-    else forgetRowTextMatch();
-  }
+  let bundle = parseRows(data?.getData(ROW_MIME));
   if (!bundle) {
-    if (target.editable) return; // Native editing keeps the caret, selection and IME.
-    if (!text) return toast("剪贴板中没有可粘贴的脚本行或文字");
-    const anchor = selectedRoots(currentRows() || [], target.ids).at(-1)?.row;
-    const row = line(["effect", "note"].includes(anchor?.type) ? anchor.type : "dialogue");
-    row.text = text;
-    if (anchor?.type === "dialogue") row.speakerId = anchor.speakerId;
-    bundle = { rows: [row], projectId: state.project.id };
+    const marker = /<pre\s+data-xuxian-rows="([^"]+)"/i.exec(data?.getData("text/html") || "");
+    if (marker) {
+      try {
+        bundle = parseRows(decodeURIComponent(marker[1]));
+      } catch {
+        // Other applications can place arbitrary HTML on the system clipboard.
+      }
+    }
+  }
+  if (!data?.types.length && ownsSystemRows) bundle = state.rowClipboard;
+  if (!bundle) {
+    forgetCopiedRows();
+    if (!target.editable) toast("请先复制脚本行，普通文字可粘贴到输入框");
+    return;
   }
   event.preventDefault();
-  pasteRows(bundle, target.ids);
+  if (pasteRows(bundle, target.ids)) {
+    state.rowClipboard = bundle;
+    ownsSystemRows = true;
+  }
 }
 
-export function parseRows(raw) {
+function parseRows(raw) {
+  if (!raw) return null;
   try {
     const data = JSON.parse(raw);
     return ["xuxian.rows.v1", "xuxian.rows.v2"].includes(data?.format) &&

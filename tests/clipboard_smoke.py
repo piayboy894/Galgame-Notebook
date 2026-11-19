@@ -49,9 +49,18 @@ with sync_playwright() as playwright:
 
     stage('stage_a1_1')
     original = rows()
-    gutter('line_1').click()
-    caret('line_2')
+    gutter('line_2').click()
     copy()
+    # WebViews can omit the system paste event on row numbers.
+    page.evaluate("""() => window.addEventListener('paste', e => {
+        e.preventDefault(); e.stopImmediatePropagation();
+    }, {capture:true, once:true})""")
+    gutter('line_3').click()
+    paste()
+    assert content(rows()[3]) == content(original[1])
+    page.keyboard.press('Control+z')
+    # Consume the simulated host listener before testing native text pastes.
+    page.evaluate("() => document.dispatchEvent(new ClipboardEvent('paste', {bubbles:true}))")
     caret('line_3')
     paste()
     paste()
@@ -76,8 +85,8 @@ with sync_playwright() as playwright:
     assert rows()[2]['text'] == original[2]['text'][:1] + fragment + original[2]['text'][3:]
     gutter('line_3').click()
     paste()
-    assert rows()[3]['text'] == fragment
-    assert rows()[3]['speakerId'] == original[2]['speakerId']
+    assert len(rows()) == len(result)
+    expect(page.locator('#toast')).to_contain_text('请先复制脚本行')
 
     gutter('line_1').click()
     gutter('line_2').click(modifiers=['Shift'])
@@ -99,7 +108,7 @@ with sync_playwright() as playwright:
     stage('stage_a1_investigation')
     page.locator('[data-act="inspect-select"][data-id="object_letter"]').click()
     field('line_inv_effect').fill('第一行描述\n第二行描述')
-    caret('line_inv_effect')
+    gutter('line_inv_effect').click()
     copy()
     page.locator('[data-act="inspect-select"][data-id="object_door"]').click()
     door = page.locator('[data-inspect-item="object_door"]')
@@ -116,26 +125,42 @@ with sync_playwright() as playwright:
     assert rule_rows[1]['type'] == 'effect' and rule_rows[1]['text'] == '第一行描述\n第二行描述'
     assert len(cards()[0]['rows']) == 2 and len(cards()[1]['rows']) == 2
 
-    # WebViews may expose only CRLF plain text or reject both system clipboard writes.
-    data = '〔演出〕第一行描述\r\n第二行描述'
+    # Returning to the editor requires a typed OS payload. Both a native
+    # clipboard round trip and an HTML-only clipboard bridge retain the row.
     gutter(rule_rows[1]['id']).click()
-    page.evaluate("""text => {
-        const d = new DataTransfer(); d.setData('text/plain', text);
+    page.evaluate("""() => {
+        window.dispatchEvent(new Event('blur'));
+        window.addEventListener('paste', e => window.rowHTML = e.clipboardData.getData('text/html'),
+            {capture:true, once:true});
+    }""")
+    paste()
+    assert len(cards()[1]['interactions'][0]['rows']) == 3
+    assert content(cards()[1]['interactions'][0]['rows'][2]) == content(rule_rows[1])
+    page.evaluate("""() => {
+        const d = new DataTransfer();
+        d.setData('text/html', window.rowHTML);
         document.activeElement.dispatchEvent(new ClipboardEvent('paste',
             {bubbles:true, cancelable:true, clipboardData:d}));
-    }""", data)
-    assert content(cards()[1]['interactions'][0]['rows'][2]) == content(rule_rows[1])
-    # Some hosts clear their clipboard while the project stays open.
-    page.evaluate("""() => document.activeElement.dispatchEvent(new ClipboardEvent('paste',
-        {bubbles:true, cancelable:true, clipboardData:new DataTransfer()}))""")
-    assert content(cards()[1]['interactions'][0]['rows'][3]) == content(rule_rows[1])
+    }""")
+    assert len(cards()[1]['interactions'][0]['rows']) == 4
+    # Even an identical plain-text representation is never imported as a row.
+    page.evaluate("""() => {
+        const d = new DataTransfer();
+        d.setData('text/plain', '〔演出〕第一行描述\\r\\n第二行描述');
+        document.activeElement.dispatchEvent(new ClipboardEvent('paste',
+            {bubbles:true, cancelable:true, clipboardData:d}));
+    }""")
+    assert len(cards()[1]['interactions'][0]['rows']) == 4
+    expect(page.locator('#toast')).to_contain_text('请先复制脚本行')
+
+    # The local shortcut still works when both system write APIs are denied.
     page.evaluate("""() => {
         document.execCommand = () => false;
         Object.defineProperty(navigator, 'clipboard', {value: {
             writeText: () => Promise.reject(new Error('clipboard unavailable'))
         }});
     }""")
-    caret('line_inv_effect')
+    gutter('line_inv_effect').click()
     copy()
     stage('stage_a1_2')
     caret('line_7')

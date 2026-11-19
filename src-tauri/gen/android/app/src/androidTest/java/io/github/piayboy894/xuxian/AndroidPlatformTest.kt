@@ -94,7 +94,8 @@ class AndroidPlatformTest {
       // Physical Ctrl+C/V must also work when the destination is a row number.
       js(scenario,"""(() => {
         const field = document.querySelector('textarea.dialogue-cell');
-        field.focus(); field.setSelectionRange(0, 0);
+        const number = field.closest('.script-row').querySelector('.row-select');
+        number.click(); number.focus();
         window.clipboardSource = field.value;
         window.initialRows = document.querySelectorAll('.script-rows > .script-row').length;
       })()""")

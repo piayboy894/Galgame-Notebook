@@ -85,11 +85,12 @@ import {
   copyRowsButton,
   deleteSelectedRows,
   focusRow,
-  forgetRowTextMatch,
+  forgetCopiedRows,
   handleRowCopy,
   handleRowPaste,
   localOptionMenu,
   pasteRowsButton,
+  releaseRowClipboard,
   rowMenu,
   rowsAreEditable,
   scriptMenu,
@@ -603,7 +604,7 @@ document.addEventListener("change", (ev) => {
 });
 
 document.addEventListener("copy", handleRowCopy);
-document.addEventListener("cut", forgetRowTextMatch);
+document.addEventListener("cut", forgetCopiedRows);
 document.addEventListener("paste", handleRowPaste);
 
 document.addEventListener("compositionstart", () => (state.composition = true));
@@ -864,7 +865,11 @@ document.addEventListener("drop", (e) => {
   }
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) releaseRowClipboard();
+});
 window.addEventListener("blur", () => {
+  releaseRowClipboard();
   clearFileDrop();
 });
 

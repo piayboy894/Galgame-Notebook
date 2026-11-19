@@ -33,9 +33,13 @@ with sync_playwright() as p:
     page.locator('#replace-discard').click()
     page.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click()
     page.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()
+    viewport = page.locator('.investigation-viewport')
+    assert viewport.bounding_box()['y'] <= 102 and viewport.bounding_box()['height'] >= 795
+    expect(page.get_by_role('combobox', name='切换阶段')).to_have_value('stage_a1_investigation')
     expect(page.locator('.investigation-card')).to_have_count(2)
     expect(page.locator('.investigation-writing')).to_have_count(0)
     page.locator('.inspect-open').nth(1).click()
+    expect(page.locator('[data-row="line_demo_door"]')).to_have_css('padding-top', '12px')
     expect(page.locator('.investigation-card.is-selected .investigation-card-name strong')).to_have_text('房门')
     page.locator('.investigation-card.is-selected .investigation-writing [data-row-field="text"]').first.fill('调查阶段编辑仍然可用')
     page.locator('.inspect-open').first.click()
@@ -53,7 +57,6 @@ with sync_playwright() as p:
     page.get_by_role('button', name='收起全部脚本').click()
     expect(page.locator('.investigation-writing')).to_have_count(0)
     investigation = 'window.XuXian.snapshot().chapters[0].stages.find(s => s.id === "stage_a1_investigation")'
-    viewport = page.locator('.investigation-viewport')
     world = page.locator('.investigation-world')
     fit = page.get_by_role('button', name='适应全部卡片')
     fit.click()

@@ -1,5 +1,5 @@
 .investigation-canvas {
-  --investigation-toolbar-height: 48px;
+  --investigation-toolbar-height: 44px;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -100,7 +100,7 @@
 .android .investigation-stage-picker {
   min-height: 44px;
 }
-.android .app:has(.investigation-canvas) > .topbar {
+.app:has(.investigation-canvas) > .topbar {
   height: 56px;
 }
 .android:not(.phone-ui) .app:has(.investigation-canvas) > .mobile-nav {
@@ -339,6 +339,11 @@
 }
 .investigation-writing .script-table-head {
   position: static;
+}
+:root:not(.android)
+  .investigation-writing
+  .script-row:not(.group-row):not(.local-choice-row) {
+  padding-block: 12px;
 }
 @media (min-width: 701px) {
   .investigation-writing

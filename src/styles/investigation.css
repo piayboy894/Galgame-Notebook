@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #edf3f1;
+  background: #f4f4f4;
   border-bottom: 1px solid #d9e4df;
 }
 .investigation-canvas > .selection-toolbar {
@@ -70,7 +70,7 @@
   flex: 1;
   overflow: clip;
   min-height: 0;
-  background-image: radial-gradient(#aec3b9 1px, transparent 1.3px);
+  background-image: radial-gradient(#d7d7d7 0.75px, transparent 1.15px);
   background-size: 24px 24px;
   cursor: grab;
   touch-action: none;

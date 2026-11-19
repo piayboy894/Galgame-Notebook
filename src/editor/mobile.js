@@ -53,6 +53,7 @@ import { revealInvestigationElement } from "./investigation-canvas.js";
 let compact = false;
 let selecting = false;
 let activeField = null;
+let cameraBeforeKeyboard = null;
 let initialized = false;
 
 function control(id, icon, label, extra = "") {
@@ -188,7 +189,7 @@ function syncShell() {
     `${state.project.title} · ${!state.cacheOK ? "草稿未暂存" : state.dirty ? "未保存" : state.exported ? "已导出" : "已保存"}`;
   $("#mobile-save").disabled = state.saving || state.syncBusy;
   $("#mobile-save").classList.toggle("has-changes", state.dirty);
-  $("#mobile-stage-bar").hidden = state.view.type !== "stage";
+  $("#mobile-stage-bar").hidden = state.view.type !== "stage" || stage?.kind === "investigation";
   $("#mobile-compose").hidden = state.view.type !== "stage" || stage?.kind === "investigation";
   $("#mobile-stage-picker").innerHTML =
     `<span>${esc(chapter?.title || "")} · ${esc(stage?.title || "")}</span>${ico("down")}`;
@@ -351,17 +352,27 @@ async function hideKeyboard() {
   }
 }
 function inputState(detail) {
-  document.documentElement.classList.toggle(
-    "ime-visible",
-    detail.imeVisible === true,
-  );
-  document.documentElement.classList.toggle(
-    "hardware-keyboard",
-    detail.hardwareKeyboard === true,
-  );
+  const classes = document.documentElement.classList;
+  const wasVisible = classes.contains("ime-visible");
+  const keyboardVisible = detail.imeVisible === true;
+  const viewport = $(".investigation-viewport");
+  const camera = state.investigationCameras.get(viewport?.dataset.investigationStage);
+  if (keyboardVisible && !wasVisible && camera)
+    cameraBeforeKeyboard = { camera, ...camera };
+  classes.toggle("ime-visible", keyboardVisible);
+  classes.toggle("hardware-keyboard", detail.hardwareKeyboard === true);
+  if (!keyboardVisible && wasVisible) {
+    const saved = cameraBeforeKeyboard;
+    cameraBeforeKeyboard = null;
+    if (camera && saved?.camera === camera && saved.scale === camera.scale) {
+      camera.x = saved.x;
+      camera.y = saved.y;
+      viewport.dispatchEvent(new Event("investigation:camera"));
+    }
+  }
   updateAccessory();
   requestAnimationFrame(() => {
-    if (activeField?.isConnected && detail.imeVisible && !revealInvestigationElement(activeField))
+    if (activeField?.isConnected && keyboardVisible && !revealInvestigationElement(activeField))
       activeField.scrollIntoView({ block: "nearest" });
   });
 }

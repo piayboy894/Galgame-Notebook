@@ -6,19 +6,19 @@ import { flattenRows } from "../domain/project.js";
 import {
   $,
   attr,
-  btn,
   esc,
   ib,
   ico,
   inspectLocation,
   inspectName,
+  option,
   state,
 } from "./context.js";
 import { mutate } from "./session.js";
 
 const { width, height, gap } = INVESTIGATION_CARD;
 
-export function investigationCanvas(stage, active, renderScript) {
+export function investigationCanvas(chapter, stage, active, renderScript) {
   const cards = stage.objects
     .map((item) => {
       const type = item.characterId ? "人物" : "物品";
@@ -42,8 +42,19 @@ export function investigationCanvas(stage, active, renderScript) {
     })
     .join("");
   return `<section class="investigation-canvas" aria-label="调查画布">
-    <div class="investigation-toolbar">
-      <div class="investigation-tools">${btn("新建卡片", "plus", "inspect-create", "primary")} ${btn("演练", "play", "inspect-rehearse", "ghost")}${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}</div>
+    <div class="investigation-toolbar" role="group" aria-label="调查工具">
+      <div class="investigation-stage">
+        ${ib("back", "open-chapter", "返回章节", `data-id="${attr(chapter.id)}"`)}
+        <select class="investigation-stage-picker" aria-label="切换阶段" title="${attr(chapter.title)}">
+          ${chapter.stages.map((item) => option(item.id, item.title, stage.id)).join("")}
+        </select>
+      </div>
+      <div class="investigation-tools investigation-actions">
+        <button class="btn primary" data-act="inspect-create" title="新建卡片" aria-label="新建卡片">${ico("plus")}<span>新建卡片</span></button>
+        <button class="btn ghost" data-act="inspect-rehearse" title="演练" aria-label="演练">${ico("play")}<span>演练</span></button>
+        ${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
+        ${ib("dots", "inspect-stage-menu", "调查阶段操作")}
+      </div>
       <div class="investigation-tools investigation-zoom">
         <button type="button" aria-label="缩小画布" title="缩小画布" data-investigation-zoom="out">${ico("minus")}</button>
         <button type="button" aria-label="重置缩放" title="重置缩放" data-investigation-zoom="reset">100%</button>

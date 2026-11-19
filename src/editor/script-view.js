@@ -161,18 +161,9 @@ export function renderStage(e) {
     s = currentStage(),
     investigation = s.kind === "investigation",
     opened = investigation ? currentInvestigationItem() : null;
-  const header =
-    crumbs([
-      { text: "路线图", act: "board" },
-      { text: R(c.routeId)?.name || "" },
-      { text: c.title, act: "open-chapter", id: c.id },
-      { text: s.title },
-    ]) +
-    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${investigation ? "" : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>${investigation ? "" : '<div class="selection-toolbar" id="selection-toolbar" hidden></div>'}`;
-  const body = investigation
-    ? investigationCanvas(s, opened, investigationScript)
-    : `<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
-  e.innerHTML = header + body;
+  e.innerHTML = investigation
+    ? investigationCanvas(c, s, opened, investigationScript)
+    : storyStage(c, s);
   if (investigation) {
     setupInvestigationCanvas(e, s, investigationAddMenu);
     const viewport = $(".investigation-viewport", e);
@@ -189,6 +180,19 @@ export function renderStage(e) {
   }
   $$(".script-scroll", e).forEach((scroll) => setupRowDrag(scroll));
   syncRowSelection();
+}
+
+function storyStage(c, s) {
+  return (
+    crumbs([
+      { text: "路线图", act: "board" },
+      { text: R(c.routeId)?.name || "" },
+      { text: c.title, act: "open-chapter", id: c.id },
+      { text: s.title },
+    ]) +
+    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>
+    <div class="selection-toolbar" id="selection-toolbar" hidden></div><div class="script-scroll">${stageScriptTable(s.rows)}</div>`
+  );
 }
 
 function investigationScript(stage, item) {

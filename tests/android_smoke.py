@@ -91,7 +91,55 @@ with sync_playwright() as p:
     field=page.locator('[data-row="line_1"] textarea.dialogue-cell');field.click();page.keyboard.type('DeX');page.keyboard.press('Control+s');expect(page.locator('#toast')).to_contain_text('已写回')
     # Touch and mouse can alternate in a compact split window without sticky touch-selection rules.
     page.set_viewport_size({'width':480,'height':760});first.tap();second.tap();expect(page.locator('.selected-count')).to_have_text('2 项');third.click();expect(page.locator('.selected-count')).to_have_text('1 项')
-    page.keyboard.press('Control+/');expect(page.get_by_role('dialog',name='键盘快捷键')).to_be_visible();page.keyboard.press('Escape');assert not errors,errors;context.close()
+    page.keyboard.press('Control+/');expect(page.get_by_role('dialog',name='键盘快捷键')).to_be_visible();page.keyboard.press('Escape')
+    # Landscape tablets should dedicate most of the screen to the canvas, even while typing.
+    page.set_viewport_size({'width':1280,'height':750})
+    page.locator('.stage-tab[data-id="stage_a1_investigation"]').tap()
+    canvas = page.locator('.investigation-viewport')
+    toolbar = page.get_by_role('group',name='调查工具')
+    picker = toolbar.get_by_role('combobox',name='切换阶段')
+    expect(picker).to_have_value('stage_a1_investigation')
+    expect(page.locator('#view .crumbs, #view .stage-header, #view .stage-tabs')).to_have_count(0)
+    assert canvas.bounding_box()['y'] <= 110 and canvas.bounding_box()['height'] >= 635
+    toolbar.get_by_role('button',name='调查阶段操作').tap()
+    page.get_by_role('menuitem',name='阶段笔记').tap()
+    expect(page.get_by_role('dialog',name='阶段笔记')).to_be_visible()
+    page.keyboard.press('Escape')
+    picker.select_option('stage_a1_1')
+    expect(page.locator('.stage-tab.active')).to_have_attribute('data-id','stage_a1_1')
+    page.locator('.stage-tab[data-id="stage_a1_investigation"]').tap()
+    page.locator('[data-investigation-card="object_letter"] .inspect-open').tap()
+    dialogue = page.locator('[data-row="line_inv_letter"] textarea.dialogue-cell')
+    dialogue.tap()
+    dialogue.fill('横屏时直接编辑调查对白')
+    dialogue.evaluate('e=>e.setSelectionRange(2,5)')
+    world = page.locator('.investigation-world')
+    camera = world.evaluate('e=>e.style.transform')
+    page.evaluate('window.setNativeInput({imeVisible:true,hardwareKeyboard:false})')
+    page.set_viewport_size({'width':1280,'height':415})
+    expect(page.locator('.topbar')).to_be_hidden()
+    expect(page.locator('#mobile-nav')).to_be_hidden()
+    expect(page.locator('#mobile-keyboard-bar')).to_be_visible()
+    expect(dialogue).to_be_focused()
+    assert dialogue.evaluate('e=>[e.selectionStart,e.selectionEnd]') == [2,5]
+    viewport_rect, dialogue_rect = canvas.bounding_box(), dialogue.bounding_box()
+    assert viewport_rect['y'] <= 54 and viewport_rect['height'] >= 300
+    assert viewport_rect['y'] <= dialogue_rect['y'] and dialogue_rect['y'] + dialogue_rect['height'] <= viewport_rect['y'] + viewport_rect['height']
+    page.locator('#mobile-keyboard-done').tap()
+    page.set_viewport_size({'width':1280,'height':750})
+    expect(page.locator('.topbar')).to_be_visible()
+    expect(page.locator('#mobile-nav')).to_be_visible()
+    assert world.evaluate('e=>e.style.transform') == camera
+    assert page.locator('[data-investigation-card="object_letter"]').bounding_box()['y'] >= canvas.bounding_box()['y']
+    page.screenshot(path=str(ROOT/'work/test-results/android-investigation-landscape.png'),full_page=True)
+    for width in (850, 620, 600, 540, 360, 320):
+        page.set_viewport_size({'width':width,'height':540})
+        assert toolbar.evaluate('e=>e.scrollWidth<=e.clientWidth+1 && e.offsetHeight<=54'),width
+    expect(page.locator('#mobile-stage-bar')).to_be_hidden()
+    toolbar.get_by_role('button',name='调查阶段操作').tap()
+    page.get_by_role('menuitem',name='多选脚本行').tap()
+    expect(page.locator('html.phone-ui.mobile-selecting')).to_have_count(1)
+    assert not errors,errors;context.close()
     # A restarted phone must read the loaded source, rather than an old clean demonstration cache.
     loaded=json.loads(json.dumps(PROJECT));loaded['id']='cloud-loaded-project';loaded['title']='云端已保存项目'
     old_clean={'project':PROJECT,'sourceName':'sample.story.json','dirty':False,'view':{'type':'board'},'libraryRevision':'loaded-library','savedAt':'2026-11-15T00:00:00Z'}
@@ -106,4 +154,4 @@ with sync_playwright() as p:
     context,page,errors=start(loaded,placeholder,revision='loaded-library');expect(page.locator('#library-close')).to_be_hidden();expect(page.locator('.library-open')).to_contain_text('云端已保存项目');assert not errors,errors;context.close()
     context,page,errors=start(saved,draft);page.locator('#library-close').tap();expect(page.locator('[data-row="line_1"] textarea.dialogue-cell')).to_have_value('后台草稿与重启恢复测试')
     page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.stage-grid')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('.board-list')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');expect(page.locator('#project-library')).to_be_visible();page.evaluate('window.backChannel.onmessage({canGoBack:false})');page.wait_for_function('window.androidCalls.includes("mobile/background")')
-    assert not errors,errors;browser.close();print('PASS: inline phone editing, metadata disclosure, IME accessory, 11 window sizes/caret retention, touch sheets, Samsung hybrid keyboard/mouse selection and shortcuts, draft recovery and installer')
+    assert not errors,errors;browser.close();print('PASS: phone editing, IME accessory and caret retention, compact tablet investigation, Samsung hybrid input, draft recovery and installer')

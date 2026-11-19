@@ -851,7 +851,7 @@
 .phone-ui.ime-visible .mobile-stage-bar {
   display: none;
 }
-.phone-ui.ime-visible .mobile-keyboard-bar {
+.ime-visible:is(.phone-ui, .android:has(.investigation-canvas)) .mobile-keyboard-bar {
   display: flex;
   gap: 4px;
   align-items: center;
@@ -863,7 +863,7 @@
   background: #f8fbf7;
   order: 10;
 }
-.phone-ui .mobile-keyboard-bar button {
+:is(.phone-ui, .android:has(.investigation-canvas)) .mobile-keyboard-bar button {
   min-width: 48px;
   display: flex;
   align-items: center;
@@ -874,7 +874,7 @@
   font-size: 13px;
   border-radius: 12px;
 }
-.phone-ui #mobile-keyboard-done {
+:is(.phone-ui, .android:has(.investigation-canvas)) #mobile-keyboard-done {
   color: #315f51;
   font-weight: 600;
 }

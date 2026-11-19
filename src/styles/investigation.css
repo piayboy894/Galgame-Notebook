@@ -1,4 +1,5 @@
 .investigation-canvas {
+  --investigation-toolbar-height: 48px;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -11,7 +12,7 @@
 .investigation-canvas > .selection-toolbar {
   position: absolute;
   z-index: 6;
-  top: 56px;
+  top: calc(var(--investigation-toolbar-height) + 6px);
   right: 8px;
   max-width: calc(100% - 16px);
   border-radius: 8px;
@@ -19,24 +20,46 @@
 }
 .investigation-toolbar {
   flex: none;
-  min-height: 49px;
+  min-height: var(--investigation-toolbar-height);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 24px;
-  border-bottom: 1px solid #dce6e1;
-  background: #f8fbf9;
+  gap: 10px;
+  padding: 2px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
 }
+.investigation-stage,
 .investigation-tools {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.investigation-toolbar .btn {
+.investigation-stage {
+  min-width: 0;
+}
+.investigation-stage-picker {
+  width: clamp(120px, 23vw, 280px);
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+}
+.investigation-actions,
+.investigation-zoom {
+  flex: none;
+}
+.investigation-actions .btn {
   white-space: nowrap;
+  padding-inline: 10px;
 }
 .investigation-zoom {
+  margin-left: auto;
   gap: 2px;
 }
 .investigation-zoom button {
@@ -64,6 +87,32 @@
   width: 16px;
   height: 16px;
   vertical-align: middle;
+}
+.android .investigation-canvas {
+  --investigation-toolbar-height: 52px;
+}
+.android
+  .investigation-toolbar
+  :is(.btn, .icon-btn, .investigation-zoom button) {
+  min-width: 44px;
+  min-height: 44px;
+}
+.android .investigation-stage-picker {
+  min-height: 44px;
+}
+.android .app:has(.investigation-canvas) > .topbar {
+  height: 56px;
+}
+.android:not(.phone-ui) .app:has(.investigation-canvas) > .mobile-nav {
+  top: 56px;
+}
+.android.ime-visible
+  .app:has(.investigation-canvas)
+  > :is(.topbar, .mobile-header, .mobile-nav) {
+  display: none;
+}
+.android.ime-visible .app:has(.investigation-canvas) > .view {
+  margin-left: 0;
 }
 .investigation-viewport {
   position: relative;
@@ -367,15 +416,37 @@
     display: inline;
   }
 }
-@media (max-width: 650px) {
-  .investigation-toolbar,
-  .investigation-script-head {
-    padding: 4px 8px;
+@media (max-width: 850px) {
+  .investigation-toolbar {
+    gap: 4px;
+    padding-inline: 6px;
   }
+  .investigation-stage,
   .investigation-tools {
     gap: 2px;
   }
-  .investigation-toolbar .btn,
+  .investigation-actions .btn {
+    padding-inline: 8px;
+  }
+  .investigation-actions .btn > span {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .investigation-toolbar
+    :is(
+      [data-act="inspect-collapse-all"],
+      [data-investigation-zoom="in"],
+      [data-investigation-zoom="out"]
+    ),
+  .phone-ui .investigation-stage > [data-act="open-chapter"] {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .investigation-script-head {
+    padding: 4px 8px;
+  }
   .investigation-script-actions .btn {
     padding-inline: 8px;
     font-size: 12px;
@@ -391,20 +462,10 @@
     padding-inline: 10px;
   }
 }
-.phone-ui .investigation-zoom button {
-  min-height: 38px;
-  min-width: 30px;
-}
 .phone-ui .investigation-script-actions .btn,
 .phone-ui .investigation-script-actions .icon-btn {
   min-height: 40px;
 }
 .phone-ui .investigation-writing .row-add-pair {
   display: flex;
-}
-@media (max-width: 350px) {
-  .investigation-toolbar .btn {
-    gap: 0;
-    font-size: 0;
-  }
 }

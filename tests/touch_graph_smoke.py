@@ -122,7 +122,8 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
     page.locator('#mobile-keyboard-done').tap()
     page.set_viewport_size({'width':390,'height':844})
-    page.get_by_role('button',name='收起全部脚本').tap()
+    page.get_by_role('button',name='调查阶段操作').tap()
+    page.get_by_role('menuitem',name='收起全部脚本').tap()
     expect(page.locator('.investigation-writing')).to_have_count(0)
     assert not errors,errors
     browser.close()

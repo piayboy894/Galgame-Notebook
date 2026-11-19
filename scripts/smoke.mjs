@@ -22,15 +22,18 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
-  for (const path of [
+  const smokeTests = [
     "tests/editor_smoke.py",
     "tests/desktop_smoke.py",
     "tests/scenes_smoke.py",
+    "tests/clipboard_smoke.py",
     "tests/github_sync_smoke.py",
     "tests/android_smoke.py",
     "tests/touch_graph_smoke.py",
     "tests/dialogue_smoke.py",
-  ]) {
+  ];
+  const requested = process.argv.slice(2);
+  for (const path of requested.length ? requested : smokeTests) {
     const child = spawn(process.env.PYTHON || "python", [path], {
       stdio: "inherit",
       env: { ...process.env, APP_URL: url },

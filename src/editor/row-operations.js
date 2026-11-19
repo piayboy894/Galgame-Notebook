@@ -26,11 +26,13 @@ import {
   C,
   P,
   R,
+  ROW_MIME,
   btn,
   currentStage,
   esc,
   ico,
   inspectName,
+  libraryVisible,
   option,
   state,
 } from "./context.js";
@@ -158,23 +160,20 @@ export function rowText(rows, characters, locations = []) {
     .join("\n");
 }
 
-export function collectRows() {
-  const rows = clone(
-    selectedRoots(currentRows() || [], state.selectedRowIds).map(
-      (loc) => loc.row,
-    ),
-  );
+function collectRows(ids) {
+  const rows = clone(selectedRoots(currentRows() || [], ids).map((loc) => loc.row));
   if (!rows.length) return null;
+  const allRows = flattenRows(rows);
   const chars = clone(
     state.project.characters.filter((p) =>
-      flattenRows(rows).some((row) => row.speakerId === p.id),
+      allRows.some((row) => row.speakerId === p.id),
     ),
   );
   return {
     format: "xuxian.rows.v2",
     locations: clone(
       state.project.locations.filter((location) =>
-        flattenRows(rows).some(
+        allRows.some(
           (row) => row.type === "group" && row.locationId === location.id,
         ),
       ),
@@ -185,24 +184,134 @@ export function collectRows() {
   };
 }
 
-export function rememberRows(bundle) {
-  if (!bundle) return null;
-  const plain = rowText(
-    bundle.rows,
-    bundle.characters || [],
-    bundle.locations || [],
-  );
-  state.rowClipboard = { ...bundle, text: plain };
-  return state.rowClipboard;
+// Some WebViews only expose plain text. A normal text copy supersedes that
+// association, while the explicit “粘贴行” command can still use the last rows.
+let plainTextRepresentsRows = false;
+let localOnlyRows = null;
+
+function writeRowClipboard(payload, event) {
+  const data = event.clipboardData;
+  if (!data) return false;
+  try {
+    data.setData("text/plain", payload.text);
+    event.preventDefault();
+    data.setData(ROW_MIME, JSON.stringify(payload));
+  } catch {
+    // Plain text may be the only writable format on this platform.
+  }
+  return event.defaultPrevented;
 }
 
-export function copyRowsButton() {
-  const payload = rememberRows(collectRows());
-  if (!payload) return toast("请先选择对白行");
-  // The system clipboard is for external apps, the internal typed clipboard keeps full metadata.
-  if (navigator.clipboard?.writeText)
-    navigator.clipboard.writeText(payload.text).catch(() => {});
+function copyRows(ids, event) {
+  const bundle = collectRows(ids);
+  if (!bundle) return;
+  const payload = {
+    ...bundle,
+    text: rowText(bundle.rows, bundle.characters, bundle.locations),
+  };
+  state.rowClipboard = payload;
+  plainTextRepresentsRows = true;
+  let written = false;
+  if (event) written = writeRowClipboard(payload, event);
+  else {
+    // Run the same synchronous clipboard write from buttons and shortcuts.
+    // Even if the OS declines it, the explicitly copied rows remain available.
+    const onCopy = (ev) => {
+      ev.stopImmediatePropagation();
+      written = writeRowClipboard(payload, ev);
+    };
+    document.addEventListener("copy", onCopy, true);
+    try {
+      document.execCommand("copy");
+    } catch {
+      // The async text API can still work if the WebView disables execCommand.
+    } finally {
+      document.removeEventListener("copy", onCopy, true);
+    }
+  }
+  localOnlyRows = written ? null : payload;
+  if (!written) {
+    navigator.clipboard?.writeText?.(payload.text)
+      .then(() => {
+        if (localOnlyRows === payload) localOnlyRows = null;
+      })
+      .catch(() => {});
+  }
   toast("已复制 " + payload.rows.length + " 行");
+}
+
+export function copyRowsButton(ids = state.selectedRowIds) {
+  if (!ids.size) return toast("请先选择脚本行");
+  copyRows(ids);
+}
+
+function clipboardTarget(target) {
+  if (
+    state.view.type !== "stage" || state.syncBusy || state.composition ||
+    libraryVisible() || $("#modal-root").firstChild ||
+    $(".update-overlay:not([hidden])") ||
+    !(target === document.body || target.closest?.("#view"))
+  ) return null;
+  const editable = rowsAreEditable(target) &&
+    !target.matches(".investigation-script-select,.investigation-stage-picker");
+  if (editable && !target.matches('textarea[data-row-field="text"],textarea[data-branch-field="text"]'))
+    return null;
+  if (editable && target.selectionStart !== target.selectionEnd) return null;
+  const element = target.closest("[data-branch-row],[data-row]");
+  const id = element?.dataset.branchRow || element?.dataset.row;
+  const ids = id && (editable || !state.selectedRowIds.has(id))
+    ? new Set([id])
+    : state.selectedRowIds;
+  return { ids, editable };
+}
+
+export function handleRowClipboardShortcut(event, key) {
+  if (key === "v" && !localOnlyRows) return;
+  const target = clipboardTarget(event.target);
+  if (!target) return;
+  if (key === "v") {
+    event.preventDefault();
+    pasteRows(localOnlyRows, target.ids);
+    return;
+  }
+  if (!target.ids.size) return;
+  event.preventDefault();
+  copyRows(target.ids);
+}
+
+export function handleRowCopy(event) {
+  const target = clipboardTarget(event.target);
+  if (target?.ids.size) copyRows(target.ids, event);
+  else forgetRowTextMatch();
+}
+
+export function forgetRowTextMatch() {
+  localOnlyRows = null;
+  plainTextRepresentsRows = false;
+}
+
+export function handleRowPaste(event) {
+  const target = clipboardTarget(event.target);
+  if (!target) return;
+  const data = event.clipboardData;
+  const text = (data?.getData("text/plain") || "").replace(/\r\n?/g, "\n");
+  let bundle = parseRows(data?.getData(ROW_MIME) || "");
+  if (!bundle && plainTextRepresentsRows) {
+    const cached = state.rowClipboard;
+    if (text === cached.text.replace(/\r\n?/g, "\n") || (!data?.types.length && localOnlyRows))
+      bundle = cached;
+  }
+  if (!bundle) {
+    if (target.editable) return; // Native editing keeps the caret, selection and IME.
+    if (!text) return toast("剪贴板中没有可粘贴的脚本行或文字");
+    const anchor = selectedRoots(currentRows() || [], target.ids).at(-1)?.row;
+    const row = line(["effect", "note"].includes(anchor?.type) ? anchor.type : "dialogue");
+    row.text = text;
+    if (anchor?.type === "dialogue") row.speakerId = anchor.speakerId;
+    bundle = { rows: [row], projectId: state.project.id };
+  }
+  event.preventDefault();
+  pasteRows(bundle, target.ids);
 }
 
 export function parseRows(raw) {
@@ -217,23 +326,17 @@ export function parseRows(raw) {
   }
 }
 
-export function pasteRows(bundle) {
+export function pasteRows(bundle, ids = state.selectedRowIds) {
   if (state.view.type !== "stage" || !bundle?.rows?.length) return false;
-  const s = currentStage(),
-    roots = currentRows();
+  const roots = currentRows();
   if (!roots) return toast("请先新建调查卡片");
-  const locs = selectedRoots(roots, state.selectedRowIds);
-  const sameContainer =
-    locs.length > 0 && locs.every((x) => x.rows === locs[0].rows);
-  const dest = sameContainer ? locs[0].rows : roots;
-  const last = Math.max(
-    -1,
-    ...dest.map((r, i) => (state.selectedRowIds.has(r.id) ? i : -1)),
-  );
+  const locs = selectedRoots(roots, ids);
+  const anchor = locs.at(-1);
+  const dest = anchor?.rows || roots;
+  const insertAt = anchor ? dest.indexOf(anchor.row) + 1 : dest.length;
   const rows = [];
-  const insideOption = sameContainer && !!locs[0].opt;
-  const insideGroup =
-    sameContainer && locs[0].ancestors.some((row) => row.type === "group");
+  const insideOption = !!anchor?.option;
+  const insideGroup = anchor?.ancestors.some((row) => row.type === "group");
   let prepared, incomingLocations;
   try {
     prepared = clone(bundle.rows).map((raw) => normalizeCopiedRow(raw));
@@ -252,17 +355,9 @@ export function pasteRows(bundle) {
     toast("无法粘贴：" + error.message, true);
     return false;
   }
-  prepared = prepared.filter(
-    (row) =>
-      !(
-        insideOption &&
-        flattenRows([row]).some((item) => item.type === "branch")
-      ) &&
-      !(
-        insideGroup && flattenRows([row]).some((item) => item.type === "group")
-      ),
-  );
-  if (!prepared.length) return toast("当前位置不支持嵌套选项或场景组", true);
+  if (prepared.some((row) => flattenRows([row]).some((item) =>
+    (insideOption && item.type === "branch") || (insideGroup && item.type === "group")
+  ))) return toast("当前位置不支持嵌套选项或场景组", true);
   const item = currentInvestigationItem();
   if (item) state.expandedInvestigationItems.add(item.id);
   const locationRefs = new Map();
@@ -335,8 +430,6 @@ export function pasteRows(bundle) {
           item.speakerId = charRefs.get(item.speakerId) || "";
         }
       }
-      // A local option's dialogue cannot contain another branch container.
-
       regenRowIds(r);
       for (const item of flattenRows([r]))
         if (item.type === "branch")
@@ -353,7 +446,7 @@ export function pasteRows(bundle) {
       rows.push(r);
     }
     if (rows.length) {
-      dest.splice(last < 0 ? dest.length : last + 1, 0, ...rows);
+      dest.splice(insertAt, 0, ...rows);
       state.selectedRowIds = new Set(rows.map((r) => r.id));
       state.selectionAnchor = rows[0].id;
     }
@@ -434,20 +527,13 @@ export function normalizeCopiedRow(
   return row;
 }
 
-export function pasteRowsButton() {
-  if (!state.rowClipboard) return toast("请先复制对白行");
-  pasteRows(state.rowClipboard);
+export function pasteRowsButton(ids = state.selectedRowIds) {
+  if (!state.rowClipboard) return toast("请先复制脚本行");
+  pasteRows(state.rowClipboard, ids);
 }
 
 export function rowsAreEditable(target) {
   return !!target?.closest?.('textarea,input,select,[contenteditable="true"]');
-}
-
-export function hasNativeTextSelection(target) {
-  if (!rowsAreEditable(target)) return false;
-  if (typeof target.selectionStart === "number")
-    return target.selectionStart !== target.selectionEnd;
-  return !!String(getSelection());
 }
 
 export // v1.8 — quiet, pointer/touch-aware row ordering. No HTML5 draggable handles.
@@ -902,6 +988,17 @@ export function rowMenu(id, anchor) {
     },
     {
       label: "复制此行",
+      icon: "copy",
+      click: () => copyRowsButton(new Set([id])),
+    },
+    {
+      label: "粘贴到此行下方",
+      icon: "layers",
+      disabled: !state.rowClipboard,
+      click: () => pasteRowsButton(new Set([id])),
+    },
+    {
+      label: "在下方创建副本",
       icon: "copy",
       click: () => {
         const copied = regenRowIds(clone(row));

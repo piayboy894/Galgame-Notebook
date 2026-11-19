@@ -31,7 +31,6 @@ import {
   $$,
   BRIDGE,
   P,
-  ROW_MIME,
   S,
   currentChapter,
   currentStage,
@@ -82,16 +81,15 @@ import {
 import {
   addRow,
   branchRowMenu,
-  collectRows,
+  handleRowClipboardShortcut,
   copyRowsButton,
   deleteSelectedRows,
   focusRow,
-  hasNativeTextSelection,
+  forgetRowTextMatch,
+  handleRowCopy,
+  handleRowPaste,
   localOptionMenu,
-  parseRows,
-  pasteRows,
   pasteRowsButton,
-  rememberRows,
   rowMenu,
   rowsAreEditable,
   scriptMenu,
@@ -604,43 +602,9 @@ document.addEventListener("change", (ev) => {
   }
 });
 
-document.addEventListener("copy", (ev) => {
-  if (
-    state.view.type !== "stage" ||
-    !state.selectedRowIds.size ||
-    $("#modal-root").firstChild ||
-    hasNativeTextSelection(ev.target)
-  )
-    return;
-  const bundle = rememberRows(collectRows());
-  if (!bundle) return;
-  if (ev.clipboardData) {
-    ev.clipboardData.setData(ROW_MIME, JSON.stringify(bundle));
-    ev.clipboardData.setData("text/plain", bundle.text);
-    ev.preventDefault();
-  }
-  toast("已复制 " + bundle.rows.length + " 行");
-});
-
-document.addEventListener("paste", (ev) => {
-  if (
-    state.view.type !== "stage" ||
-    $("#modal-root").firstChild ||
-    rowsAreEditable(ev.target)
-  )
-    return;
-  let bundle = parseRows(ev.clipboardData?.getData(ROW_MIME) || "");
-  if (
-    !bundle &&
-    state.rowClipboard &&
-    ev.clipboardData?.getData("text/plain") === state.rowClipboard.text
-  )
-    bundle = state.rowClipboard;
-  if (bundle) {
-    ev.preventDefault();
-    pasteRows(bundle);
-  }
-});
+document.addEventListener("copy", handleRowCopy);
+document.addEventListener("cut", forgetRowTextMatch);
+document.addEventListener("paste", handleRowPaste);
 
 document.addEventListener("compositionstart", () => (state.composition = true));
 
@@ -665,6 +629,10 @@ document.addEventListener("keydown", (ev) => {
   if (state.composition || ev.isComposing || ev.keyCode === 229) return;
   const mod = ev.ctrlKey || ev.metaKey,
     k = ev.key.toLowerCase();
+  if (mod && !ev.shiftKey && !ev.altKey && (k === "c" || k === "v")) {
+    handleRowClipboardShortcut(ev, k);
+    return;
+  }
   if (
     mod &&
     k === "g" &&

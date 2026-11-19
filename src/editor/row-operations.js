@@ -298,8 +298,9 @@ export function handleRowPaste(event) {
   let bundle = parseRows(data?.getData(ROW_MIME) || "");
   if (!bundle && plainTextRepresentsRows) {
     const cached = state.rowClipboard;
-    if (text === cached.text.replace(/\r\n?/g, "\n") || (!data?.types.length && localOnlyRows))
+    if (!data?.types.length || text === cached.text.replace(/\r\n?/g, "\n"))
       bundle = cached;
+    else forgetRowTextMatch();
   }
   if (!bundle) {
     if (target.editable) return; // Native editing keeps the caret, selection and IME.

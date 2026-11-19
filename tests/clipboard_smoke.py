@@ -125,6 +125,10 @@ with sync_playwright() as playwright:
             {bubbles:true, cancelable:true, clipboardData:d}));
     }""", data)
     assert content(cards()[1]['interactions'][0]['rows'][2]) == content(rule_rows[1])
+    # Some hosts clear their clipboard while the project stays open.
+    page.evaluate("""() => document.activeElement.dispatchEvent(new ClipboardEvent('paste',
+        {bubbles:true, cancelable:true, clipboardData:new DataTransfer()}))""")
+    assert content(cards()[1]['interactions'][0]['rows'][3]) == content(rule_rows[1])
     page.evaluate("""() => {
         document.execCommand = () => false;
         Object.defineProperty(navigator, 'clipboard', {value: {

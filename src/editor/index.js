@@ -7,6 +7,13 @@ import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
 import { findRow } from "../domain/scenes.js";
 import { initializeMobile } from "./mobile.js";
+import { revealInvestigationElement } from "./investigation-canvas.js";
+import {
+  inspectObjectMenu,
+  investigationAddMenu,
+  investigationRuleDialog,
+  rehearseInvestigation,
+} from "./investigation-editor.js";
 import { showGitHubProjects } from "./github-sync.js";
 import { uid, clone } from "../domain/primitives.js";
 import { line } from "../domain/project.js";
@@ -35,6 +42,7 @@ import {
 import { autoSize } from "./script-view.js";
 import {
   boot,
+  currentInvestigationScript,
   currentRows,
   edit,
   go,
@@ -44,6 +52,7 @@ import {
   redo,
   render,
   rowLocation,
+  selectInvestigationItem,
   toast,
   toggleChapter,
   toggleStage,
@@ -58,8 +67,6 @@ import {
   closeMenu,
   closeModal,
   flagsDialog,
-  inspectObjectDialog,
-  inspectObjectMenu,
   menu,
   notesDialog,
   readStage,
@@ -205,17 +212,49 @@ function dispatch(action, el) {
     case "add-stage":
       stageDialog();
       break;
-    case "inspect-add":
-      inspectObjectDialog();
+    case "inspect-create":
+      investigationAddMenu(el);
       break;
     case "inspect-select":
-      state.activeInspectObjectId = id;
+    case "inspect-fold": {
+      const expanded = state.expandedInvestigationItems;
+      const collapse = action === "inspect-fold" && expanded.has(id);
+      if (collapse) expanded.delete(id);
+      else expanded.add(id);
+      selectInvestigationItem(id);
+      if (collapse) {
+        state.selectedRowIds.clear();
+        state.selectionAnchor = null;
+      }
+      render();
+      const card = $(`[data-investigation-card="${id}"]`);
+      $(`[data-act="${action}"]`, card)?.focus({ preventScroll: true });
+      if (!collapse) revealInvestigationElement(card);
+      break;
+    }
+    case "inspect-collapse-all":
+      for (const item of currentStage().objects) state.expandedInvestigationItems.delete(item.id);
       state.selectedRowIds.clear();
       state.selectionAnchor = null;
       render();
+      $(".investigation-viewport")?.focus({ preventScroll: true });
       break;
     case "inspect-menu":
       inspectObjectMenu(id, el);
+      break;
+    case "inspect-rule-add":
+      investigationRuleDialog();
+      break;
+    case "inspect-rule-settings": {
+      const scriptId = currentInvestigationScript()?.id;
+      if (scriptId) {
+        const isDefault = scriptId === state.activeInspectObjectId;
+        investigationRuleDialog(isDefault ? null : scriptId, isDefault);
+      }
+      break;
+    }
+    case "inspect-rehearse":
+      rehearseInvestigation();
       break;
     case "open-stage": {
       const obj = S(id);
@@ -515,6 +554,14 @@ document.addEventListener("input", (ev) => {
 
 document.addEventListener("change", (ev) => {
   const t = ev.target;
+  if (t.matches(".investigation-script-select")) {
+    const itemId = t.closest("[data-inspect-item]").dataset.inspectItem;
+    selectInvestigationItem(itemId, t.value || null);
+    render();
+    $(`[data-inspect-item="${itemId}"] .investigation-script-select`)?.focus({ preventScroll: true });
+    revealInvestigationElement($(`[data-investigation-card="${itemId}"]`));
+    return;
+  }
   if (t.dataset.branchField && t.tagName === "SELECT") {
     const loc = rowLocation(t.closest("[data-branch-row]")?.dataset.branchRow);
     if (!loc) return;

@@ -4,6 +4,8 @@ import { mobileRowControls } from "./mobile-presentation.js";
 import { branchRowCount, flattenRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
 import {
+  $,
+  $$,
   C,
   P,
   R,
@@ -14,11 +16,14 @@ import {
   esc,
   ib,
   ico,
+  inspectName,
   option,
   state,
   textCount,
 } from "./context.js";
-import { currentInvestigationItem } from "./session.js";
+import { investigationCanvas, setupInvestigationCanvas } from "./investigation-canvas.js";
+import { describeInvestigationRule, investigationAddMenu } from "./investigation-editor.js";
+import { currentInvestigationItem, currentInvestigationScript, selectInvestigationItem } from "./session.js";
 import { setupRowDrag, syncRowSelection } from "./row-operations.js";
 
 export function crumbs(items) {
@@ -46,7 +51,7 @@ export function renderChapter(e) {
       { text: r?.name || "" },
       { text: c.title },
     ]) +
-    `<div class="chapter-header"><input class="title-edit" data-bind="chapter-title" value="${attr(c.title)}" aria-label="章节标题" maxlength="300"><div class="view-actions">${btn("解锁", "link", "current-rules", "ghost")}${ib("note", "chapter-notes", "章节笔记")}${btn("阶段", "plus", "add-stage", "primary")}${ib("dots", "current-chapter-menu", "章节操作")}</div></div><div class="page-scroll">${c.summary ? `<div class="stage-summary">${esc(c.summary)}</div>` : ""}<div class="stage-grid">${c.stages.map((s, i) => `<article class="stage-card" data-act="open-stage" data-id="${attr(s.id)}" tabindex="0"><div class="stage-order">${state.sim.active ? `<button class="sim-check ${state.sim.chapters.has(c.id) || state.sim.stages.has(s.id) ? "done" : ""}" data-act="complete-stage" data-id="${attr(s.id)}" title="切换阶段完成状态">${state.sim.chapters.has(c.id) || state.sim.stages.has(s.id) ? ico("check") : ""}</button>` : ""}<span>${String(i + 1).padStart(2, "0")}</span>${ib("dots", "stage-menu", "阶段操作", `data-id="${attr(s.id)}"`)}</div><h2>${esc(s.title)}</h2>${s.notes ? `<p>${esc(s.notes)}</p>` : ""}<div class="stage-foot"><span>${s.kind === "investigation" ? "调查 · " + (s.objects || []).length + " 物品" : "剧情阶段"}</span><span>·</span><span>${branchRowCount(s)} 行脚本</span><span>·</span><span>${textCount(s)} 字</span><span class="spacer"></span>${ico("next")}</div></article>`).join("")}<button class="stage-add" data-act="add-stage" title="新建阶段">${ico("plus")}<span>阶段</span></button></div></div>`;
+    `<div class="chapter-header"><input class="title-edit" data-bind="chapter-title" value="${attr(c.title)}" aria-label="章节标题" maxlength="300"><div class="view-actions">${btn("解锁", "link", "current-rules", "ghost")}${ib("note", "chapter-notes", "章节笔记")}${btn("阶段", "plus", "add-stage", "primary")}${ib("dots", "current-chapter-menu", "章节操作")}</div></div><div class="page-scroll">${c.summary ? `<div class="stage-summary">${esc(c.summary)}</div>` : ""}<div class="stage-grid">${c.stages.map((s, i) => `<article class="stage-card" data-act="open-stage" data-id="${attr(s.id)}" tabindex="0"><div class="stage-order">${state.sim.active ? `<button class="sim-check ${state.sim.chapters.has(c.id) || state.sim.stages.has(s.id) ? "done" : ""}" data-act="complete-stage" data-id="${attr(s.id)}" title="切换阶段完成状态">${state.sim.chapters.has(c.id) || state.sim.stages.has(s.id) ? ico("check") : ""}</button>` : ""}<span>${String(i + 1).padStart(2, "0")}</span>${ib("dots", "stage-menu", "阶段操作", `data-id="${attr(s.id)}"`)}</div><h2>${esc(s.title)}</h2>${s.notes ? `<p>${esc(s.notes)}</p>` : ""}<div class="stage-foot"><span>${s.kind === "investigation" ? "调查 · " + (s.objects || []).length + " 张卡片" : "剧情阶段"}</span><span>·</span><span>${branchRowCount(s)} 行脚本</span><span>·</span><span>${textCount(s)} 字</span><span class="spacer"></span>${ico("next")}</div></article>`).join("")}<button class="stage-add" data-act="add-stage" title="新建阶段">${ico("plus")}<span>阶段</span></button></div></div>`;
 }
 
 export function speakerOptions(id) {
@@ -148,7 +153,7 @@ export function branchLineHTML(parent, op, row, i) {
 }
 
 export function stageScriptTable(rows) {
-  return `<div class="script-table"><div class="script-table-head"><span></span><span>说话人</span><span>对白</span><span>立绘表情</span><span>人物动作</span><span></span></div><div id="script-rows">${renderSequence(rows)}</div><div class="row-add-pair"><button class="row-add" data-act="add-row" title="新增对白 · Alt Enter">${ico("plus")}<span>对白</span></button><button class="row-add" data-act="add-effect" title="新增画面效果描述">${ico("plus")}<span>描述</span></button></div></div>`;
+  return `<div class="script-table"><div class="script-table-head"><span></span><span>说话人</span><span>对白</span><span>立绘表情</span><span>人物动作</span><span></span></div><div class="script-rows">${renderSequence(rows)}</div><div class="row-add-pair"><button class="row-add" data-act="add-row" title="新增对白 · Alt Enter">${ico("plus")}<span>对白</span></button><button class="row-add" data-act="add-effect" title="新增画面效果描述">${ico("plus")}<span>描述</span></button></div></div>`;
 }
 
 export function renderStage(e) {
@@ -163,14 +168,48 @@ export function renderStage(e) {
       { text: c.title, act: "open-chapter", id: c.id },
       { text: s.title },
     ]) +
-    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${investigation ? btn("物品", "plus", "inspect-add", "primary") : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div><div class="selection-toolbar" id="selection-toolbar" hidden></div>`;
-  let body = "";
-  if (investigation) {
-    body = `<div class="script-scroll investigation-scroll"><div class="inspect-stack">${s.objects.map((o, i) => `<section class="inspect-card ${o.id === opened?.id ? "is-open" : ""}"><div class="inspect-head"><button class="inspect-open" data-act="inspect-select" data-id="${attr(o.id)}" aria-expanded="${o.id === opened?.id}" title="展开调查物品"><span class="inspect-order">${String(i + 1).padStart(2, "0")}</span><span class="inspect-name">${esc(o.name)}</span><span class="inspect-count">${flattenRows(o.rows).filter((row) => row.type !== "group").length} 行</span>${ico("down")}</button>${ib("dots", "inspect-menu", "物品操作", `data-id="${attr(o.id)}"`)}</div>${o.id === opened?.id ? `<div class="inspect-details">${o.notes ? `<div class="inspect-notes">${esc(o.notes)}</div>` : ""}${stageScriptTable(o.rows)}</div>` : ""}</section>`).join("")}<button class="inspect-add" data-act="inspect-add" title="添加调查物品">${ico("plus")}<span>调查物品</span></button></div></div>`;
-  } else body = `<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
+    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${investigation ? "" : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>${investigation ? "" : '<div class="selection-toolbar" id="selection-toolbar" hidden></div>'}`;
+  const body = investigation
+    ? investigationCanvas(s, opened, investigationScript)
+    : `<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
   e.innerHTML = header + body;
-  setupRowDrag();
+  if (investigation) {
+    setupInvestigationCanvas(e, s, investigationAddMenu);
+    const viewport = $(".investigation-viewport", e);
+    const activate = (event) => {
+      const editor = event.target.closest("[data-inspect-item]");
+      if (!editor || !selectInvestigationItem(editor.dataset.inspectItem)) return;
+      $$(".investigation-card", viewport).forEach((card) =>
+        card.classList.toggle("is-selected", card.dataset.investigationCard === editor.dataset.inspectItem),
+      );
+      syncRowSelection();
+    };
+    viewport.addEventListener("pointerdown", activate, true);
+    viewport.addEventListener("focusin", activate, true);
+  }
+  $$(".script-scroll", e).forEach((scroll) => setupRowDrag(scroll));
   syncRowSelection();
+}
+
+function investigationScript(stage, item) {
+  const script = currentInvestigationScript(item);
+  const defaultScript = item === script;
+  const name = inspectName(item);
+  return `<section class="investigation-writing" data-inspect-item="${attr(item.id)}" aria-label="${attr(name + "的调查脚本")}">
+    <div class="investigation-script-head">
+      <div class="investigation-script-actions">
+        <select class="input investigation-script-select" aria-label="交互脚本">${option("", item.fallbackEnabled ? "默认脚本" : "默认脚本（已停用）", defaultScript ? "" : script.id)}${item.interactions.map((rule, index) => option(rule.id, (index + 1) + ". " + rule.name, script.id)).join("")}</select>
+        ${ib("settings", "inspect-rule-settings", defaultScript ? "默认交互设置" : "编辑交互规则")}
+        ${btn("交互规则", "plus", "inspect-rule-add")}
+        ${ib("dots", "script-menu", "脚本操作")}
+      </div>
+    </div>
+    ${!defaultScript ? `<p class="investigation-active-rule" title="${attr(describeInvestigationRule(stage, script))}">${esc(describeInvestigationRule(stage, script))}</p>` : ""}
+    <div class="script-scroll investigation-script-scroll">
+      ${item.notes && defaultScript ? `<div class="inspect-notes">${esc(item.notes)}</div>` : ""}
+      ${stageScriptTable(script.rows)}
+    </div>
+  </section>`;
 }
 
 export function renderCharacters(e) {

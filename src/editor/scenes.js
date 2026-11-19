@@ -3,8 +3,9 @@ import {
   LOCATION_FIELDS,
   effectiveLocation,
   groupSelection,
+  locationPreset,
+  locationReferences,
   normalizeProperties,
-  projectGroups,
   sceneGroup,
 } from "../domain/scenes.js";
 import { flattenRows, regenRowIds } from "../domain/project.js";
@@ -36,26 +37,18 @@ function readProperties(value) {
 
 export function renderLocations(element) {
   const referenceCounts = new Map();
-  for (const group of projectGroups(state.project))
+  for (const group of locationReferences(state.project))
     referenceCounts.set(
       group.locationId,
       (referenceCounts.get(group.locationId) || 0) + 1,
     );
-  element.innerHTML = `<div class="view-head"><div class="view-title"><button class="icon-btn" data-act="board" title="路线图">${ico("back")}</button><h1>地点预设</h1><span class="count">${state.project.locations.length}</span></div><div class="view-actions">${btn("角色", "users", "characters", "ghost")}${btn("地点", "plus", "add-location", "primary")}</div></div><div class="page-scroll"><div class="characters-grid">${state.project.locations.map((location) => `<article class="character-card location-card" data-act="edit-location" data-id="${attr(location.id)}" tabindex="0"><h2>${esc(location.name)}</h2><dl>${LOCATION_FIELDS.map((field) => `<div><dt>${field.label}</dt><dd>${esc(location[field.key] || "未设置")}</dd></div>`).join("")}</dl>${location.notes ? `<p>${esc(location.notes)}</p>` : ""}<span class="tiny">${referenceCounts.get(location.id) || 0} 个场景组引用</span></article>`).join("")}<button class="stage-add" data-act="add-location">${ico("plus")}<span>地点</span></button></div></div>`;
+  element.innerHTML = `<div class="view-head"><div class="view-title"><button class="icon-btn" data-act="board" title="路线图">${ico("back")}</button><h1>地点预设</h1><span class="count">${state.project.locations.length}</span></div><div class="view-actions">${btn("角色", "users", "characters", "ghost")}${btn("地点", "plus", "add-location", "primary")}</div></div><div class="page-scroll"><div class="characters-grid">${state.project.locations.map((location) => `<article class="character-card location-card" data-act="edit-location" data-id="${attr(location.id)}" tabindex="0"><h2>${esc(location.name)}</h2><dl>${LOCATION_FIELDS.map((field) => `<div><dt>${field.label}</dt><dd>${esc(location[field.key] || "未设置")}</dd></div>`).join("")}</dl>${location.notes ? `<p>${esc(location.notes)}</p>` : ""}<span class="tiny">${referenceCounts.get(location.id) || 0} 处引用</span></article>`).join("")}<button class="stage-add" data-act="add-location">${ico("plus")}<span>地点</span></button></div></div>`;
 }
 
 export function locationDialog(id = null) {
   const location = id
     ? state.project.locations.find((item) => item.id === id)
-    : {
-        id: uid("location"),
-        name: "",
-        background: "",
-        bgm: "",
-        ambience: "",
-        notes: "",
-        properties: [],
-      };
+    : locationPreset();
   if (!location) return;
   modal(
     id ? "编辑地点" : "新地点",
@@ -89,12 +82,12 @@ export function locationDialog(id = null) {
   };
   if (id)
     $("#location-delete").onclick = () => {
-      const count = projectGroups(state.project).filter(
+      const count = locationReferences(state.project).filter(
         (group) => group.locationId === id,
       ).length;
       if (count)
         return toast(
-          `这个地点仍被 ${count} 个场景组引用，请先为这些组更换地点`,
+          `这个地点仍有 ${count} 处引用，请先更换或移除相关地点`,
           true,
         );
       confirmBox(

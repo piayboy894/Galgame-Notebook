@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { normalizeProject, newProject } from "../src/domain/project.js";
+import {
+  normalizeProject,
+  newProject,
+  regenerateInvestigationIds,
+} from "../src/domain/project.js";
+import { matchingInvestigationScript } from "../src/domain/investigation.js";
 
 describe("existing story compatibility", () => {
   for (const file of [
@@ -47,7 +52,7 @@ describe("existing story compatibility", () => {
       },
     ];
     const result: any = normalizeProject(p);
-    expect(result.version).toBe(4);
+    expect(result.version).toBe(5);
     expect(result.chapters[0].stages[0].rows[0].options[0].mode).toBe("jump");
     expect(result.chapters[0].stages[0].rows[1].options[0].rows[0].text).toBe(
       "没有署名",
@@ -70,4 +75,61 @@ describe("existing story compatibility", () => {
     expect(normalized.title).toBe("<script>alert(1)</script>");
     expect(normalized).not.toHaveProperty("injected");
   });
+});
+
+it("preserves scripted investigations and remaps their internal references when copied", () => {
+  const project: any = newProject();
+  project.flags = [{ id: "key", name: "拿到钥匙" }];
+  const stage = project.chapters[0].stages[0];
+  stage.kind = "investigation";
+  stage.objects = [
+    { id: "letter", name: "信封", outcomes: ["key"] },
+    {
+      id: "door",
+      name: "房门",
+      position: { x: -421, y: 790 },
+      fallbackEnabled: false,
+      interactions: [
+        {
+          id: "first",
+          name: "第一次",
+          timing: "exact",
+          attempt: 1,
+          conditions: [
+            { type: "investigated", targetId: "letter", expected: true },
+            { type: "flag", targetId: "key", expected: true },
+          ],
+          rows: [{ id: "line_first", type: "dialogue", text: "门打开了" }],
+        },
+        { id: "later", name: "后续", timing: "from", attempt: 1 },
+      ],
+    },
+  ];
+  const normalized: any = normalizeProject(project);
+  const items = normalized.chapters[0].stages[0].objects;
+  const [letter, door] = items;
+  expect(letter.position).toEqual({ x: 0, y: 0 });
+  expect(door.position).toEqual({ x: -421, y: 790 });
+  const visits = new Map([[letter.id, 1]]);
+  const flags = new Set(["key"]);
+  const knownItems = new Set(items.map((item: { id: string }) => item.id));
+  expect(
+    matchingInvestigationScript(door, 1, visits, flags, flags, knownItems)?.id,
+  ).toBe("first");
+  expect(
+    matchingInvestigationScript(door, 2, visits, flags, flags, knownItems)?.id,
+  ).toBe("later");
+  expect(
+    matchingInvestigationScript(door, 1, visits, flags, flags, new Set())?.id,
+  ).toBe("later");
+
+  const copied = structuredClone(items);
+  regenerateInvestigationIds(copied);
+  expect(copied[0].id).not.toBe(letter.id);
+  expect(copied[1].interactions[0].conditions[0].targetId).toBe(copied[0].id);
+  expect(copied[1].interactions[0].conditions[1].targetId).toBe("key");
+  expect(copied[1].interactions[0].rows[0].id).not.toBe("line_first");
+  expect(normalizeProject(JSON.parse(JSON.stringify(normalized)))).toEqual(
+    normalized,
+  );
 });

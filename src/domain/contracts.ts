@@ -7,7 +7,7 @@ export interface FileStamp {
 
 export interface ProjectDocument {
   format: "xuxian.story";
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   id: string;
   title: string;
   routes: unknown[];

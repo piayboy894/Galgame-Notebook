@@ -20,7 +20,6 @@ import {
   menu,
   topMenu,
   searchDialog,
-  inspectObjectDialog,
 } from "./dialogs.js";
 import {
   closeProjectLibrary,
@@ -49,6 +48,7 @@ import {
 import { showGitHubProjects, showSyncSettings } from "./github-sync.js";
 import { showUpdates } from "../ui/update-dialog";
 import { isPhoneLayout } from "./mobile-presentation.js";
+import { revealInvestigationElement } from "./investigation-canvas.js";
 
 let compact = false;
 let selecting = false;
@@ -137,14 +137,7 @@ function shell() {
     } else toast("点击行号或内容多选，再点建组、复制或删除");
     syncShell();
   };
-  $("#mobile-add-dialogue").onclick = () => {
-    if (
-      currentStage()?.kind === "investigation" &&
-      !currentStage().objects.length
-    )
-      inspectObjectDialog();
-    else addRow("dialogue");
-  };
+  $("#mobile-add-dialogue").onclick = () => addRow("dialogue");
   $("#mobile-add-effect").onclick = () => addRow("effect");
   $("#mobile-library-create").onclick = newHubDialog;
   $("#mobile-library-import").onclick = importSourceAction;
@@ -196,16 +189,11 @@ function syncShell() {
   $("#mobile-save").disabled = state.saving || state.syncBusy;
   $("#mobile-save").classList.toggle("has-changes", state.dirty);
   $("#mobile-stage-bar").hidden = state.view.type !== "stage";
-  $("#mobile-compose").hidden = state.view.type !== "stage";
+  $("#mobile-compose").hidden = state.view.type !== "stage" || stage?.kind === "investigation";
   $("#mobile-stage-picker").innerHTML =
     `<span>${esc(chapter?.title || "")} · ${esc(stage?.title || "")}</span>${ico("down")}`;
   $("#mobile-select").textContent =
     selecting || state.selectedRowIds.size ? "取消多选" : "多选";
-  $("#mobile-add-dialogue").innerHTML =
-    ico("plus") +
-    (stage?.kind === "investigation" && !stage.objects.length
-      ? "添加调查物品"
-      : "新增对白");
   const active =
     state.view.type === "stage"
       ? "writing"
@@ -333,7 +321,10 @@ export async function back() {
 function editableLines() {
   return $$(
     '.script-scroll textarea[data-row-field="text"],.script-scroll textarea[data-branch-field="text"]',
-  ).filter((element) => element.offsetParent !== null);
+  ).filter((element) => {
+    const item = element.closest("[data-inspect-item]");
+    return element.offsetParent !== null && (!item || item.dataset.inspectItem === state.activeInspectObjectId);
+  });
 }
 function updateAccessory() {
   if (!initialized) return;
@@ -349,7 +340,7 @@ function focusNeighbour(direction) {
     next = lines[at + direction];
   if (!next) return;
   next.focus({ preventScroll: true });
-  next.scrollIntoView({ block: "nearest" });
+  if (!revealInvestigationElement(next)) next.scrollIntoView({ block: "nearest" });
 }
 async function hideKeyboard() {
   document.activeElement?.blur();
@@ -370,7 +361,7 @@ function inputState(detail) {
   );
   updateAccessory();
   requestAnimationFrame(() => {
-    if (activeField?.isConnected && detail.imeVisible)
+    if (activeField?.isConnected && detail.imeVisible && !revealInvestigationElement(activeField))
       activeField.scrollIntoView({ block: "nearest" });
   });
 }
@@ -400,9 +391,10 @@ function resize() {
   }
   const active = document.activeElement;
   if (active?.matches("input,textarea,select"))
-    requestAnimationFrame(
-      () => active.isConnected && active.scrollIntoView({ block: "nearest" }),
-    );
+    requestAnimationFrame(() => {
+      if (active.isConnected && !revealInvestigationElement(active))
+        active.scrollIntoView({ block: "nearest" });
+    });
 }
 export function initializeMobile() {
   if (!isAndroid || initialized) return;

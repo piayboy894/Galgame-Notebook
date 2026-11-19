@@ -1,10 +1,15 @@
 import { uid } from "./primitives.js";
+import { investigationItems, investigationScripts } from "./investigation.js";
 
 export const LOCATION_FIELDS = [
   { key: "background", label: "背景" },
   { key: "bgm", label: "BGM" },
   { key: "ambience", label: "环境音" },
 ];
+
+export function locationPreset(name = "") {
+  return { id: uid("location"), name, background: "", bgm: "", ambience: "", notes: "", properties: [] };
+}
 
 export function sceneGroup(rows, title = "新场景组") {
   return {
@@ -119,7 +124,7 @@ export function projectGroups(project) {
     for (const stage of chapter.stages) {
       const containers =
         stage.kind === "investigation"
-          ? (stage.objects || []).map((item) => item.rows)
+          ? (stage.objects || []).flatMap(investigationScripts).map((script) => script.rows)
           : [stage.rows];
       for (const rows of containers)
         walkRows(rows, (loc) => {
@@ -127,6 +132,10 @@ export function projectGroups(project) {
         });
     }
   return groups;
+}
+
+export function locationReferences(project) {
+  return [...projectGroups(project), ...investigationItems(project)];
 }
 
 export function normalizeProperties(raw) {

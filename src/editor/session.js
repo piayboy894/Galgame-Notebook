@@ -68,15 +68,33 @@ export function currentInvestigationItem() {
     (s.objects || []).find((x) => x.id === state.activeInspectObjectId) ||
     s.objects?.[0] ||
     null;
-  if (o) state.activeInspectObjectId = o.id;
+  if (o?.id !== state.activeInspectObjectId) selectInvestigationItem(o?.id || null);
   return o;
+}
+
+export function selectInvestigationItem(
+  id,
+  interactionId = state.investigationScriptsByItem.get(id) || null,
+) {
+  const previous = state.investigationScriptsByItem.get(id) || null;
+  if (state.activeInspectObjectId === id && previous === interactionId) return false;
+  state.activeInspectObjectId = id;
+  if (interactionId) state.investigationScriptsByItem.set(id, interactionId);
+  else state.investigationScriptsByItem.delete(id);
+  state.selectedRowIds.clear();
+  state.selectionAnchor = null;
+  return true;
+}
+
+export function currentInvestigationScript(item = currentInvestigationItem()) {
+  return item?.interactions.find((rule) => rule.id === state.investigationScriptsByItem.get(item.id)) || item;
 }
 
 export function currentRows() {
   const s = currentStage();
   if (!s) return null;
   return s.kind === "investigation"
-    ? currentInvestigationItem()?.rows || null
+    ? currentInvestigationScript()?.rows || null
     : s.rows;
 }
 
@@ -257,7 +275,7 @@ export function validateView() {
 
 export function go(type, chapterId = null, stageId = null) {
   if (type !== "stage" || stageId !== state.view.stageId)
-    state.activeInspectObjectId = null;
+    selectInvestigationItem(null);
   if (state.view.type === "board") {
     const e = $("#graph-viewport");
     if (e) state.boardScroll = { x: e.scrollLeft, y: e.scrollTop };
@@ -374,9 +392,8 @@ export function render() {
     ":" +
     (state.view.stageId || "");
   const same = key === state.renderedKey;
-  const scroll = same
-    ? ($(".script-scroll")?.scrollTop ?? $(".page-scroll")?.scrollTop ?? 0)
-    : 0;
+  const previousScroll = $(".script-scroll:not(.investigation-script-scroll)") || $(".page-scroll");
+  const scroll = same ? previousScroll?.scrollTop || 0 : 0;
   const vp = $("#graph-viewport");
   if (same && state.view.type === "board" && vp && !state.skipBoardCapture)
     state.boardScroll = { x: vp.scrollLeft, y: vp.scrollTop };
@@ -393,7 +410,7 @@ export function render() {
   document.dispatchEvent(new Event("editor:render"));
   requestAnimationFrame(() => {
     $$("textarea.autosize").forEach(autoSize);
-    const sc = $(".script-scroll") || $(".page-scroll");
+    const sc = $(".script-scroll:not(.investigation-script-scroll)") || $(".page-scroll");
     if (sc) sc.scrollTop = scroll;
   });
 }

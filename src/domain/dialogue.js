@@ -1,3 +1,5 @@
+import { investigationScripts } from "./investigation.js";
+
 export const MAX_DIALOGUE_LINE_LENGTH = 500;
 export function normalizeDialogueSettings(value) {
   const n = value?.dialogueLineLength;
@@ -65,7 +67,8 @@ export function dialogueWrapChanges(project) {
   for (const chapter of project.chapters)
     for (const stage of chapter.stages) {
       visit(stage.rows);
-      for (const item of stage.objects || []) visit(item.rows);
+      for (const item of stage.objects || [])
+        for (const script of investigationScripts(item)) visit(script.rows);
     }
   return changes;
 }

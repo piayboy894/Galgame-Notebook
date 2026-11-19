@@ -59,12 +59,14 @@ describe("project dialogue line limits", () => {
           { type: "dialogue", text: "四五六" },
           { type: "note", text: "四五六" },
         ],
+        interactions: [{ rows: [{ type: "dialogue", text: "七八九" }] }],
       },
     ];
     expect(dialogueWrapChanges(p).map((v) => v.text)).toEqual([
       "甲乙\n丙",
       "一二\n三",
       "四五\n六",
+      "七八\n九",
     ]);
     expect(dialogueMarkdown("甲乙丙丁戊", 2, "    ")).toBe(
       "    甲乙  \n    丙丁  \n    戊",

@@ -1,0 +1,410 @@
+.investigation-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #edf3f1;
+  border-bottom: 1px solid #d9e4df;
+}
+.investigation-canvas > .selection-toolbar {
+  position: absolute;
+  z-index: 6;
+  top: 56px;
+  right: 8px;
+  max-width: calc(100% - 16px);
+  border-radius: 8px;
+  box-shadow: 0 3px 10px #3d5c5120;
+}
+.investigation-toolbar {
+  flex: none;
+  min-height: 49px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 24px;
+  border-bottom: 1px solid #dce6e1;
+  background: #f8fbf9;
+}
+.investigation-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.investigation-toolbar .btn {
+  white-space: nowrap;
+}
+.investigation-zoom {
+  gap: 2px;
+}
+.investigation-zoom button {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  color: #48645d;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.investigation-zoom button:hover {
+  background: #e5eee9;
+}
+.investigation-zoom button[data-investigation-zoom="reset"] {
+  min-width: 46px;
+}
+.investigation-zoom button[data-investigation-zoom="fit"] {
+  border-left: 1px solid #e0e9e4;
+}
+.investigation-zoom svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+.investigation-viewport {
+  position: relative;
+  flex: 1;
+  overflow: clip;
+  min-height: 0;
+  background-image: radial-gradient(#aec3b9 1px, transparent 1.3px);
+  background-size: 24px 24px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.investigation-viewport.is-panning,
+.investigation-card.is-dragging .inspect-open {
+  cursor: grabbing;
+}
+.investigation-viewport:focus-visible {
+  outline-offset: -3px;
+}
+.investigation-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.investigation-card {
+  position: absolute;
+  width: var(--card-width);
+  height: var(--card-height);
+  pointer-events: none;
+}
+.investigation-card-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 1px solid #cdded5;
+  box-shadow: 0 3px 10px #3d5c5120;
+  background: #fcfefc;
+  pointer-events: auto;
+}
+.investigation-card.is-character > .investigation-card-head {
+  border-color: #d8d3e5;
+  background: #fdfcff;
+}
+.investigation-card.is-selected > .investigation-card-head {
+  border-color: #4d8172;
+  box-shadow:
+    0 0 0 2px #82a99a59,
+    0 4px 12px #31584919;
+}
+.investigation-card.is-dragging > .investigation-card-head {
+  z-index: 5;
+  box-shadow: 0 7px 16px #31584932;
+}
+.investigation-card .inspect-open {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 0 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: #253832;
+  text-align: left;
+  cursor: grab;
+}
+.investigation-card-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  background: #e7f0ea;
+  color: #487361;
+}
+.is-character .investigation-card-icon {
+  background: #eeeaf6;
+  color: #685981;
+}
+.investigation-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.investigation-card-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.3;
+  width: 100%;
+}
+.investigation-card-name strong,
+.investigation-card-meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.investigation-card-name strong {
+  font-size: 15px;
+}
+.investigation-card-name small,
+.investigation-card-meta {
+  color: #567167;
+  font-size: 11px;
+}
+.is-character .investigation-card-name small {
+  color: #685981;
+}
+.investigation-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.investigation-card-meta svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+.investigation-card-head > .icon-btn {
+  align-self: flex-start;
+  margin: 4px 4px 0 0;
+  min-width: 30px;
+  width: 30px;
+  height: 30px;
+}
+.investigation-card-head > [data-act="inspect-fold"] {
+  align-self: center;
+  margin: 0;
+  color: #557164;
+}
+.investigation-empty,
+.investigation-hint {
+  margin: 0;
+  position: absolute;
+  color: #48665a;
+  pointer-events: none;
+}
+.investigation-empty {
+  top: 50%;
+  left: 50%;
+  width: max-content;
+  max-width: 82%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #f5faf7;
+}
+.investigation-hint {
+  bottom: 8px;
+  left: 12px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #f8fbf9ed;
+  font-size: 11px;
+}
+.investigation-hint > :last-child {
+  display: none;
+}
+.investigation-writing {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: calc(100% + 6px);
+  width: min(820px, calc(100vw - 28px));
+  border: 1px solid #cdded5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 18px #31584922;
+  pointer-events: auto;
+  user-select: text;
+}
+.investigation-card.is-selected .investigation-writing {
+  z-index: 2;
+  border-color: #79a193;
+}
+.investigation-card.is-dragging .investigation-writing {
+  z-index: 4;
+}
+.investigation-script-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px 16px;
+  padding: 6px 24px;
+  border-bottom: 1px solid #e6ece8;
+}
+.investigation-script-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.investigation-script-actions select {
+  width: clamp(112px, 20vw, 245px);
+}
+.investigation-script-actions .btn {
+  white-space: nowrap;
+}
+.investigation-active-rule {
+  margin: 0;
+  padding: 4px 24px;
+  background: #f5f8f5;
+  font-size: 12px;
+  color: #486658;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.investigation-canvas .investigation-script-scroll {
+  overflow: visible;
+  border-radius: 0 0 12px 12px;
+  padding: 0 12px 8px;
+}
+.investigation-writing .script-table {
+  min-width: 0;
+}
+.investigation-writing .script-table-head {
+  position: static;
+}
+@media (min-width: 701px) {
+  .investigation-writing
+    .script-row:not(.group-row):not(.effect-row):not(.note-row):not(
+      .local-choice-row
+    ),
+  .investigation-writing .script-table-head {
+    grid-template-columns: 35px 100px minmax(100px, 1fr) 98px 110px 30px;
+    gap: 8px;
+  }
+}
+.inspect-notes {
+  margin: 12px 0 3px;
+  color: #586e63;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.investigation-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+#inspect-new-reference[hidden],
+#interaction-attempt-field[hidden] {
+  display: none;
+}
+.investigation-form-help {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #546d60;
+}
+.investigation-rehearsal-picks,
+.investigation-rehearsal-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.investigation-rehearsal-picks button {
+  flex-direction: column;
+  gap: 1px;
+  min-width: 112px;
+  padding: 6px 12px;
+  overflow-wrap: anywhere;
+}
+.investigation-rehearsal-picks small,
+.investigation-rehearsal summary span {
+  font-size: 11px;
+  color: #546d60;
+}
+.investigation-rehearsal details {
+  margin: 10px 0 0;
+  padding: 8px;
+  background: #f5f8f5;
+  border-radius: 8px;
+}
+.investigation-rehearsal summary {
+  cursor: pointer;
+}
+.investigation-rehearsal-flags {
+  padding: 8px 0 0;
+  gap: 10px 16px;
+}
+.investigation-rehearsal-result {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e2ebe4;
+}
+@media (pointer: coarse) {
+  .investigation-hint > :first-child {
+    display: none;
+  }
+  .investigation-hint > :last-child {
+    display: inline;
+  }
+}
+@media (max-width: 650px) {
+  .investigation-toolbar,
+  .investigation-script-head {
+    padding: 4px 8px;
+  }
+  .investigation-tools {
+    gap: 2px;
+  }
+  .investigation-toolbar .btn,
+  .investigation-script-actions .btn {
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .investigation-script-head {
+    flex-wrap: wrap;
+  }
+  .investigation-script-actions {
+    flex: 1 0 auto;
+    justify-content: flex-start;
+  }
+  .investigation-active-rule {
+    padding-inline: 10px;
+  }
+}
+.phone-ui .investigation-zoom button {
+  min-height: 38px;
+  min-width: 30px;
+}
+.phone-ui .investigation-script-actions .btn,
+.phone-ui .investigation-script-actions .icon-btn {
+  min-height: 40px;
+}
+.phone-ui .investigation-writing .row-add-pair {
+  display: flex;
+}
+@media (max-width: 350px) {
+  .investigation-toolbar .btn {
+    gap: 0;
+    font-size: 0;
+  }
+}

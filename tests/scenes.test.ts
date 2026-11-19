@@ -49,7 +49,7 @@ describe("scene structure and location inheritance", () => {
       "单层",
     );
   });
-  it("retains groups and locations through JSON v4 round trips and regenerates all copied IDs", () => {
+  it("retains groups and locations through JSON round trips and regenerates all copied IDs", () => {
     const project: any = newProject();
     project.locations = [
       {
@@ -71,7 +71,7 @@ describe("scene structure and location inheritance", () => {
     const normalized: any = normalizeProject(
       JSON.parse(JSON.stringify(project)),
     );
-    expect(normalized.version).toBe(4);
+    expect(normalized.version).toBe(5);
     expect(normalized.chapters[0].stages[0].rows[0]).toEqual(group);
     expect(normalizeProject(normalized)).toEqual(normalized);
     const copy = JSON.parse(JSON.stringify(group));

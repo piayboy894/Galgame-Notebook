@@ -1,6 +1,7 @@
 import { dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
 import { rowChildren, normalizeProperties, LOCATION_FIELDS } from "./scenes.js";
+import { investigationPosition, investigationScripts } from "./investigation.js";
 
 export function line(type = "dialogue") {
   return {
@@ -52,13 +53,11 @@ export function regenRowIds(row) {
   return row;
 }
 export function stageRootRows(s) {
-  return s.kind === "investigation"
-    ? (s.objects || []).flatMap((item) => item.rows || [])
-    : s.rows;
+  return s.kind === "investigation" ? stageRowsGroups(s).flat() : s.rows;
 }
 export function stageRowsGroups(s) {
   return s.kind === "investigation"
-    ? (s.objects || []).map((o) => o.rows || [])
+    ? (s.objects || []).flatMap(investigationScripts).map((script) => script.rows || [])
     : [s.rows];
 }
 export function branchRowCount(s) {
@@ -66,7 +65,33 @@ export function branchRowCount(s) {
     .length;
 }
 export function investigationObject(name = "新调查物品") {
-  return { id: uid("object"), name, notes: "", rows: [] };
+  return {
+    id: uid("object"), name, notes: "", characterId: "", locationId: "",
+    fallbackEnabled: true, outcomes: [], interactions: [], rows: [],
+  };
+}
+export function regenerateInvestigationIds(items) {
+  const ids = new Map(items.map((item) => [item.id, uid("object")]));
+  for (const item of items) {
+    item.id = ids.get(item.id);
+    for (const rule of item.interactions) {
+      rule.id = uid("interaction");
+      for (const condition of rule.conditions)
+        if (condition.type === "investigated" && ids.has(condition.targetId))
+          condition.targetId = ids.get(condition.targetId);
+    }
+    for (const script of investigationScripts(item)) script.rows.forEach(regenRowIds);
+  }
+}
+export function newCharacter(name, index) {
+  return {
+    id: uid("char"),
+    name,
+    color: PALETTE[index % PALETTE.length],
+    notes: "",
+    expressions: ["平静", "微笑", "疑惑", "惊讶", "严肃"],
+    actions: [],
+  };
 }
 export function stage(title = "阶段 01") {
   return {
@@ -93,7 +118,7 @@ export function chapter(routeId, title = "新章节", y = 112) {
 export function newProject(title = "未命名剧本") {
   const p = {
     format: FORMAT,
-    version: 4,
+    version: 5,
     id: uid("project"),
     title,
     createdAt: now(),
@@ -119,7 +144,7 @@ export function newProject(title = "未命名剧本") {
 export function normalizeProject(raw) {
   if (!raw || typeof raw !== "object" || raw.format !== FORMAT)
     throw Error("这不是叙线源文件（.json）");
-  if (![1, 2, 3, 4].includes(raw.version))
+  if (![1, 2, 3, 4, 5].includes(raw.version))
     throw Error("源文件版本不受支持，请使用兼容的编辑器");
   const ids = new Set();
   const id = (v) => {
@@ -139,7 +164,7 @@ export function normalizeProject(raw) {
     typeof v === "string" && /^[a-zA-Z0-9_-]{0,100}$/.test(v) ? v : "";
   const p = {
     format: FORMAT,
-    version: 4,
+    version: 5,
     id: id(raw.id),
     title: str(raw.title, "未命名剧本"),
     createdAt: str(raw.createdAt, now()),
@@ -176,6 +201,7 @@ export function normalizeProject(raw) {
     properties: normalizeProperties(location.properties),
   }));
   if (p.locations.length > 1000) throw Error("地点数量超过安全上限（1000）");
+  const locationIds = new Set(p.locations.map((location) => location.id));
   p.flags = arr(raw.flags).map((f) => ({
     id: id(f.id),
     name: str(f.name, "未命名条件"),
@@ -287,12 +313,39 @@ export function normalizeProject(raw) {
         notes: str(st.notes),
         kind: st.kind === "investigation" ? "investigation" : "story",
         rows: arr(st.rows).map((r) => parseRow(r)),
-        objects: arr(st.objects).map((o) => ({
-          id: id(o.id),
-          name: str(o.name, "未命名物品"),
-          notes: str(o.notes),
-          rows: arr(o.rows).map((r) => parseRow(r)),
-        })),
+        objects: arr(st.objects).map((o, i) => {
+          const characterId = ref(o.characterId);
+          const locationId = ref(o.locationId);
+          return {
+            id: id(o.id),
+            name: str(o.name, characterId ? "未命名人物" : "未命名物品"),
+            notes: str(o.notes),
+            characterId,
+            locationId: !characterId && locationIds.has(locationId) ? locationId : "",
+            position: investigationPosition(o.position, i),
+            fallbackEnabled: o.fallbackEnabled !== false,
+            outcomes: arr(o.outcomes).map(ref).filter(Boolean),
+            interactions: arr(o.interactions).map((rule) => ({
+              id: id(rule.id),
+              name: str(rule.name, "未命名交互"),
+              timing: ["exact", "from"].includes(rule.timing) ? rule.timing : "any",
+              attempt: Number.isSafeInteger(rule.attempt) && rule.attempt > 0 ? rule.attempt : 1,
+              conditionMode: rule.conditionMode === "any" ? "any" : "all",
+              outcomes: arr(rule.outcomes).map(ref).filter(Boolean),
+              conditions: arr(rule.conditions).map((condition) => {
+                if (!["flag", "investigated"].includes(condition.type))
+                  throw Error("未知的调查交互条件");
+                return {
+                  type: condition.type,
+                  targetId: ref(condition.targetId),
+                  expected: condition.expected !== false,
+                };
+              }),
+              rows: arr(rule.rows).map((r) => parseRow(r)),
+            })),
+            rows: arr(o.rows).map((r) => parseRow(r)),
+          };
+        }),
       })),
     };
   });

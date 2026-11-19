@@ -85,6 +85,45 @@ with sync_playwright() as p:
     swipe(box['x']+60,box['y']+15,0,-100)
     assert page.evaluate('window.XuXian.snapshot().chapters[0].stages[0].rows')==rows
     expect(page.locator('.row-drag-ghost')).to_have_count(0)
+    # The investigation stage shares the writing entry and exposes its scripting inside the canvas.
+    page.locator('#mobile-stage-picker').tap()
+    page.locator('[data-stage="stage_a1_investigation"]').tap()
+    canvas=page.locator('.investigation-viewport')
+    world=page.locator('.investigation-world')
+    expect(canvas).to_be_visible()
+    viewport=canvas.bounding_box()
+    x=viewport['x']+viewport['width']/2
+    y=viewport['y']+78
+    initial_scale=page.get_by_role('button',name='重置缩放').inner_text()
+    touch('touchStart',[point(x-35,y,1),point(x+35,y,2)])
+    for delta in [49,63,77]:
+        touch('touchMove',[point(x-delta,y,1),point(x+delta,y,2)])
+    touch('touchEnd',[])
+    expect(page.get_by_role('button',name='重置缩放')).not_to_have_text(initial_scale)
+    position=world.evaluate('element => element.style.transform')
+    swipe(x,y,40,36)
+    assert world.evaluate('element => element.style.transform')!=position
+
+    for _ in range(2):
+        touch('touchStart',[point(x,y)])
+        touch('touchEnd',[])
+    page.get_by_role('menuitem',name='新建物品',exact=True).tap()
+    page.locator('#inspect-name').fill('触屏物品')
+    page.locator('#inspect-save').tap()
+    item=page.locator('.investigation-card.is-selected')
+    expect(item).to_contain_text('触屏物品')
+    item.locator('[data-act="add-row"]').tap()
+    line=item.locator('textarea[data-row-field="text"]')
+    line.fill('在画布内编辑')
+    page.evaluate('window.setNativeInput({imeVisible:true})')
+    page.set_viewport_size({'width':390,'height':450})
+    expect(canvas).to_be_visible()
+    expect(line).to_be_focused()
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+    page.locator('#mobile-keyboard-done').tap()
+    page.set_viewport_size({'width':390,'height':844})
+    page.get_by_role('button',name='收起全部脚本').tap()
+    expect(page.locator('.investigation-writing')).to_have_count(0)
     assert not errors,errors
     browser.close()
-    print('PASS: native canvas scrolling, explicit long-press chapter drag, tap, cancellation/multitouch/rotation, immediate mouse drag, undo and script scrolling')
+    print('PASS: native canvas scrolling, explicit long-press chapter drag, tap, cancellation/multitouch/rotation, immediate mouse drag, undo, script scrolling, and touch investigation editing')

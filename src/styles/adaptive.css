@@ -378,16 +378,6 @@ html {
   .scene-group-rows .script-row {
     grid-template-columns: 26px minmax(0, 1fr) 30px;
   }
-  .inspect-details {
-    padding: 0 6px 8px;
-  }
-  .inspect-head {
-    padding-left: 10px;
-    padding-right: 8px;
-  }
-  .inspect-stack {
-    gap: 10px;
-  }
   .modal {
     width: calc(100vw - 16px);
     max-width: none;

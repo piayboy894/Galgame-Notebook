@@ -87,7 +87,7 @@ with sync_playwright() as p:
     assert copied['locations'][0]['name']=='旧书房'
     assert copied_group['locationId']==copied['locations'][0]['id']
     assert copied_group['overrides']['bgm']=='紧张.ogg'
-    assert copied['version']==4
+    assert copied['version']==5
     # JSON export contains the full new schema; reopening restores it.
     page.locator('#menu-btn').click()
     with page.expect_download() as event:
@@ -106,7 +106,7 @@ with sync_playwright() as p:
     page.locator('.location-card').click()
     page.locator('#location-delete').click()
     expect(page.get_by_role('dialog',name='编辑地点')).to_be_visible()
-    expect(page.locator('#toast')).to_contain_text('仍被 1 个场景组引用')
+    expect(page.locator('#toast')).to_contain_text('仍有 1 处引用')
     page.locator('#location-bgm').fill('修改后的默认 BGM')
     page.locator('#location-ambience').fill('远处雷声')
     page.locator('#location-save').click()
@@ -141,18 +141,19 @@ with sync_playwright() as p:
     expect(page.locator('.local-option .group-row')).to_have_count(1)
     page.locator('[data-branch-row="line_local_a1"] [data-branch-field="text"]').fill('选项内分组编辑')
     page.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()
-    page.locator('.inspect-card.is-open [data-act="add-row"]').click()
-    picks=page.locator('.inspect-card.is-open .script-row .row-select')
+    page.locator('.inspect-open').first.click()
+    page.locator('.investigation-writing [data-act="add-row"]').click()
+    picks=page.locator('.investigation-writing .script-row .row-select')
     picks.nth(0).click()
     picks.nth(1).click(modifiers=['Shift'])
     page.keyboard.press('Control+g')
     page.locator('#group-title').fill('调查信封')
     page.locator('#group-save').click()
-    expect(page.locator('.inspect-card.is-open .group-row')).to_have_count(1)
+    expect(page.locator('.investigation-writing .group-row')).to_have_count(1)
     page.screenshot(path=str(ROOT/'work/test-results/scene-groups.png'),full_page=True)
     # A whole group is one sortable unit; its children remain in order.
-    page.locator('.inspect-card.is-open .scene-group-toggle').click()
-    group=page.locator('.inspect-card.is-open .group-row')
+    page.locator('.investigation-writing .scene-group-toggle').click()
+    group=page.locator('.investigation-writing .group-row')
     group.scroll_into_view_if_needed()
     source=group.locator('.group-select').bounding_box()
     target=group.locator('xpath=following-sibling::*[1]').bounding_box()

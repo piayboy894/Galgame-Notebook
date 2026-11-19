@@ -8,6 +8,9 @@ import {
 /** Mutable editor session. Filesystem access lives behind the platform adapter. */
 export const state = {
   activeInspectObjectId: null,
+  investigationScriptsByItem: new Map(),
+  expandedInvestigationItems: new Set(),
+  investigationCameras: new Map(),
   project: undefined,
   fileHandle: null,
   fileStamp: null,
@@ -103,6 +106,8 @@ export const ICONS = {
   audit: '<path d="M12 3 2 21h20Z M12 9v5M12 17h.01"/>',
   folder: '<path d="M3 6V4h7l2 3h9v13H3Z"/>',
   layers: '<path d="m12 3 10 5-10 5L2 8ZM2 12l10 5 10-5M2 16l10 5 10-5"/>',
+  box: '<path d="m12 3 9 5v8l-9 5-9-5V8Zm0 18v-9M3 8l9 4 9-4"/>',
+  pin: '<path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/>',
 };
 
 export const ico = (name) =>
@@ -141,6 +146,11 @@ export const C = (id) => state.project.chapters.find((c) => c.id === id),
   R = (id) => state.project.routes.find((r) => r.id === id),
   P = (id) => state.project.characters.find((c) => c.id === id),
   F = (id) => state.project.flags.find((f) => f.id === id);
+
+export const inspectName = (item) =>
+  (item.characterId && P(item.characterId)?.name) || item.name;
+export const inspectLocation = (item) =>
+  state.project.locations.find((location) => location.id === item.locationId)?.name || "";
 
 export const S = (id) => {
   for (const c of state.project.chapters) {

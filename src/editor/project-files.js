@@ -4,6 +4,8 @@ import {
   dialogueWrapChanges,
 } from "../domain/dialogue.js";
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
+import { investigationScripts } from "../domain/investigation.js";
+import { describeInvestigationRule, describeInvestigationOutcomes } from "./investigation-editor.js";
 import {
   nativeCommand,
   isNative,
@@ -32,6 +34,8 @@ import {
   btn,
   esc,
   ico,
+  inspectLocation,
+  inspectName,
   routeChapters,
   state,
 } from "./context.js";
@@ -471,6 +475,10 @@ export function adopt(
   $(".app").inert = false;
   state.collapsedOptionIds.clear();
   state.collapsedGroupIds.clear();
+  state.investigationCameras.clear();
+  state.expandedInvestigationItems.clear();
+  state.investigationScriptsByItem.clear();
+  state.activeInspectObjectId = null;
   state.project = p;
   state.libraryOnly = libraryOnly;
   state.sourceName = name;
@@ -942,10 +950,20 @@ export async function exportMarkdown() {
         );
         if (st.notes) out.push("> " + st.notes.replace(/\n/g, "\n> "), "");
         if (st.kind === "investigation") {
-          for (const o of st.objects || []) {
-            out.push("##### " + o.name, "");
-            if (o.notes) out.push("> " + o.notes.replace(/\n/g, "\n> "), "");
-            appendMarkdownRows(out, o.rows);
+          for (const item of st.objects) {
+            out.push("##### " + inspectName(item), "");
+            const location = inspectLocation(item);
+            if (location) out.push("地点：" + location, "");
+            if (item.notes) out.push("> " + item.notes.replace(/\n/g, "\n> "), "");
+            for (const script of investigationScripts(item)) {
+              if (item.interactions.length || !item.fallbackEnabled) {
+                out.push("###### " + (script === item ? (item.fallbackEnabled ? "默认脚本" : "默认脚本（已停用）") : script.name), "");
+                if (script !== item) out.push("触发：" + describeInvestigationRule(st, script), "");
+              }
+              const outcome = describeInvestigationOutcomes(script);
+              if (outcome) out.push("完成后达成：" + outcome, "");
+              appendMarkdownRows(out, script.rows);
+            }
           }
         } else appendMarkdownRows(out, st.rows);
       }

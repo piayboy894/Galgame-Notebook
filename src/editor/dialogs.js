@@ -1,6 +1,9 @@
 import { wrapDialogue, normalizeDialogueSettings } from "../domain/dialogue.js";
 import { projectSettingsDialog } from "./dialogue-settings.js";
 import { findRow } from "../domain/scenes.js";
+import { investigationItems, investigationScripts } from "../domain/investigation.js";
+import { revealInvestigationElement, revealInvestigationPosition } from "./investigation-canvas.js";
+import { describeInvestigationRule, describeInvestigationOutcomes } from "./investigation-editor.js";
 import { touchActions } from "./mobile-presentation.js";
 import { showTouchMenu } from "./touch-menu.js";
 import { locationDialog } from "./scenes.js";
@@ -11,7 +14,8 @@ import {
   chapter,
   regenRowIds,
   stageRootRows,
-  investigationObject,
+  newCharacter,
+  regenerateInvestigationIds,
   flattenRows,
   stage,
   branchRowCount,
@@ -38,6 +42,8 @@ import {
   esc,
   ib,
   ico,
+  inspectLocation,
+  inspectName,
   linesOf,
   option,
   routeChapters,
@@ -51,6 +57,7 @@ import {
   reconcileSimulation,
   redo,
   render,
+  selectInvestigationItem,
   toast,
   undo,
   validateView,
@@ -615,11 +622,7 @@ export function duplicateChapter(id) {
     s.id = uid("stage");
     stageMap.set(oldId, s.id);
     s.rows.forEach(regenRowIds);
-    if (s.kind === "investigation")
-      for (const o of s.objects) {
-        o.id = uid("object");
-        o.rows.forEach(regenRowIds);
-      }
+    regenerateInvestigationIds(s.objects);
   });
   c.unlock.rules.forEach((r) => (r.id = uid("rule")));
   c.stages.forEach((s) =>
@@ -698,102 +701,6 @@ export function deleteChapter(id) {
   );
 }
 
-export function inspectObjectDialog(id = null) {
-  const st = currentStage();
-  if (!st || st.kind !== "investigation") return;
-  const obj = id
-    ? (st.objects || []).find((o) => o.id === id)
-    : investigationObject();
-  if (!obj) return;
-  modal(
-    id ? "编辑调查物品" : "新调查物品",
-    `<div class="field"><label>物品名称</label><input class="input" id="inspect-name" value="${attr(obj.name)}" maxlength="160" autofocus></div><div class="field"><label>备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(obj.notes || "")}</textarea></div>`,
-    btn("取消", null, "modal-close") +
-      `<button class="btn primary" id="inspect-save">${id ? "保存" : "创建"}</button>`,
-  );
-  $("#inspect-save").onclick = () => {
-    const name = $("#inspect-name").value.trim();
-    if (!name) return toast("请输入调查物品名称");
-    const notes = $("#inspect-notes").value;
-    mutate(() => {
-      obj.name = name;
-      obj.notes = notes;
-      if (!id) st.objects.push(obj);
-      state.activeInspectObjectId = obj.id;
-      state.selectedRowIds.clear();
-      state.selectionAnchor = null;
-    });
-    closeModal();
-  };
-}
-
-export function inspectObjectMenu(id, anchor) {
-  const st = currentStage(),
-    idx = st?.objects.findIndex((x) => x.id === id) ?? -1,
-    obj = st?.objects[idx];
-  if (!obj) return;
-  menu(anchor, [
-    { label: "编辑物品", icon: "edit", click: () => inspectObjectDialog(id) },
-    {
-      label: "复制物品",
-      icon: "copy",
-      click: () => {
-        const c = clone(obj);
-        c.id = uid("object");
-        c.name += " · 副本";
-        c.rows.forEach(regenRowIds);
-        mutate(() => {
-          st.objects.splice(idx + 1, 0, c);
-          state.activeInspectObjectId = c.id;
-          state.selectedRowIds.clear();
-          state.selectionAnchor = null;
-        });
-      },
-    },
-    {
-      label: "上移",
-      icon: "up",
-      disabled: idx === 0,
-      click: () =>
-        mutate(() =>
-          st.objects.splice(idx - 1, 0, st.objects.splice(idx, 1)[0]),
-        ),
-    },
-    {
-      label: "下移",
-      icon: "down",
-      disabled: idx === st.objects.length - 1,
-      click: () =>
-        mutate(() =>
-          st.objects.splice(idx + 1, 0, st.objects.splice(idx, 1)[0]),
-        ),
-    },
-    null,
-    {
-      label: "删除物品",
-      icon: "trash",
-      danger: true,
-      click: () => {
-        const remove = () =>
-          mutate(() => {
-            st.objects.splice(idx, 1);
-            state.activeInspectObjectId = st.objects[0]?.id || null;
-            state.selectedRowIds.clear();
-            state.selectionAnchor = null;
-          });
-        if (obj.rows.length)
-          confirmBox(
-            "删除调查物品",
-            `删除“${obj.name}”及其中 ${flattenRows(obj.rows).length} 行脚本？`,
-            remove,
-            true,
-          );
-        else remove();
-      },
-    },
-  ]);
-}
-
 export function stageMenu(id, anchor) {
   const c = currentChapter(),
     idx = c.stages.findIndex((s) => s.id === id);
@@ -840,8 +747,8 @@ export function stageDialog(id = null) {
     if (!title) return toast("请输入阶段名称");
     const notes = $("#st-notes").value,
       kind = $("#st-kind").value;
-    if (id && kind !== s.kind && branchRowCount(s) > 0)
-      return toast("阶段已有脚本。请先复制阶段，再修改空白阶段的类型。", true);
+    if (id && kind !== s.kind && (s.kind === "investigation" ? s.objects.length : s.rows.length))
+      return toast("只能更改空白阶段的类型。请先移除该阶段的卡片和脚本。", true);
     mutate(() => {
       s.title = title;
       s.notes = notes;
@@ -860,11 +767,7 @@ export function duplicateStage(id) {
   s.id = uid("stage");
   s.title += " · 副本";
   s.rows.forEach(regenRowIds);
-  if (s.kind === "investigation")
-    for (const o of s.objects) {
-      o.id = uid("object");
-      o.rows.forEach(regenRowIds);
-    }
+  regenerateInvestigationIds(s.objects);
   mutate(() => c.stages.splice(idx + 1, 0, s));
 }
 
@@ -902,16 +805,8 @@ export function notesDialog(type, id) {
 }
 
 export function characterDialog(id = null, onCreated = null) {
-  const p = id
-    ? P(id)
-    : {
-        id: uid("char"),
-        name: "",
-        color: PALETTE[state.project.characters.length % PALETTE.length],
-        notes: "",
-        expressions: ["平静", "微笑", "疑惑", "惊讶", "严肃"],
-        actions: [],
-      };
+  const p = id ? P(id) : newCharacter("", state.project.characters.length);
+  if (!p) return;
   let color = p.color;
   modal(
     id ? "编辑角色" : "新角色",
@@ -951,6 +846,8 @@ export function characterDialog(id = null, onCreated = null) {
   };
   if (id)
     $("#char-delete").onclick = () => {
+      if (investigationItems(state.project).some((item) => item.characterId === id))
+        return toast("调查画布仍有卡片引用该角色，请先修改或移除相关卡片", true);
       let n = 0;
       for (const c of state.project.chapters)
         for (const s of c.stages)
@@ -1137,7 +1034,12 @@ export function flagsDialog(forSimulation = false) {
   $$("[data-flag-delete]").forEach(
     (b) =>
       (b.onclick = () => {
-        const id = b.dataset.flagDelete,
+        const id = b.dataset.flagDelete;
+        if (investigationItems(state.project).some((item) =>
+          investigationScripts(item).some((script) => script.outcomes.includes(id) ||
+            script.conditions?.some((condition) => condition.type === "flag" && condition.targetId === id))))
+          return toast("调查交互仍在使用该条件，请先修改相关规则", true);
+        const
           f = F(id),
           n = state.project.chapters.reduce(
             (a, c) =>
@@ -1204,10 +1106,17 @@ export function readStage() {
   const st = currentStage();
   const html =
     st.kind === "investigation"
-      ? (st.objects || [])
-          .map(
-            (o) => `<h3>${esc(o.name)}</h3>${o.rows.map(previewRow).join("")}`,
-          )
+      ? st.objects
+          .map((item) => {
+            const location = inspectLocation(item);
+            return `<section class="read-scene-group"><h3>${esc(inspectName(item))}</h3>${location ? `<p>地点 · ${esc(location)}</p>` : ""}
+              ${item.notes ? `<p>${esc(item.notes)}</p>` : ""}${investigationScripts(item).map((script) => {
+                const title = script === item ? (item.fallbackEnabled ? "默认脚本" : "默认脚本（已停用）") : script.name;
+                const outcome = describeInvestigationOutcomes(script);
+                return `<h4>${esc(title)}</h4>${script !== item ? `<p>${esc(describeInvestigationRule(st, script))}</p>` : ""}
+                  ${outcome ? `<p>完成后达成 · ${esc(outcome)}</p>` : ""}${script.rows.map(previewRow).join("")}`;
+              }).join("")}</section>`;
+          })
           .join("")
       : st.rows.map(previewRow).join("");
   modal(
@@ -1254,16 +1163,24 @@ export function searchDialog() {
             chapterId: c.id,
             stageId: s.id,
           });
-        if (s.kind === "investigation")
-          for (const o of s.objects || [])
-            if (match(o.name) || match(o.notes))
+        if (s.kind === "investigation") {
+          for (const item of s.objects) {
+            if ([inspectName(item), inspectLocation(item), item.notes].some(match))
               found.push({
-                title: o.name,
+                title: inspectName(item),
                 path,
-                text: o.notes,
+                text: inspectLocation(item) || item.notes,
                 chapterId: c.id,
                 stageId: s.id,
+                itemId: item.id,
               });
+            for (const rule of item.interactions) {
+              const summary = describeInvestigationRule(s, rule);
+              if ([rule.name, summary, describeInvestigationOutcomes(rule)].some(match))
+                found.push({ title: rule.name, path: path + " / " + inspectName(item), text: summary, chapterId: c.id, stageId: s.id, itemId: item.id, interactionId: rule.id });
+            }
+          }
+        }
         for (const r of flattenRows(stageRootRows(s))) {
           if (
             [
@@ -1349,18 +1266,35 @@ export function searchDialog() {
             characterDialog(r.characterId);
           } else {
             go(r.stageId ? "stage" : "chapter", r.chapterId, r.stageId || null);
-            if (r.rowId) {
+            if (r.rowId || r.itemId) {
               const stage = S(r.stageId)?.stage;
-              let location = findRow(stage?.rows || [], r.rowId);
-              if (stage?.kind === "investigation")
+              let location = r.rowId ? findRow(stage?.rows || [], r.rowId) : null;
+              if (stage?.kind === "investigation") {
                 for (const item of stage.objects) {
-                  const candidate = findRow(item.rows, r.rowId);
-                  if (candidate) {
-                    state.activeInspectObjectId = item.id;
+                  if (item.id === r.itemId) {
+                    selectInvestigationItem(item.id, r.interactionId || null);
+                    state.expandedInvestigationItems.add(item.id);
+                    revealInvestigationPosition(stage, item.position);
+                    break;
+                  }
+                  if (!r.rowId) continue;
+                  for (const script of investigationScripts(item)) {
+                    const candidate = findRow(script.rows, r.rowId);
+                    if (!candidate) continue;
+                    selectInvestigationItem(item.id, script === item ? null : script.id);
+                    state.expandedInvestigationItems.add(item.id);
+                    revealInvestigationPosition(stage, item.position);
                     location = candidate;
                     break;
                   }
+                  if (location) break;
                 }
+              }
+              if (!r.rowId) {
+                render();
+                revealInvestigationElement($(`[data-investigation-card="${r.itemId}"]`));
+                return;
+              }
               state.collapsedGroupIds.delete(r.rowId);
               for (const parent of location?.ancestors || [])
                 state.collapsedGroupIds.delete(parent.id);
@@ -1371,7 +1305,7 @@ export function searchDialog() {
                 const row = $(
                   `[data-row="${r.rowId}"],[data-branch-row="${r.rowId}"]`,
                 );
-                row?.scrollIntoView({ block: "center" });
+                if (!revealInvestigationElement(row)) row?.scrollIntoView({ block: "center" });
                 row?.classList.add("flash-row");
               });
             }
@@ -1543,7 +1477,7 @@ export function backupDialog() {
 export function helpDialog() {
   modal(
     "使用说明",
-    `<div class="help"><h3>项目和文件</h3><p>${isAndroid ? "项目保存在应用私有目录；系统自动回收进程后可恢复最近草稿。卸载会删除本机数据，请先存到云端或导出备份。保存写入本机项目库；另存会创建新副本；导入、导出通过系统文件选择器选择位置。" : "项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。"}</p><h3>路线图触屏操作</h3><p>滑动屏幕浏览路线图。短按章节打开，长按约半秒出现拖动提示后再移动，松手放置；鼠标仍可直接拖动。移动前滑动、多指操作或取消不会改变章节位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查物品各有独立脚本。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p><h3>行与场景组</h3><p>点击行号选中，触屏连续点行号可多选；键盘使用 Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>Ctrl/⌘+C/V 复制和粘贴选中行，支持整组、跨阶段和跨项目。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。鼠标可按住行空白区域拖动排序；Android 触屏通过行菜单移动，避免滚动时误排序。</p><h3>全局云存档</h3><p>在项目库打开「云存档」。每个存档包含全部项目，由你手动新建、覆盖、读取或删除；不会自动判断同步方向。读档会直接替换整个项目库及未保存改动，不会先保存或保留读档备份。单个项目没有同步按钮。</p><h3>文件兼容</h3><p>新版使用 JSON v4 保存场景组和地点，兼容读取 v1–v3。保存旧文件时自动迁移并备份。旧版编辑器不能读取 v4，请继续使用新版。</p></div>`,
+    `<div class="help"><h3>项目和文件</h3><p>${isAndroid ? "项目保存在应用私有目录；系统自动回收进程后可恢复最近草稿。卸载会删除本机数据，请先存到云端或导出备份。保存写入本机项目库；另存会创建新副本；导入、导出通过系统文件选择器选择位置。" : "项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。"}</p><h3>路线图触屏操作</h3><p>滑动屏幕浏览路线图。短按章节打开，长按约半秒出现拖动提示后再移动，松手放置；鼠标仍可直接拖动。移动前滑动、多指操作或取消不会改变章节位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。调查阶段可双击画布空白处新建物品或人物，拖动平移，滚轮或双指缩放。点击卡片展开脚本，使用卡片箭头收起。每张卡片可按调查次数和文字条件匹配交互，点击「演练」可验证。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p><h3>行与场景组</h3><p>点击行号选中，触屏连续点行号可多选；键盘使用 Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>Ctrl/⌘+C/V 复制和粘贴选中行，支持整组、跨阶段和跨项目。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。鼠标可按住行空白区域拖动排序；Android 触屏通过行菜单移动，避免滚动时误排序。</p><h3>全局云存档</h3><p>在项目库打开「云存档」。每个存档包含全部项目，由你手动新建、覆盖、读取或删除；不会自动判断同步方向。读档会直接替换整个项目库及未保存改动，不会先保存或保留读档备份。单个项目没有同步按钮。</p><h3>文件兼容</h3><p>JSON v5 保存调查画布、地点和交互规则，兼容读取 v1–v4。本机项目库在保存时保留自动备份。</p></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );

@@ -4,4 +4,5 @@ import "./styles/scenes.css";
 import "./styles/github-sync.css";
 import "./styles/adaptive.css";
 import "./styles/mobile.css";
+import "./styles/investigation.css";
 import "./editor/index.js";

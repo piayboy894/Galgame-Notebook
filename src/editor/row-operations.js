@@ -5,6 +5,9 @@ import {
   selectedRoots,
 } from "../domain/scenes.js";
 import { groupDialog } from "./scenes.js";
+import { investigationScripts } from "../domain/investigation.js";
+import { investigationAddMenu } from "./investigation-editor.js";
+import { revealInvestigationElement } from "./investigation-canvas.js";
 import { isAndroid } from "../platform/runtime";
 import { clone, uid, safeColor, PALETTE } from "../domain/primitives.js";
 import { flattenRows, regenRowIds, line } from "../domain/project.js";
@@ -27,13 +30,13 @@ import {
   currentStage,
   esc,
   ico,
+  inspectName,
   option,
   state,
 } from "./context.js";
 import {
   closeModal,
   confirmBox,
-  inspectObjectDialog,
   menu,
   modal,
   readStage,
@@ -218,7 +221,7 @@ export function pasteRows(bundle) {
   if (state.view.type !== "stage" || !bundle?.rows?.length) return false;
   const s = currentStage(),
     roots = currentRows();
-  if (!roots) return toast("请先添加调查物品");
+  if (!roots) return toast("请先新建调查卡片");
   const locs = selectedRoots(roots, state.selectedRowIds);
   const sameContainer =
     locs.length > 0 && locs.every((x) => x.rows === locs[0].rows);
@@ -260,6 +263,8 @@ export function pasteRows(bundle) {
       ),
   );
   if (!prepared.length) return toast("当前位置不支持嵌套选项或场景组", true);
+  const item = currentInvestigationItem();
+  if (item) state.expandedInvestigationItems.add(item.id);
   const locationRefs = new Map();
   mutate(() => {
     const chars = Array.isArray(bundle.characters) ? bundle.characters : [],
@@ -355,9 +360,8 @@ export function pasteRows(bundle) {
   });
   if (!rows.length) return toast("选项内部仅支持对白、描述和笔记行");
   requestAnimationFrame(() => {
-    $(
-      `[data-row="${rows[0].id}"],[data-branch-row="${rows[0].id}"]`,
-    )?.scrollIntoView({ block: "nearest" });
+    const element = $(`[data-row="${rows[0].id}"],[data-branch-row="${rows[0].id}"]`);
+    if (!revealInvestigationElement(element)) element?.scrollIntoView({ block: "nearest" });
   });
   toast("已粘贴 " + rows.length + " 行");
   return true;
@@ -447,9 +451,7 @@ export function hasNativeTextSelection(target) {
 }
 
 export // v1.8 — quiet, pointer/touch-aware row ordering. No HTML5 draggable handles.
-function setupRowDrag() {
-  const sc = $(".script-scroll");
-  if (!sc) return;
+function setupRowDrag(sc) {
   let session = null,
     animationFrame = 0;
   const reduced = window.matchMedia?.(
@@ -839,13 +841,15 @@ export function insertRowAt(id, type = "dialogue", position = "below") {
 export function addRow(type = "dialogue", afterId = null) {
   if (afterId) return insertRowAt(afterId, type);
   const rows = currentRows();
-  if (!rows) return toast("请先添加调查物品");
+  if (!rows) return toast("请先新建调查卡片");
+  const item = currentInvestigationItem();
+  if (item) state.expandedInvestigationItems.add(item.id);
   const row = line(type),
     last = rows.at(-1);
   if (type === "dialogue" && last?.type === "dialogue") {
     row.speakerId = last.speakerId;
     row.expression = last.expression;
-  }
+  } else if (type === "dialogue" && item?.characterId) row.speakerId = item.characterId;
   mutate(() => rows.push(row));
   focusRow(row.id);
 }
@@ -858,12 +862,16 @@ export function focusRow(id) {
     if (!document.dispatchEvent(intent)) return;
     const element = $(`[data-row="${id}"],[data-branch-row="${id}"]`);
     if (!element) return;
-    element.scrollIntoView({ block: "nearest" });
-    (
+    const field = (
       element.querySelector(
         '[data-row-field="text"],[data-branch-field="text"]',
       ) || element.querySelector("button")
-    )?.focus();
+    );
+    if (revealInvestigationElement(field || element)) field?.focus({ preventScroll: true });
+    else {
+      element.scrollIntoView({ block: "nearest" });
+      field?.focus();
+    }
   });
 }
 export function rowInsertionItems(id) {
@@ -1002,19 +1010,18 @@ export function localOptionMenu(parentId, optId, anchor) {
 export function moveRowDialog(id) {
   const location = rowLocation(id);
   if (!location) return;
-  const from = currentStage(),
-    source = currentInvestigationItem();
+  const current = currentRows();
   const choices = state.project.chapters.flatMap((c) =>
     c.stages.flatMap((st) =>
       st.kind === "investigation"
-        ? (st.objects || [])
-            .filter((o) => !(st.id === from.id && o.id === source?.id))
-            .map((o) => ({
-              id: o.id,
-              label: `${R(c.routeId)?.name} / ${c.title} / ${st.title} / ${o.name}`,
-              rows: o.rows,
-            }))
-        : st.id === from.id
+        ? st.objects.flatMap((item) =>
+            investigationScripts(item).filter((script) => script.rows !== current).map((script) => ({
+              id: script.id,
+              label: `${R(c.routeId)?.name} / ${c.title} / ${st.title} / ${inspectName(item)} / ${script === item ? "默认脚本" : script.name}`,
+              rows: script.rows,
+            })),
+          )
+        : st.rows === current
           ? []
           : [
               {
@@ -1028,7 +1035,7 @@ export function moveRowDialog(id) {
   if (!choices.length) return toast("没有其他目标");
   modal(
     "移动脚本行",
-    `<div class="field"><label>目标阶段 / 物品</label><select class="input" id="move-row-target">${choices.map((x) => option(x.id, x.label, null)).join("")}</select></div>`,
+    `<div class="field"><label for="move-row-target">目标脚本</label><select class="input" id="move-row-target">${choices.map((x) => option(x.id, x.label, null)).join("")}</select></div>`,
     btn("取消", null, "modal-close") +
       '<button class="btn primary" id="move-row-go">移动</button>',
   );
@@ -1048,9 +1055,9 @@ export function scriptMenu(anchor) {
     ...(currentStage().kind === "investigation"
       ? [
           {
-            label: "新建调查物品",
+            label: "新建调查卡片",
             icon: "plus",
-            click: () => inspectObjectDialog(),
+            click: () => investigationAddMenu(anchor),
           },
         ]
       : []),
@@ -1107,8 +1114,10 @@ export function bulkDialog() {
         .filter((x) => x.trim()),
       create = $("#bulk-create").checked,
       rows = currentRows();
-    if (!rows) return toast("请先添加调查物品");
+    if (!rows) return toast("请先新建调查卡片");
     if (!list.length) return toast("请粘贴对白");
+    const item = currentInvestigationItem();
+    if (item) state.expandedInvestigationItems.add(item.id);
     mutate(() => {
       for (const str of list) {
         const m = str.match(/^\s*([^:：\n]{1,40})[:：]\s*(.*)$/),

@@ -89,7 +89,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
                 .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
     });
     if value["format"] != "xuxian.story"
-        || !matches!(value["version"].as_u64(), Some(1..=4))
+        || !matches!(value["version"].as_u64(), Some(1..=5))
         || !valid_id
         || !value["routes"]
             .as_array()
@@ -99,7 +99,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
             .is_some_and(|a| a.len() <= 3000)
         || !value["title"].is_string()
     {
-        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v4）"));
+        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v5）"));
     }
     Ok(value)
 }
@@ -509,11 +509,11 @@ mod tests {
         assert_eq!(fs::read_to_string(backup.path()).unwrap(), changed);
     }
     #[test]
-    fn source_location_tracks_the_bound_file_and_v4_can_be_saved() {
+    fn source_location_tracks_the_bound_file_and_v5_can_be_saved() {
         let (_dir, mut store) = store();
         assert!(store.source_path("missing-binding").is_err());
         let mut project = validate_story(&story("p1", "地点剧本")).unwrap();
-        project["version"] = json!(4);
+        project["version"] = json!(5);
         project["locations"] = json!([]);
         let opened = store.create(&project.to_string()).unwrap();
         assert_eq!(

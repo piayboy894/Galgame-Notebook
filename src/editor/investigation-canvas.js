@@ -18,7 +18,25 @@ import { mutate } from "./session.js";
 
 const { width, height, gap } = INVESTIGATION_CARD;
 
-export function investigationCanvas(stage, active, renderScript, navigation) {
+export function investigationToolbar(stage, navigation = "") {
+  return `<div class="investigation-toolbar" role="group" aria-label="调查工具">
+    ${navigation}
+    <div class="investigation-tools investigation-actions">
+      <button class="btn primary" data-act="inspect-create" title="新建卡片" aria-label="新建卡片">${ico("plus")}<span>新建卡片</span></button>
+      <button class="btn ghost" data-act="inspect-rehearse" title="演练" aria-label="演练">${ico("play")}<span>演练</span></button>
+      ${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
+      ${isAndroid ? ib("dots", "inspect-stage-menu", "调查阶段操作") : ""}
+    </div>
+    <div class="investigation-tools investigation-zoom">
+      <button type="button" aria-label="缩小画布" title="缩小画布" data-investigation-zoom="out">${ico("minus")}</button>
+      <button type="button" aria-label="重置缩放" title="重置缩放" data-investigation-zoom="reset">100%</button>
+      <button type="button" aria-label="放大画布" title="放大画布" data-investigation-zoom="in">${ico("plus")}</button>
+      <button type="button" aria-label="适应全部卡片" title="适应全部卡片" data-investigation-zoom="fit">${ico("fit")}</button>
+    </div>
+  </div>`;
+}
+
+export function investigationCanvas(stage, active, renderScript, toolbar) {
   const cards = stage.objects
     .map((item) => {
       const type = item.characterId ? "人物" : "物品";
@@ -42,21 +60,7 @@ export function investigationCanvas(stage, active, renderScript, navigation) {
     })
     .join("");
   return `<section class="investigation-canvas" aria-label="调查画布">
-    <div class="investigation-toolbar" role="group" aria-label="调查工具">
-      ${navigation}
-      <div class="investigation-tools investigation-actions">
-        <button class="btn primary" data-act="inspect-create" title="新建卡片" aria-label="新建卡片">${ico("plus")}<span>新建卡片</span></button>
-        <button class="btn ghost" data-act="inspect-rehearse" title="演练" aria-label="演练">${ico("play")}<span>演练</span></button>
-        ${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
-        ${isAndroid ? ib("dots", "inspect-stage-menu", "调查阶段操作") : ""}
-      </div>
-      <div class="investigation-tools investigation-zoom">
-        <button type="button" aria-label="缩小画布" title="缩小画布" data-investigation-zoom="out">${ico("minus")}</button>
-        <button type="button" aria-label="重置缩放" title="重置缩放" data-investigation-zoom="reset">100%</button>
-        <button type="button" aria-label="放大画布" title="放大画布" data-investigation-zoom="in">${ico("plus")}</button>
-        <button type="button" aria-label="适应全部卡片" title="适应全部卡片" data-investigation-zoom="fit">${ico("fit")}</button>
-      </div>
-    </div>
+    ${toolbar}
     <div class="investigation-viewport" data-investigation-stage="${attr(stage.id)}" aria-label="调查画布背景" aria-describedby="investigation-hint" tabindex="0">
       <div class="investigation-world" style="--card-width:${width}px;--card-height:${height}px">${cards}</div>
       ${cards ? "" : '<p class="investigation-empty">新建一张物品或人物卡片，开始编排调查。</p>'}

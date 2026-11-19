@@ -34,12 +34,21 @@ with sync_playwright() as p:
     page.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click()
     page.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()
     viewport = page.locator('.investigation-viewport')
-    assert viewport.bounding_box()['y'] <= 102 and viewport.bounding_box()['height'] >= 795
-    expect(page.get_by_role('combobox', name='切换阶段')).to_have_value('stage_a1_investigation')
+    toolbar = page.get_by_role('group', name='调查工具')
+    expect(page.get_by_role('textbox', name='阶段标题')).to_have_value('房间调查')
+    expect(toolbar.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_investigation')
+    toolbar_boxes = [element.bounding_box() for element in [
+        toolbar.locator('.stage-tab.active'),
+        toolbar.get_by_role('button', name='新建卡片'),
+        toolbar.get_by_role('button', name='适应全部卡片'),
+    ]]
+    centers = [box['y'] + box['height'] / 2 for box in toolbar_boxes]
+    assert max(centers) - min(centers) <= 3
+    bar = toolbar.bounding_box()
+    assert bar['height'] <= 47 and abs(viewport.bounding_box()['y'] - bar['y'] - bar['height']) <= 1
     expect(page.locator('.investigation-card')).to_have_count(2)
     expect(page.locator('.investigation-writing')).to_have_count(0)
     page.locator('.inspect-open').nth(1).click()
-    expect(page.locator('[data-row="line_demo_door"]')).to_have_css('padding-top', '12px')
     expect(page.locator('.investigation-card.is-selected .investigation-card-name strong')).to_have_text('房门')
     page.locator('.investigation-card.is-selected .investigation-writing [data-row-field="text"]').first.fill('调查阶段编辑仍然可用')
     page.locator('.inspect-open').first.click()

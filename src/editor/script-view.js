@@ -3,6 +3,7 @@ import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import { mobileRowControls } from "./mobile-presentation.js";
 import { branchRowCount, flattenRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
+import { isAndroid } from "../platform/runtime";
 import {
   $,
   $$,
@@ -161,10 +162,20 @@ export function renderStage(e) {
     s = currentStage(),
     investigation = s.kind === "investigation",
     opened = investigation ? currentInvestigationItem() : null;
-  e.innerHTML = investigation
-    ? investigationCanvas(c, s, opened, investigationScript)
-    : storyStage(c, s);
+  const compact = investigation && isAndroid;
+  const header = compact ? "" : stageHeader(c, s);
+  const navigation = compact ? investigationStagePicker(c, s) : stageTabs(c, s);
+  e.innerHTML =
+    header +
+    (investigation
+      ? investigationCanvas(s, opened, investigationScript, navigation)
+      : navigation +
+        `<div class="selection-toolbar" id="selection-toolbar" hidden></div><div class="script-scroll">${stageScriptTable(s.rows)}</div>`);
   if (investigation) {
+    $(".stage-tabs .active", e)?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
     setupInvestigationCanvas(e, s, investigationAddMenu);
     const viewport = $(".investigation-viewport", e);
     const activate = (event) => {
@@ -182,7 +193,7 @@ export function renderStage(e) {
   syncRowSelection();
 }
 
-function storyStage(c, s) {
+function stageHeader(c, s) {
   return (
     crumbs([
       { text: "路线图", act: "board" },
@@ -190,9 +201,21 @@ function storyStage(c, s) {
       { text: c.title, act: "open-chapter", id: c.id },
       { text: s.title },
     ]) +
-    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>
-    <div class="selection-toolbar" id="selection-toolbar" hidden></div><div class="script-scroll">${stageScriptTable(s.rows)}</div>`
+    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${s.kind === "investigation" ? "" : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div>`
   );
+}
+
+function stageTabs(chapter, stage) {
+  return `<div class="stage-tabs">${chapter.stages.map((item, index) => `<button class="stage-tab ${item.id === stage.id ? "active" : ""}" data-act="open-stage" data-id="${attr(item.id)}" title="${attr(item.title)}">${String(index + 1).padStart(2, "0")} &nbsp; ${esc(item.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>`;
+}
+
+function investigationStagePicker(chapter, stage) {
+  return `<div class="investigation-stage">
+    ${ib("back", "open-chapter", "返回章节", `data-id="${attr(chapter.id)}"`)}
+    <select class="investigation-stage-picker" aria-label="切换阶段" title="${attr(chapter.title)}">
+      ${chapter.stages.map((item) => option(item.id, item.title, stage.id)).join("")}
+    </select>
+  </div>`;
 }
 
 function investigationScript(stage, item) {

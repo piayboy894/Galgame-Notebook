@@ -28,6 +28,18 @@
   border-bottom: 1px solid var(--line);
   background: var(--paper);
 }
+.investigation-toolbar:has(> .stage-tabs) {
+  padding-inline: 36px;
+}
+.investigation-toolbar > .stage-tabs {
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+}
+.investigation-toolbar .stage-tab {
+  flex: none;
+}
 .investigation-stage,
 .investigation-tools {
   display: flex;
@@ -100,7 +112,7 @@
 .android .investigation-stage-picker {
   min-height: 44px;
 }
-.app:has(.investigation-canvas) > .topbar {
+.android .app:has(.investigation-canvas) > .topbar {
   height: 56px;
 }
 .android:not(.phone-ui) .app:has(.investigation-canvas) > .mobile-nav {
@@ -340,11 +352,6 @@
 .investigation-writing .script-table-head {
   position: static;
 }
-:root:not(.android)
-  .investigation-writing
-  .script-row:not(.group-row):not(.local-choice-row) {
-  padding-block: 12px;
-}
 @media (min-width: 701px) {
   .investigation-writing
     .script-row:not(.group-row):not(.effect-row):not(.note-row):not(
@@ -422,7 +429,8 @@
   }
 }
 @media (max-width: 850px) {
-  .investigation-toolbar {
+  .investigation-toolbar,
+  .investigation-toolbar:has(> .stage-tabs) {
     gap: 4px;
     padding-inline: 6px;
   }
@@ -438,7 +446,8 @@
   }
 }
 @media (max-width: 600px) {
-  .investigation-toolbar
+  .android
+    .investigation-toolbar
     :is(
       [data-act="inspect-collapse-all"],
       [data-investigation-zoom="in"],

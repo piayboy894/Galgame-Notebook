@@ -91,6 +91,20 @@ class AndroidPlatformTest {
       assertEquals("0",js(scenario,"document.querySelectorAll('#modal-root .modal').length"))
       js(scenario,"window.__imeHidden=false;window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/hide-keyboard',body:{}}).then(()=>window.__imeHidden=true);true")
       ready(scenario,"window.__imeHidden && !document.documentElement.classList.contains('ime-visible')")
+      // Physical Ctrl+C/V must also work when the destination is a row number.
+      js(scenario,"""(() => {
+        const field = document.querySelector('textarea.dialogue-cell');
+        const number = field.closest('.script-row').querySelector('.row-select');
+        number.click(); number.focus();
+        window.clipboardSource = field.value;
+        window.initialRows = document.querySelectorAll('.script-rows > .script-row').length;
+      })()""")
+      assertTrue(device.pressKeyCode(KeyEvent.KEYCODE_C, KeyEvent.META_CTRL_ON))
+      ready(scenario,"document.querySelector('#toast').textContent.includes('已复制 1 行')")
+      js(scenario,"document.querySelector('.script-rows > .script-row .row-select').focus();true")
+      assertTrue(device.pressKeyCode(KeyEvent.KEYCODE_V, KeyEvent.META_CTRL_ON))
+      ready(scenario,"document.querySelectorAll('.script-rows > .script-row').length === window.initialRows + 1")
+      assertEquals("true",js(scenario,"document.querySelector('.script-row.selected textarea.dialogue-cell').value === window.clipboardSource"))
       // This round trip exercises Rust -> Kotlin plugin registration and the system document picker.
       js(scenario,"""window.__picker='pending';window.__TAURI_INTERNALS__.invoke('mobile_command',{endpoint:'mobile/import',body:{}}).then(r=>window.__picker=r.cancelled?'ok':'selected').catch(e=>window.__picker='error');true""")
       var pickerReady=false

@@ -183,10 +183,10 @@ export function renderStage(e) {
     setupInvestigationCanvas(e, s, investigationAddMenu);
     const viewport = $(".investigation-viewport", e);
     const activate = (event) => {
-      const editor = event.target.closest("[data-inspect-item]");
-      if (!editor || !selectInvestigationItem(editor.dataset.inspectItem)) return;
+      const card = event.target.closest("[data-investigation-card]");
+      if (!card || !selectInvestigationItem(card.dataset.investigationCard)) return;
       $$(".investigation-card", viewport).forEach((card) =>
-        card.classList.toggle("is-selected", card.dataset.investigationCard === editor.dataset.inspectItem),
+        card.classList.toggle("is-selected", card.dataset.investigationCard === state.activeInspectObjectId),
       );
       syncRowSelection();
     };

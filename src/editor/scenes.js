@@ -1,4 +1,4 @@
-import { moveRowDialog, rowInsertionItems } from "./row-operations.js";
+import { copyRowsButton, moveRowDialog, pasteRowsButton, rowInsertionItems } from "./row-operations.js";
 import {
   LOCATION_FIELDS,
   effectiveLocation,
@@ -204,6 +204,17 @@ export function groupMenu(id, anchor) {
     { label: "取消分组，保留内容", icon: "layers", click: () => ungroup(id) },
     {
       label: "复制场景组",
+      icon: "copy",
+      click: () => copyRowsButton(new Set([id])),
+    },
+    {
+      label: "粘贴到场景组下方",
+      icon: "layers",
+      disabled: !state.rowClipboard,
+      click: () => pasteRowsButton(new Set([id])),
+    },
+    {
+      label: "在下方创建副本",
       icon: "copy",
       click: () => {
         const copied = regenRowIds(clone(loc.row));

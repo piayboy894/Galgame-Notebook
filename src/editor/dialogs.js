@@ -701,6 +701,35 @@ export function deleteChapter(id) {
   );
 }
 
+export function investigationStageMenu(anchor) {
+  const stageId = currentStage().id;
+  const extra = [
+    ['[data-act="inspect-collapse-all"]', "收起全部脚本", "up"],
+    ['[data-investigation-zoom="in"]', "放大画布", "plus"],
+    ['[data-investigation-zoom="out"]', "缩小画布", "minus"],
+  ].flatMap(([selector, label, icon]) => {
+    const button = $(selector);
+    return button && !button.getClientRects().length
+      ? [{ label, icon, click: () => button.click() }]
+      : [];
+  });
+  if (document.documentElement.classList.contains("phone-ui")) {
+    const select = $("#mobile-select");
+    extra.push({
+      label: select.textContent === "多选" ? "多选脚本行" : "结束多选",
+      icon: "layers",
+      click: () => select.click(),
+    });
+  }
+  menu(anchor, [
+    { label: "阶段设置", icon: "settings", click: () => stageDialog(stageId) },
+    { label: "阶段笔记", icon: "note", click: () => notesDialog("stage", stageId) },
+    { label: "阅读本阶段", icon: "eye", click: readStage },
+    { label: "新建阶段", icon: "plus", click: () => stageDialog() },
+    ...(extra.length ? [null, ...extra] : []),
+  ]);
+}
+
 export function stageMenu(id, anchor) {
   const c = currentChapter(),
     idx = c.stages.findIndex((s) => s.id === id);

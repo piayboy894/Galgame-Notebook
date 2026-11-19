@@ -1,6 +1,7 @@
 """Regression smoke test in isolated Chromium, without a user's browser session."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+import json
 import os
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,21 @@ with sync_playwright() as p:
     page.locator('#replace-discard').click()
     page.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click()
     page.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()
+    viewport = page.locator('.investigation-viewport')
+    toolbar = page.get_by_role('group', name='调查工具')
+    stage_title = page.get_by_role('textbox', name='阶段标题')
+    expect(stage_title).to_have_value('房间调查')
+    tabs = page.locator('.investigation-stage-tabs')
+    expect(tabs.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_investigation')
+    toolbar_boxes = [element.bounding_box() for element in [
+        stage_title,
+        toolbar.get_by_role('button', name='新建卡片'),
+        toolbar.get_by_role('button', name='适应全部卡片'),
+    ]]
+    centers = [box['y'] + box['height'] / 2 for box in toolbar_boxes]
+    assert max(centers) - min(centers) <= 3
+    tab_bar = tabs.bounding_box()
+    assert centers[0] < tab_bar['y'] and abs(viewport.bounding_box()['y'] - tab_bar['y'] - tab_bar['height']) <= 1
     expect(page.locator('.investigation-card')).to_have_count(2)
     expect(page.locator('.investigation-writing')).to_have_count(0)
     page.locator('.inspect-open').nth(1).click()
@@ -53,7 +69,6 @@ with sync_playwright() as p:
     page.get_by_role('button', name='收起全部脚本').click()
     expect(page.locator('.investigation-writing')).to_have_count(0)
     investigation = 'window.XuXian.snapshot().chapters[0].stages.find(s => s.id === "stage_a1_investigation")'
-    viewport = page.locator('.investigation-viewport')
     world = page.locator('.investigation-world')
     fit = page.get_by_role('button', name='适应全部卡片')
     fit.click()
@@ -159,6 +174,36 @@ with sync_playwright() as p:
     screenshots = Path(os.environ.get('SCREENSHOT_DIR', ROOT / 'work/test-results'))
     screenshots.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(screenshots / 'editor-desktop-preview.png'), full_page=True)
+
+    # Long stage lists can scroll at the minimum desktop width without moving the canvas buttons.
+    chapter = project['chapters'][0]
+    investigation_index = next(i for i, stage in enumerate(chapter['stages']) if stage['id'] == 'stage_a1_investigation')
+    chapter['stages'][investigation_index:investigation_index] = [
+        {'id': f'stage_extra_{i}', 'title': f'调查前的补充剧情 {i + 1}', 'kind': 'story', 'rows': []}
+        for i in range(18)
+    ]
+    many_stages = browser.new_page(viewport={'width': 900, 'height': 620})
+    many_stages.on('pageerror', lambda error: failures.append(str(error)))
+    many_stages.goto(os.environ.get('APP_URL', 'http://127.0.0.1:1420'))
+    many_stages.locator('#file-input').set_input_files({
+        'name': 'many-stages.story.json',
+        'mimeType': 'application/json',
+        'buffer': json.dumps(project, ensure_ascii=False).encode(),
+    })
+    many_stages.locator('[data-act="open-chapter"][data-id="chapter_a1"]').click()
+    many_stages.locator('[data-act="open-stage"][data-id="stage_a1_investigation"]').click()
+    long_tabs = many_stages.locator('.investigation-stage-tabs')
+    assert long_tabs.evaluate('e => e.scrollWidth > e.clientWidth && e.scrollLeft > 0')
+    tab_box = long_tabs.bounding_box()
+    active_box = long_tabs.locator('.stage-tab.active').bounding_box()
+    assert tab_box['x'] <= active_box['x'] and active_box['x'] + active_box['width'] <= tab_box['x'] + tab_box['width'] + 1
+    create = many_stages.get_by_role('button', name='新建卡片')
+    before = create.bounding_box()
+    long_tabs.evaluate('e => e.scrollLeft = 0')
+    assert create.bounding_box() == before
+    long_tabs.locator('[data-id="stage_a1_1"]').click()
+    expect(many_stages.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_1')
+
     assert failures == [], failures
     print('PASS: script editing, investigation canvas, locations, repeated and conditional dialogue, rehearsal, and JSON round trip')
     browser.close()

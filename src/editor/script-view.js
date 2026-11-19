@@ -3,6 +3,7 @@ import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import { mobileRowControls } from "./mobile-presentation.js";
 import { branchRowCount, flattenRows } from "../domain/project.js";
 import { safeColor } from "../domain/primitives.js";
+import { isAndroid } from "../platform/runtime";
 import {
   $,
   $$,
@@ -21,7 +22,11 @@ import {
   state,
   textCount,
 } from "./context.js";
-import { investigationCanvas, setupInvestigationCanvas } from "./investigation-canvas.js";
+import {
+  investigationCanvas,
+  investigationToolbar,
+  setupInvestigationCanvas,
+} from "./investigation-canvas.js";
 import { describeInvestigationRule, investigationAddMenu } from "./investigation-editor.js";
 import { currentInvestigationItem, currentInvestigationScript, selectInvestigationItem } from "./session.js";
 import { setupRowDrag, syncRowSelection } from "./row-operations.js";
@@ -161,19 +166,20 @@ export function renderStage(e) {
     s = currentStage(),
     investigation = s.kind === "investigation",
     opened = investigation ? currentInvestigationItem() : null;
-  const header =
-    crumbs([
-      { text: "路线图", act: "board" },
-      { text: R(c.routeId)?.name || "" },
-      { text: c.title, act: "open-chapter", id: c.id },
-      { text: s.title },
-    ]) +
-    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions"><span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${investigation ? "" : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div><div class="stage-tabs">${c.stages.map((st, j) => `<button class="stage-tab ${st.id === s.id ? "active" : ""}" data-act="open-stage" data-id="${attr(st.id)}" title="${attr(st.title)}">${String(j + 1).padStart(2, "0")} &nbsp; ${esc(st.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>${investigation ? "" : '<div class="selection-toolbar" id="selection-toolbar" hidden></div>'}`;
-  const body = investigation
-    ? investigationCanvas(s, opened, investigationScript)
-    : `<div class="script-scroll">${stageScriptTable(s.rows)}</div>`;
-  e.innerHTML = header + body;
+  const compact = investigation && isAndroid;
+  const toolbar = investigation
+    ? investigationToolbar(s, compact ? investigationStagePicker(c, s) : "")
+    : "";
+  e.innerHTML =
+    (compact ? "" : stageHeader(c, s, toolbar) + stageTabs(c, s)) +
+    (investigation
+      ? investigationCanvas(s, opened, investigationScript, compact ? toolbar : "")
+      : `<div class="selection-toolbar" id="selection-toolbar" hidden></div><div class="script-scroll">${stageScriptTable(s.rows)}</div>`);
   if (investigation) {
+    $(".stage-tabs .active", e)?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
     setupInvestigationCanvas(e, s, investigationAddMenu);
     const viewport = $(".investigation-viewport", e);
     const activate = (event) => {
@@ -189,6 +195,31 @@ export function renderStage(e) {
   }
   $$(".script-scroll", e).forEach((scroll) => setupRowDrag(scroll));
   syncRowSelection();
+}
+
+function stageHeader(c, s, toolbar) {
+  return (
+    crumbs([
+      { text: "路线图", act: "board" },
+      { text: R(c.routeId)?.name || "" },
+      { text: c.title, act: "open-chapter", id: c.id },
+      { text: s.title },
+    ]) +
+    `<div class="stage-header"><input class="title-edit" value="${attr(s.title)}" data-bind="stage-title" aria-label="阶段标题" maxlength="300"><div class="view-actions">${toolbar}<span class="count desktop-only">${branchRowCount(s)} 行 · ${textCount(s)} 字</span>${ib("note", "stage-notes", "阶段笔记")}${ib("eye", "read-stage", "阅读本阶段")}${s.kind === "investigation" ? "" : btn("对白", "plus", "add-row", "primary")}${ib("dots", "script-menu", "脚本操作")}</div></div>`
+  );
+}
+
+function stageTabs(chapter, stage) {
+  return `<div class="stage-tabs${stage.kind === "investigation" ? " investigation-stage-tabs" : ""}">${chapter.stages.map((item, index) => `<button class="stage-tab ${item.id === stage.id ? "active" : ""}" data-act="open-stage" data-id="${attr(item.id)}" title="${attr(item.title)}">${String(index + 1).padStart(2, "0")} &nbsp; ${esc(item.title)}</button>`).join("")}${ib("plus", "add-stage", "新建阶段")}</div>`;
+}
+
+function investigationStagePicker(chapter, stage) {
+  return `<div class="investigation-stage">
+    ${ib("back", "open-chapter", "返回章节", `data-id="${attr(chapter.id)}"`)}
+    <select class="investigation-stage-picker" aria-label="切换阶段" title="${attr(chapter.title)}">
+      ${chapter.stages.map((item) => option(item.id, item.title, stage.id)).join("")}
+    </select>
+  </div>`;
 }
 
 function investigationScript(stage, item) {

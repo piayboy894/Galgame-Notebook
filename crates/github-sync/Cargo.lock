@@ -1449,7 +1449,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
 name = "xuxian-github-sync"
-version = "2.6.1"
+version = "2.6.2"
 dependencies = [
  "base64 0.22.1",
  "reqwest",
@@ -1464,7 +1464,7 @@ dependencies = [
 
 [[package]]
 name = "xuxian-story-store"
-version = "2.6.1"
+version = "2.6.2"
 dependencies = [
  "serde",
  "serde_json",

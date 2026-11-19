@@ -67,6 +67,7 @@ import {
   closeMenu,
   closeModal,
   flagsDialog,
+  investigationStageMenu,
   menu,
   notesDialog,
   readStage,
@@ -214,6 +215,9 @@ function dispatch(action, el) {
       break;
     case "inspect-create":
       investigationAddMenu(el);
+      break;
+    case "inspect-stage-menu":
+      investigationStageMenu(el);
       break;
     case "inspect-select":
     case "inspect-fold": {
@@ -554,6 +558,11 @@ document.addEventListener("input", (ev) => {
 
 document.addEventListener("change", (ev) => {
   const t = ev.target;
+  if (t.matches(".investigation-stage-picker")) {
+    go("stage", state.view.chapterId, t.value);
+    ($(".investigation-stage-picker") || $(".stage-tab.active"))?.focus({ preventScroll: true });
+    return;
+  }
   if (t.matches(".investigation-script-select")) {
     const itemId = t.closest("[data-inspect-item]").dataset.inspectItem;
     selectInvestigationItem(itemId, t.value || null);

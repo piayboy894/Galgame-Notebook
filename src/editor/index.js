@@ -1,4 +1,13 @@
 import {
+  clearPasteGesture,
+  finishPasteShortcut,
+  forgetClipboard,
+  handleClipboardShortcut,
+  handleCopy,
+  handlePaste,
+  releaseClipboard,
+} from "./clipboard.js";
+import {
   projectSettingsDialog,
   prepareDialogueInput,
   refreshDialogueMeter,
@@ -81,18 +90,11 @@ import {
 import {
   addRow,
   branchRowMenu,
-  clearPasteGesture,
-  finishRowPasteShortcut,
-  handleRowClipboardShortcut,
   copyRowsButton,
   deleteSelectedRows,
   focusRow,
-  forgetCopiedRows,
-  handleRowCopy,
-  handleRowPaste,
   localOptionMenu,
   pasteRowsButton,
-  releaseRowClipboard,
   rowMenu,
   rowsAreEditable,
   scriptMenu,
@@ -606,10 +608,10 @@ document.addEventListener("change", (ev) => {
   }
 });
 
-document.addEventListener("copy", handleRowCopy);
-document.addEventListener("cut", forgetCopiedRows);
-document.addEventListener("paste", handleRowPaste);
-document.addEventListener("keyup", finishRowPasteShortcut);
+document.addEventListener("copy", handleCopy);
+document.addEventListener("cut", forgetClipboard);
+document.addEventListener("paste", handlePaste);
+document.addEventListener("keyup", finishPasteShortcut);
 
 document.addEventListener("compositionstart", () => (state.composition = true));
 
@@ -636,7 +638,7 @@ document.addEventListener("keydown", (ev) => {
   const mod = ev.ctrlKey || ev.metaKey,
     k = ev.key.toLowerCase();
   if (mod && !ev.shiftKey && !ev.altKey && (k === "c" || k === "v")) {
-    handleRowClipboardShortcut(ev, k);
+    handleClipboardShortcut(ev, k);
     return;
   }
   if (
@@ -871,10 +873,10 @@ document.addEventListener("drop", (e) => {
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) releaseRowClipboard();
+  if (document.hidden) releaseClipboard();
 });
 window.addEventListener("blur", () => {
-  releaseRowClipboard();
+  releaseClipboard();
   clearFileDrop();
 });
 

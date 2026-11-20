@@ -27,7 +27,7 @@ import {
   investigationToolbar,
   setupInvestigationCanvas,
 } from "./investigation-canvas.js";
-import { describeInvestigationRule, investigationAddMenu } from "./investigation-editor.js";
+import { describeInvestigationRule, investigationAddMenu, investigationContextMenu } from "./investigation-editor.js";
 import { currentInvestigationItem, currentInvestigationScript, selectInvestigationItem } from "./session.js";
 import { setupRowDrag, syncRowSelection } from "./row-operations.js";
 
@@ -60,9 +60,13 @@ export function renderChapter(e) {
 }
 
 export function speakerOptions(id) {
+  const characters = state.project.characters;
+  const temporary = (currentStage()?.objects || []).filter((item) => item.temporaryCharacter);
+  const speaker = P(id);
+  if (speaker?.temporaryCharacter && !temporary.includes(speaker)) temporary.push(speaker);
   return (
     option("", "旁白", id) +
-    state.project.characters.map((p) => option(p.id, p.name, id)).join("") +
+    [...characters, ...temporary].map((p) => option(p.id, p.name, id)).join("") +
     option("__new", "＋ 新建角色", id)
   );
 }
@@ -180,9 +184,10 @@ export function renderStage(e) {
       block: "nearest",
       inline: "nearest",
     });
-    setupInvestigationCanvas(e, s, investigationAddMenu);
+    setupInvestigationCanvas(e, s, investigationAddMenu, investigationContextMenu);
     const viewport = $(".investigation-viewport", e);
     const activate = (event) => {
+      if (event.type === "pointerdown" && event.button === 2 && !event.target.closest(".investigation-writing")) return;
       const card = event.target.closest("[data-investigation-card]");
       if (!card || !selectInvestigationItem(card.dataset.investigationCard)) return;
       $$(".investigation-card", viewport).forEach((card) =>

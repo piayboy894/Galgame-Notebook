@@ -1,3 +1,4 @@
+import { investigationItems } from "../domain/investigation.js";
 import { isNative } from "../platform/runtime";
 import {
   branchRowCount,
@@ -8,6 +9,7 @@ import {
 /** Mutable editor session. Filesystem access lives behind the platform adapter. */
 export const state = {
   activeInspectObjectId: null,
+  selectedInvestigationCardIds: new Set(),
   investigationScriptsByItem: new Map(),
   expandedInvestigationItems: new Set(),
   investigationCameras: new Map(),
@@ -46,7 +48,7 @@ export const state = {
   skipBoardCapture: false,
   selectedRowIds: new Set(),
   selectionAnchor: null,
-  rowClipboard: null,
+  clipboard: null,
   edgeFrame: 0,
   collapsedOptionIds: new Set(),
   collapsedGroupIds: new Set(),
@@ -144,7 +146,8 @@ export const ROW_MIME = "application/x-xuxian-rows+json";
 
 export const C = (id) => state.project.chapters.find((c) => c.id === id),
   R = (id) => state.project.routes.find((r) => r.id === id),
-  P = (id) => state.project.characters.find((c) => c.id === id),
+  P = (id) => id && (state.project.characters.find((c) => c.id === id) ||
+    investigationItems(state.project).find((item) => item.temporaryCharacter && item.id === id)),
   F = (id) => state.project.flags.find((f) => f.id === id);
 
 export const inspectName = (item) =>

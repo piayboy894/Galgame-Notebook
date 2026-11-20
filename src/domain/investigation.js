@@ -30,6 +30,8 @@ export function investigationRule() {
   };
 }
 
+export const isInvestigationPerson = (item) => Boolean(item.characterId || item.temporaryCharacter);
+
 export function investigationScripts(item) {
   return [item, ...(item.interactions || [])];
 }

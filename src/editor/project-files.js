@@ -479,6 +479,7 @@ export function adopt(
   state.expandedInvestigationItems.clear();
   state.investigationScriptsByItem.clear();
   state.activeInspectObjectId = null;
+  state.selectedInvestigationCardIds.clear();
   state.project = p;
   state.libraryOnly = libraryOnly;
   state.sourceName = name;

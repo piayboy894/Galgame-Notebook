@@ -80,7 +80,11 @@ export function regenerateInvestigationIds(items) {
         if (condition.type === "investigated" && ids.has(condition.targetId))
           condition.targetId = ids.get(condition.targetId);
     }
-    for (const script of investigationScripts(item)) script.rows.forEach(regenRowIds);
+    for (const script of investigationScripts(item)) {
+      script.rows.forEach(regenRowIds);
+      for (const row of flattenRows(script.rows))
+        if (ids.has(row.speakerId)) row.speakerId = ids.get(row.speakerId);
+    }
   }
 }
 export function newCharacter(name, index) {
@@ -316,12 +320,14 @@ export function normalizeProject(raw) {
         objects: arr(st.objects).map((o, i) => {
           const characterId = ref(o.characterId);
           const locationId = ref(o.locationId);
+          const temporaryCharacter = !characterId && o.temporaryCharacter === true;
           return {
             id: id(o.id),
-            name: str(o.name, characterId ? "未命名人物" : "未命名物品"),
+            name: str(o.name, characterId || temporaryCharacter ? "未命名人物" : "未命名物品"),
             notes: str(o.notes),
             characterId,
-            locationId: !characterId && locationIds.has(locationId) ? locationId : "",
+            ...(temporaryCharacter ? { temporaryCharacter: true } : {}),
+            locationId: locationIds.has(locationId) ? locationId : "",
             position: investigationPosition(o.position, i),
             fallbackEnabled: o.fallbackEnabled !== false,
             outcomes: arr(o.outcomes).map(ref).filter(Boolean),

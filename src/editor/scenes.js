@@ -1,3 +1,4 @@
+import { hasCopiedRows } from "./clipboard.js";
 import { copyRowsButton, moveRowDialog, pasteRowsButton, rowInsertionItems } from "./row-operations.js";
 import {
   LOCATION_FIELDS,
@@ -210,7 +211,7 @@ export function groupMenu(id, anchor) {
     {
       label: "粘贴到场景组下方",
       icon: "layers",
-      disabled: !state.rowClipboard,
+      disabled: !hasCopiedRows(),
       click: () => pasteRowsButton(new Set([id])),
     },
     {

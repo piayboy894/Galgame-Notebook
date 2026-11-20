@@ -5,4 +5,5 @@ import "./styles/github-sync.css";
 import "./styles/adaptive.css";
 import "./styles/mobile.css";
 import "./styles/investigation.css";
+import "./styles/encyclopedia.css";
 import "./editor/index.js";

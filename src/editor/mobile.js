@@ -181,6 +181,7 @@ function syncShell() {
         : {
             characters: "角色",
             locations: "地点预设",
+            encyclopedia: "百科",
             "mobile-settings": "设定",
             board: "大纲",
           }[state.view.type] || "叙线";
@@ -198,7 +199,7 @@ function syncShell() {
   const active =
     state.view.type === "stage"
       ? "writing"
-      : ["mobile-settings", "characters", "locations"].includes(state.view.type)
+      : ["mobile-settings", "characters", "locations", "encyclopedia"].includes(state.view.type)
         ? "settings"
         : "outline";
   $$("[data-mobile-nav]").forEach((button) =>

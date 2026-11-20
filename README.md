@@ -1,4 +1,4 @@
-# 叙线 · Galgame Notebook 2.7
+# 叙线 · Galgame Notebook 2.8
 
 离线 AVG 剧本编辑器，支持多路线、章节解锁、剧情/调查阶段、分支合流/跳转、对白与演出描述、行排序、撤销及 JSON/Markdown 导出。
 

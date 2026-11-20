@@ -1,0 +1,84 @@
+.encyclopedia-page {
+  padding: 18px 22px 32px;
+}
+
+.encyclopedia-list {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+#encyclopedia-search {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+#encyclopedia-entries {
+  display: grid;
+  gap: 4px;
+}
+
+.encyclopedia-entry {
+  width: 100%;
+}
+
+.encyclopedia-selection {
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border-inline-start: 3px solid #547e71;
+  background: #eef4f1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.encyclopedia-chips:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 2px;
+}
+
+.encyclopedia-chip {
+  max-width: 100%;
+  padding: 2px 8px;
+  border: 1px solid #cfdfd7;
+  border-radius: 6px;
+  background: #edf5f1;
+  color: #365d50;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.encyclopedia-term {
+  display: inline;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: #315e50;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: inherit;
+}
+
+.encyclopedia-note {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d8e6df;
+  border-radius: 6px;
+  background: #f2f7f4;
+  overflow-wrap: anywhere;
+}
+
+.encyclopedia-note p {
+  white-space: pre-wrap;
+}
+
+@media (pointer: coarse) {
+  .encyclopedia-chip {
+    min-height: 30px;
+  }
+}

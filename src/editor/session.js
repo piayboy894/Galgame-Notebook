@@ -1,4 +1,5 @@
-import { dialogueWrapChanges } from "../domain/dialogue.js";
+import { renderEncyclopedia } from "./encyclopedia.js";
+import { applyDialogueWrap, dialogueWrapChanges } from "../domain/dialogue.js";
 import { findRow } from "../domain/scenes.js";
 import { renderMobileSettings } from "./mobile-presentation.js";
 import { renderLocations } from "./scenes.js";
@@ -139,7 +140,7 @@ export function mutate(fn, renderNow = true) {
   fn();
   if (!state.composition)
     for (const { row, text } of dialogueWrapChanges(state.project))
-      row.text = text;
+      applyDialogueWrap(row, text);
   changed(renderNow);
 }
 
@@ -406,6 +407,7 @@ export function render() {
   else if (state.view.type === "chapter") renderChapter(e);
   else if (state.view.type === "stage") renderStage(e);
   else if (state.view.type === "characters") renderCharacters(e);
+  else if (state.view.type === "encyclopedia") renderEncyclopedia(e);
   else if (state.view.type === "locations") renderLocations(e);
   else if (state.view.type === "mobile-settings") renderMobileSettings(e);
   document.dispatchEvent(new Event("editor:render"));

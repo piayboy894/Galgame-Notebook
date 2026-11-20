@@ -1,4 +1,5 @@
-import { dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
+import { normalizeEncyclopediaLinks, setEncyclopediaLinks } from "./encyclopedia.js";
+import { applyDialogueWrap, dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
 import { rowChildren, normalizeProperties, LOCATION_FIELDS } from "./scenes.js";
 import { investigationPosition, investigationScripts } from "./investigation.js";
@@ -131,6 +132,7 @@ export function newProject(title = "未命名剧本") {
     routes: [],
     characters: [],
     locations: [],
+    encyclopedia: [],
     flags: [],
     chapters: [],
   };
@@ -177,6 +179,7 @@ export function normalizeProject(raw) {
     routes: [],
     characters: [],
     locations: [],
+    encyclopedia: [],
     flags: [],
     chapters: [],
   };
@@ -211,6 +214,12 @@ export function normalizeProject(raw) {
     name: str(f.name, "未命名条件"),
     notes: str(f.notes),
   }));
+  p.encyclopedia = arr(raw.encyclopedia).map((entry) => ({
+    id: id(entry?.id),
+    title: str(entry.title, "未命名词条"),
+    body: str(entry.body),
+  }));
+  const entryIds = new Set(p.encyclopedia.map((entry) => entry.id));
   const parseRow = (r, inside = false, inGroup = false, depth = 0) => {
     if (depth > 12) throw Error("脚本结构嵌套过深");
     if (r?.type === "group") {
@@ -264,6 +273,10 @@ export function normalizeProject(raw) {
       action: str(r.action),
       options: [],
     };
+    if (type === "dialogue") {
+      setEncyclopediaLinks(base, normalizeEncyclopediaLinks(r.encyclopediaLinks, base.text, entryIds));
+      applyDialogueWrap(base, base.text.replace(/\r\n?/g, "\n"));
+    }
     if (type === "branch")
       base.options = arr(r.options).map((o) => ({
         id: id(o.id),
@@ -356,6 +369,6 @@ export function normalizeProject(raw) {
     };
   });
   if (p.chapters.length > 3000) throw Error("章节数量超过安全上限（3000）");
-  for (const { row, text } of dialogueWrapChanges(p)) row.text = text;
+  for (const { row, text } of dialogueWrapChanges(p)) applyDialogueWrap(row, text);
   return p;
 }

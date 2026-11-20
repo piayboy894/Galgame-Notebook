@@ -1,6 +1,9 @@
+import { encyclopediaParts, wrappedEncyclopediaLinks } from "../domain/encyclopedia.js";
 import {
   dialogueMarkdown,
+  applyDialogueWrap,
   normalizeDialogueSettings,
+  wrapDialogue,
   dialogueWrapChanges,
 } from "../domain/dialogue.js";
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
@@ -698,7 +701,7 @@ export async function saveSource(asNew = false, force = false) {
   const changes = dialogueWrapChanges(state.project);
   if (changes.length)
     mutate(() => {
-      for (const { row, text } of changes) row.text = text;
+      for (const { row, text } of changes) applyDialogueWrap(row, text);
     });
   state.saving = true;
   $("#save-btn").disabled = true;
@@ -828,6 +831,20 @@ export async function saveSource(asNew = false, force = false) {
   }
 }
 
+function encyclopediaMarkdown(row, indent) {
+  const limit = normalizeDialogueSettings(state.project.settings).dialogueLineLength;
+  if (!row.encyclopediaLinks?.length) return dialogueMarkdown(row.text, limit, indent);
+  const text = wrapDialogue(row.text, limit);
+  const links = wrappedEncyclopediaLinks(row.encyclopediaLinks, row.text, text);
+  const markup = encyclopediaParts(text, links).map(({ text, entryId }) => {
+    if (!entryId) return text;
+    return text.split("\n").map((line) =>
+      line ? "[" + line.replace(/[\\[\]]/g, "\\$&") + "](#encyclopedia-" + entryId + ")" : "",
+    ).join("\n");
+  }).join("");
+  return dialogueMarkdown(markup, 0, indent);
+}
+
 export function appendMarkdownRows(out, rows, indent = "") {
   for (const row of rows) {
     if (row.type === "group") {
@@ -885,11 +902,7 @@ export function appendMarkdownRows(out, rows, indent = "") {
             "〕"
           : "") +
         "  ",
-      dialogueMarkdown(
-        row.text,
-        normalizeDialogueSettings(state.project.settings).dialogueLineLength,
-        indent,
-      ),
+      encyclopediaMarkdown(row, indent),
       "",
     );
   }
@@ -969,6 +982,11 @@ export async function exportMarkdown() {
         } else appendMarkdownRows(out, st.rows);
       }
     }
+  }
+  if (state.project.encyclopedia.length) {
+    out.push("---", "", "## 百科", "");
+    for (const { id, title, body } of state.project.encyclopedia)
+      out.push('<a id="encyclopedia-' + id + '"></a>', "", "### " + title, "", body, "");
   }
   if (
     await downloadText(

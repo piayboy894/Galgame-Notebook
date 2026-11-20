@@ -100,6 +100,7 @@ export function pasteInvestigationCards(bundle, position = null) {
       id: state.project.id,
       routes: [route],
       locations: state.project.locations,
+      encyclopedia: state.project.encyclopedia,
       chapters: [{
         id: uid("chapter"), routeId: route.id,
         stages: [{ id: uid("stage"), kind: "investigation", objects: bundle.cards }],

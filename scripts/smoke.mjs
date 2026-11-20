@@ -28,6 +28,7 @@ try {
     "tests/scenes_smoke.py",
     "tests/clipboard_smoke.py",
     "tests/investigation_cards_smoke.py",
+    "tests/encyclopedia_smoke.py",
     "tests/github_sync_smoke.py",
     "tests/android_smoke.py",
     "tests/touch_graph_smoke.py",

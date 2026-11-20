@@ -52,6 +52,8 @@
 
 .encyclopedia-term {
   display: inline;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   appearance: none;
   border: 0;
   padding: 0;

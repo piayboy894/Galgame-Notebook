@@ -25,8 +25,10 @@ describe("dialogue encyclopedia ranges", () => {
   });
 
   it("copies definitions with dialogue and keeps conflicting definitions distinct", () => {
-    const target = newProject();
-    target.encyclopedia.push({ id: "local", title: "旧港", body: "当地港口" });
+    const target = {
+      ...newProject(),
+      encyclopedia: [{ id: "local", title: "旧港", body: "当地港口" }],
+    };
     const linked = { ...line(), text: "去旧港", encyclopediaLinks: [{ start: 1, end: 3, entryId: "foreign" }] };
     const entries = [{ id: "foreign", title: "旧港", body: "另一城市的旧港" }];
     remapCopiedEncyclopediaLinks(target, [linked], entries, "other");

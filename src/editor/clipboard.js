@@ -227,4 +227,3 @@ function parsePayload(raw) {
     return null;
   }
 }
-

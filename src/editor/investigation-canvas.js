@@ -1,11 +1,13 @@
 import {
   INVESTIGATION_CARD,
+  isInvestigationPerson,
   investigationScripts,
 } from "../domain/investigation.js";
 import { flattenRows } from "../domain/project.js";
 import { isAndroid } from "../platform/runtime";
 import {
   $,
+  $$,
   attr,
   esc,
   ib,
@@ -15,6 +17,7 @@ import {
   state,
 } from "./context.js";
 import { mutate } from "./session.js";
+import { syncRowSelection } from "./row-operations.js";
 
 const { width, height, gap } = INVESTIGATION_CARD;
 
@@ -39,17 +42,18 @@ export function investigationToolbar(stage, navigation = "") {
 export function investigationCanvas(stage, active, renderScript, toolbar) {
   const cards = stage.objects
     .map((item) => {
-      const type = item.characterId ? "人物" : "物品";
+      const person = isInvestigationPerson(item);
+      const type = item.temporaryCharacter ? "临时 NPC" : person ? "人物" : "物品";
       const name = inspectName(item);
       const location = inspectLocation(item);
       const count = investigationScripts(item)
         .flatMap((script) => flattenRows(script.rows))
         .filter((row) => row.type !== "group").length;
       const expanded = state.expandedInvestigationItems.has(item.id);
-      return `<article class="investigation-card ${item.characterId ? "is-character" : ""} ${item.id === active?.id ? "is-selected" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
+      return `<article class="investigation-card ${person ? "is-character" : ""} ${item.id === active?.id ? "is-selected" : ""} ${state.selectedInvestigationCardIds.has(item.id) ? "is-card-picked" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
       <div class="investigation-card-head">
         <button class="inspect-open" data-act="inspect-select" data-id="${attr(item.id)}" title="${expanded ? "定位脚本" : "展开脚本"}">
-          <span class="investigation-card-icon">${ico(item.characterId ? "users" : "box")}</span>
+          <span class="investigation-card-icon">${ico(person ? "users" : "box")}</span>
           <span class="investigation-card-name"><small>${type}</small><strong>${esc(name)}</strong><span class="investigation-card-meta">${location ? ico("pin") + "<span>" + esc(location) + "</span>" : count + " 行脚本"}</span></span>
         </button>
         ${ib(expanded ? "up" : "down", "inspect-fold", expanded ? "收起脚本" : "展开脚本", `data-id="${attr(item.id)}" aria-expanded="${expanded}"`)}
@@ -61,10 +65,10 @@ export function investigationCanvas(stage, active, renderScript, toolbar) {
     .join("");
   return `<section class="investigation-canvas" aria-label="调查画布">
     ${toolbar}
-    <div class="investigation-viewport" data-investigation-stage="${attr(stage.id)}" aria-label="调查画布背景" aria-describedby="investigation-hint" tabindex="0">
+    <div class="investigation-viewport" data-investigation-stage="${attr(stage.id)}" aria-label="调查画布背景" tabindex="0">
       <div class="investigation-world" style="--card-width:${width}px;--card-height:${height}px">${cards}</div>
       ${cards ? "" : '<p class="investigation-empty">新建一张物品或人物卡片，开始编排调查。</p>'}
-      <p class="investigation-hint" id="investigation-hint"><span>双击空白处新建 · 拖空白处平移 · 滚轮缩放</span><span>双击空白处新建 · 拖空白处平移 · 双指缩放</span></p>
+      <div class="investigation-selection-box" hidden aria-hidden="true"></div>
     </div>
     <div class="selection-toolbar" id="selection-toolbar" hidden></div>
   </section>`;
@@ -82,7 +86,20 @@ function canvasPosition(camera, point) {
   };
 }
 
-export function suggestInvestigationPosition(stage, origin = null) {
+export function selectInvestigationCards(ids, viewport = $(".investigation-viewport")) {
+  state.selectedInvestigationCardIds = new Set(ids);
+  if (ids.length && state.selectedRowIds.size) {
+    state.selectedRowIds.clear();
+    state.selectionAnchor = null;
+    syncRowSelection();
+  }
+  if (viewport)
+    $$("[data-investigation-card]", viewport).forEach((card) =>
+      card.classList.toggle("is-card-picked", state.selectedInvestigationCardIds.has(card.dataset.investigationCard)),
+    );
+}
+
+export function suggestInvestigationPosition(stage, origin = null, offsets = [{ x: 0, y: 0 }]) {
   const viewport = $(".investigation-viewport");
   const camera = state.investigationCameras.get(stage.id);
   const start =
@@ -99,28 +116,33 @@ export function suggestInvestigationPosition(stage, origin = null) {
       y: start.y + Math.floor(i / 3) * (height + gap),
     };
     if (
-      !stage.objects.some(
-        ({ position: saved }) =>
-          Math.abs(saved.x - position.x) < width + gap / 2 &&
-          Math.abs(saved.y - position.y) < height + gap / 2,
-      )
+      !stage.objects.some(({ position: saved }) => offsets.some((offset) =>
+        Math.abs(saved.x - position.x - offset.x) < width + gap / 2 &&
+        Math.abs(saved.y - position.y - offset.y) < height + gap / 2,
+      ))
     )
       return position;
   }
 }
 
-export function revealInvestigationPosition(stage, position) {
+export function revealInvestigationPosition(stage, position, positions = [position]) {
   const viewport = $(".investigation-viewport");
   const camera = state.investigationCameras.get(stage.id);
   if (!viewport || !camera || !position) return;
+  const right = Math.max(...positions.map(({ x }) => x)) + width;
+  const bottom = Math.max(...positions.map(({ y }) => y)) + height;
+  const spanX = right - position.x;
+  const spanY = bottom - position.y;
+  if (positions.length > 1)
+    camera.scale = Math.min(camera.scale,
+      Math.max(1, viewport.clientWidth - 32) / spanX,
+      Math.max(1, viewport.clientHeight - 32) / spanY);
   const x = position.x * camera.scale + camera.x;
   const y = position.y * camera.scale + camera.y;
-  if (x < 8 || x + width * camera.scale > viewport.clientWidth - 8)
-    camera.x =
-      viewport.clientWidth / 2 - (position.x + width / 2) * camera.scale;
-  if (y < 8 || y + height * camera.scale > viewport.clientHeight - 8)
-    camera.y =
-      viewport.clientHeight / 2 - (position.y + height / 2) * camera.scale;
+  if (x < 8 || x + spanX * camera.scale > viewport.clientWidth - 8)
+    camera.x = viewport.clientWidth / 2 - (position.x + spanX / 2) * camera.scale;
+  if (y < 8 || y + spanY * camera.scale > viewport.clientHeight - 8)
+    camera.y = viewport.clientHeight / 2 - (position.y + spanY / 2) * camera.scale;
 }
 
 export function revealInvestigationElement(element) {
@@ -148,9 +170,10 @@ export function revealInvestigationElement(element) {
   return true;
 }
 
-export function setupInvestigationCanvas(root, stage, openAddMenu) {
+export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMenu) {
   const viewport = $(".investigation-viewport", root);
   const world = $(".investigation-world", viewport);
+  const selectionBox = $(".investigation-selection-box", viewport);
   const zoomLabel = $('[data-investigation-zoom="reset"]', root);
   const items = new Map(stage.objects.map((item) => [item.id, item]));
   const camera = state.investigationCameras.get(stage.id) || {
@@ -218,17 +241,17 @@ export function setupInvestigationCanvas(root, stage, openAddMenu) {
     paint();
   }
 
-  function openAt(point) {
+  function anchorAt(point) {
     const rect = viewport.getBoundingClientRect();
-    openAddMenu(
-      {
-        getBoundingClientRect: () => ({
-          right: rect.left + point.x,
-          bottom: rect.top + point.y,
-        }),
-      },
-      canvasPosition(camera, point),
-    );
+    return {
+      getBoundingClientRect: () => ({
+        right: rect.left + point.x,
+        bottom: rect.top + point.y,
+      }),
+    };
+  }
+  function openAt(point) {
+    openAddMenu(anchorAt(point), canvasPosition(camera, point));
   }
   root
     .querySelector(".investigation-zoom")
@@ -295,6 +318,65 @@ export function setupInvestigationCanvas(root, stage, openAddMenu) {
     revealInvestigationElement(event.target);
   });
 
+  let selection;
+  viewport.addEventListener("contextmenu", (event) => {
+    if (!event.target.closest(".investigation-writing")) event.preventDefault();
+  });
+  viewport.addEventListener("pointerdown", (event) => {
+    if (event.button !== 2 || event.target.closest(".investigation-writing")) return;
+    const card = event.target.closest("[data-investigation-card]");
+    selection = {
+      pointerId: event.pointerId,
+      start: pointInViewport(viewport, event.clientX, event.clientY),
+      cardId: card?.dataset.investigationCard,
+      previous: [...state.selectedInvestigationCardIds],
+      moved: false,
+    };
+    event.preventDefault();
+    viewport.focus({ preventScroll: true });
+    viewport.setPointerCapture(event.pointerId);
+  });
+  viewport.addEventListener("pointermove", (event) => {
+    if (selection?.pointerId !== event.pointerId) return;
+    const point = pointInViewport(viewport, event.clientX, event.clientY);
+    const { start } = selection;
+    if (!selection.moved && Math.hypot(point.x - start.x, point.y - start.y) < 5) return;
+    selection.moved = true;
+    const left = Math.max(0, Math.min(start.x, point.x));
+    const top = Math.max(0, Math.min(start.y, point.y));
+    const right = Math.min(viewport.clientWidth, Math.max(start.x, point.x));
+    const bottom = Math.min(viewport.clientHeight, Math.max(start.y, point.y));
+    Object.assign(selectionBox.style, {
+      left: left + "px", top: top + "px",
+      width: right - left + "px", height: bottom - top + "px",
+    });
+    selectionBox.hidden = false;
+    const frame = viewport.getBoundingClientRect();
+    const hits = $$("[data-investigation-card]", world).filter((card) => {
+      const rect = card.getBoundingClientRect();
+      return rect.left < frame.left + right && rect.right > frame.left + left &&
+        rect.top < frame.top + bottom && rect.bottom > frame.top + top;
+    });
+    selectInvestigationCards(hits.map((card) => card.dataset.investigationCard), viewport);
+  });
+  function endSelection(event) {
+    if (selection?.pointerId !== event.pointerId) return;
+    const { moved, cardId, previous } = selection;
+    selection = null;
+    selectionBox.hidden = true;
+    if (event.type !== "pointerup") {
+      selectInvestigationCards(previous, viewport);
+      return;
+    }
+    if (moved) return;
+    const point = pointInViewport(viewport, event.clientX, event.clientY);
+    if (cardId && !state.selectedInvestigationCardIds.has(cardId))
+      selectInvestigationCards([cardId], viewport);
+    openContextMenu(anchorAt(point), canvasPosition(camera, point), cardId);
+  }
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
+    viewport.addEventListener(type, endSelection);
+
   const pointers = new Map();
   let gesture,
     pinch,
@@ -318,6 +400,11 @@ export function setupInvestigationCanvas(root, stage, openAddMenu) {
   });
   viewport.addEventListener("pointerdown", (event) => {
     if (event.button !== 0 && event.button !== 1) return;
+    if (event.button === 0 && !pointers.size) {
+      const card = event.target.closest(".investigation-card-head")?.closest("[data-investigation-card]");
+      if (!event.target.closest('[data-act="inspect-menu"]'))
+        selectInvestigationCards(card ? [card.dataset.investigationCard] : [], viewport);
+    }
     if (!pointers.size) {
       suppressClick = false;
       pendingTouchMenu = null;

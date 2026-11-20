@@ -1,6 +1,7 @@
 import {
   INVESTIGATION_CARD,
   investigationConditionText,
+  isInvestigationPerson,
   investigationRule,
   investigationScripts,
   investigationTiming,
@@ -10,10 +11,12 @@ import {
   flattenRows,
   investigationObject,
   newCharacter,
+  normalizeProject,
   regenerateInvestigationIds,
+  stageRootRows,
 } from "../domain/project.js";
 import { locationPreset } from "../domain/scenes.js";
-import { clone, uid } from "../domain/primitives.js";
+import { clone, FORMAT, uid } from "../domain/primitives.js";
 import {
   $,
   $$,
@@ -27,10 +30,12 @@ import {
   option,
   state,
 } from "./context.js";
+import { copyClipboard } from "./clipboard.js";
 import { closeModal, confirmBox, menu, modal, previewRow } from "./dialogs.js";
 import {
   revealInvestigationElement,
   revealInvestigationPosition,
+  selectInvestigationCards,
   suggestInvestigationPosition,
 } from "./investigation-canvas.js";
 import {
@@ -40,8 +45,8 @@ import {
   toast,
 } from "./session.js";
 
-export function investigationAddMenu(anchor, position = null) {
-  menu(anchor, [
+function addCardItems(position) {
+  return [
     {
       label: "新建物品",
       icon: "box",
@@ -52,7 +57,108 @@ export function investigationAddMenu(anchor, position = null) {
       icon: "users",
       click: () => inspectObjectDialog(null, position, true),
     },
-  ]);
+  ];
+}
+
+export function investigationAddMenu(anchor, position = null) {
+  const items = addCardItems(position);
+  const paste = cardClipboardItems(position)[1];
+  if (!paste.disabled) items.push(null, paste);
+  menu(anchor, items);
+}
+
+export function investigationContextMenu(anchor, position, cardId) {
+  if (cardId) return inspectObjectMenu(cardId, anchor, position);
+  menu(anchor, [...cardClipboardItems(position), null, ...addCardItems(position)]);
+}
+
+export function collectInvestigationCards(ids = state.selectedInvestigationCardIds) {
+  const stage = currentStage();
+  const cards = stage?.objects.filter((item) => ids.has(item.id));
+  if (!cards?.length || stage.kind !== "investigation") return null;
+  return {
+    format: "xuxian.investigation-cards.v1",
+    projectId: state.project.id,
+    cards: clone(cards),
+  };
+}
+
+export function pasteInvestigationCards(bundle, position = null) {
+  const stage = currentStage();
+  if (stage?.kind !== "investigation" || !bundle?.cards?.length) return false;
+  if (bundle.projectId !== state.project.id) {
+    toast("请在同一项目的调查阶段粘贴卡片", true);
+    return false;
+  }
+  let cards;
+  try {
+    // Use the project reader to validate scripts, conditions and locations from the clipboard.
+    const route = state.project.routes[0];
+    const project = normalizeProject({
+      format: FORMAT,
+      version: state.project.version,
+      id: state.project.id,
+      routes: [route],
+      locations: state.project.locations,
+      chapters: [{
+        id: uid("chapter"), routeId: route.id,
+        stages: [{ id: uid("stage"), kind: "investigation", objects: bundle.cards }],
+      }],
+    });
+    cards = project.chapters[0].stages[0].objects;
+  } catch (error) {
+    toast("无法粘贴卡片 · " + error.message, true);
+    return false;
+  }
+  regenerateInvestigationIds(cards);
+  const validIds = new Set([...stage.objects, ...cards].map((card) => card.id));
+  const missing = cards.flatMap((card) => card.interactions).some((rule) =>
+    rule.conditions.some((condition) =>
+      condition.type === "investigated" && !validIds.has(condition.targetId)),
+  );
+  const left = Math.min(...cards.map((card) => card.position.x));
+  const top = Math.min(...cards.map((card) => card.position.y));
+  const offsets = cards.map((card) => ({
+    x: card.position.x - left,
+    y: card.position.y - top,
+  }));
+  const origin = suggestInvestigationPosition(stage, position, offsets);
+  cards.forEach((card, index) => {
+    card.position = { x: origin.x + offsets[index].x, y: origin.y + offsets[index].y };
+  });
+  revealInvestigationPosition(stage, origin, cards.map((card) => card.position));
+  mutate(() => {
+    stage.objects.push(...cards);
+    selectInvestigationItem(cards[0].id);
+    selectInvestigationCards(cards.map((card) => card.id));
+  });
+  $(".investigation-viewport")?.focus({ preventScroll: true });
+  toast(`已粘贴 ${cards.length} 张卡片${missing ? " · 请重设引用了其他阶段卡片的条件" : ""}`);
+  return true;
+}
+
+function cardClipboardItems(position, item = null) {
+  const selected = state.selectedInvestigationCardIds;
+  const ids = !item || selected.has(item.id) ? selected : new Set([item.id]);
+  return [
+    {
+      label: ids.size > 1 ? "复制所选卡片" : "复制卡片",
+      icon: "copy",
+      shortcut: "Ctrl C",
+      disabled: !ids.size,
+      click: () => {
+        const bundle = collectInvestigationCards(ids);
+        if (bundle) copyClipboard(bundle);
+      },
+    },
+    {
+      label: "粘贴卡片",
+      icon: "layers",
+      shortcut: "Ctrl V",
+      disabled: !state.clipboard?.cards || state.clipboard.projectId !== state.project.id,
+      click: () => pasteInvestigationCards(state.clipboard, position),
+    },
+  ];
 }
 
 export function inspectObjectDialog(
@@ -66,43 +172,58 @@ export function inspectObjectDialog(
     ? stage.objects.find((entry) => entry.id === id)
     : investigationObject("");
   if (!item) return;
-  person = person || Boolean(item.characterId);
+  person = person || isInvestigationPerson(item);
   const type = person ? "人物" : "物品";
-  const entries = person ? state.project.characters : state.project.locations;
-  const current = person
-    ? item.characterId || (entries.length ? "" : "__new")
-    : item.locationId;
-  const field = person ? "项目角色" : "地点";
-  const entity = person ? "角色" : "地点";
+  const { characters, locations } = state.project;
+  const character = item.temporaryCharacter ? "__temporary" :
+    item.characterId || (characters.length ? "" : "__temporary");
+  const locationField = person ? "inspect-location" : "inspect-reference";
   modal(
     (id ? "编辑" : "新建") + "调查" + type,
-    `${person ? "" : `<div class="field"><label for="inspect-name">物品名称</label><input class="input" id="inspect-name" value="${attr(item.name)}" maxlength="160" autofocus></div>`}
-    <div class="field"><label for="inspect-reference">${field}</label><select class="input" id="inspect-reference" ${person && entries.length ? "autofocus" : ""}>${option("", person ? "选择已有角色" : "未设地点", current)}${entries.map((entry) => option(entry.id, entry.name, current)).join("")}${option("__new", "新建" + entity + "…", current)}</select></div>
-    <div class="field" id="inspect-new-reference" ${current !== "__new" ? "hidden" : ""}><label for="inspect-reference-name">${entity}名称</label><input class="input" id="inspect-reference-name" maxlength="120" ${person && !entries.length ? "autofocus" : ""}></div>
+    `${person ? `<div class="field"><label for="inspect-reference">人物来源</label><select class="input" id="inspect-reference" autofocus>${option("", "选择已有角色", character)}${option("__temporary", "临时 NPC", character)}${characters.map((entry) => option(entry.id, entry.name, character)).join("")}${option("__new", "新建项目角色…", character)}</select></div>
+      <div class="field" id="inspect-new-reference" ${character.startsWith("__") ? "" : "hidden"}><label for="inspect-reference-name">人物名称</label><input class="input" id="inspect-reference-name" value="${attr(item.temporaryCharacter ? item.name : "")}" maxlength="120"></div>` : `<div class="field"><label for="inspect-name">物品名称</label><input class="input" id="inspect-name" value="${attr(item.name)}" maxlength="160" autofocus></div>`}
+    <div class="field"><label for="${locationField}">地点</label><select class="input" id="${locationField}">${option("", "未设地点", item.locationId)}${locations.map((entry) => option(entry.id, entry.name, item.locationId)).join("")}${option("__new", "新建地点…", item.locationId)}</select></div>
+    <div class="field" id="inspect-new-location" hidden><label for="${person ? "inspect-location-name" : "inspect-reference-name"}">地点名称</label><input class="input" id="${person ? "inspect-location-name" : "inspect-reference-name"}" maxlength="120"></div>
     <div class="field"><label for="inspect-notes">备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(item.notes)}</textarea></div>`,
     btn("取消", null, "modal-close") +
       `<button class="btn primary" id="inspect-save">${id ? "保存" : "创建"}</button>`,
   );
-  const reference = $("#inspect-reference");
-  reference.onchange = () => {
-    const creating = reference.value === "__new";
-    $("#inspect-new-reference").hidden = !creating;
-    if (creating) $("#inspect-reference-name").focus();
+  const reference = person && $("#inspect-reference");
+  const location = $("#" + locationField);
+  const locationName = $(person ? "#inspect-location-name" : "#inspect-reference-name");
+  if (reference) reference.onchange = () => {
+    const custom = ["__temporary", "__new"].includes(reference.value);
+    $("#inspect-new-reference").hidden = !custom;
+    if (custom) $("#inspect-reference-name").focus();
+  };
+  location.onchange = () => {
+    $("#inspect-new-location").hidden = location.value !== "__new";
+    if (location.value === "__new") locationName.focus();
   };
   $("#inspect-save").onclick = () => {
-    const name = person ? "" : $("#inspect-name").value.trim();
-    if (!person && !name) return toast("请输入物品名称");
-    let linked = entries.find((entry) => entry.id === reference.value);
-    const creating = reference.value === "__new";
-    if (creating) {
-      const value = $("#inspect-reference-name").value.trim();
-      if (!value) return toast("请输入" + entity + "名称");
-      linked =
-        entries.find((entry) => entry.name === value) ||
-        (person ? newCharacter(value, entries.length) : locationPreset(value));
+    const temporary = reference?.value === "__temporary";
+    const newRole = reference?.value === "__new";
+    const customName = temporary || newRole;
+    const name = (!person ? $("#inspect-name") : customName ? $("#inspect-reference-name") : null)
+      ?.value.trim() || "";
+    if ((!person || customName) && !name)
+      return toast("请输入" + type + "名称", true);
+    let linked = characters.find((entry) => entry.id === reference?.value);
+    if (newRole)
+      linked = characters.find((entry) => entry.name === name) || newCharacter(name, characters.length);
+    if (person && !temporary && !linked) return toast("请选择人物来源", true);
+    let place = locations.find((entry) => entry.id === location.value);
+    if (location.value === "__new") {
+      const value = locationName.value.trim();
+      if (!value) return toast("请输入地点名称", true);
+      place = locations.find((entry) => entry.name === value) || locationPreset(value);
     }
-    if (person && !linked) return toast("请选择或新建角色");
     const notes = $("#inspect-notes").value;
+    const previousSpeaker = item.temporaryCharacter ? item.id : item.characterId;
+    const nextSpeaker = temporary ? item.id : linked?.id || "";
+    const remapRows = item.temporaryCharacter && !temporary
+      ? state.project.chapters.flatMap((chapter) => chapter.stages.flatMap(stageRootRows))
+      : investigationScripts(item).flatMap((script) => script.rows);
     if (!id) {
       item.position = position || suggestInvestigationPosition(stage);
       if (stage.objects.length)
@@ -110,11 +231,17 @@ export function inspectObjectDialog(
       else state.investigationCameras.delete(stage.id);
     }
     mutate(() => {
-      if (creating && !entries.includes(linked)) entries.push(linked);
-      item.name = person ? linked.name : name;
+      if (newRole && !characters.includes(linked)) characters.push(linked);
+      if (place && !locations.includes(place)) locations.push(place);
+      if (previousSpeaker && previousSpeaker !== nextSpeaker)
+        for (const row of flattenRows(remapRows))
+          if (row.speakerId === previousSpeaker) row.speakerId = nextSpeaker;
+      item.name = linked?.name || name;
       item.notes = notes;
-      item.characterId = person ? linked.id : "";
-      item.locationId = person ? "" : linked?.id || "";
+      item.characterId = linked?.id || "";
+      if (temporary) item.temporaryCharacter = true;
+      else delete item.temporaryCharacter;
+      item.locationId = place?.id || "";
       if (!id) {
         stage.objects.push(item);
         selectInvestigationItem(item.id);
@@ -127,25 +254,26 @@ export function inspectObjectDialog(
   };
 }
 
-export function inspectObjectMenu(id, anchor) {
+export function inspectObjectMenu(id, anchor, position = null) {
   const stage = currentStage();
   const index = stage?.objects.findIndex((item) => item.id === id) ?? -1;
   const item = stage?.objects[index];
   if (!item) return;
-  const type = item.characterId ? "人物卡片" : "物品";
+  const type = isInvestigationPerson(item) ? "人物卡片" : "物品";
   menu(anchor, [
     {
       label: "编辑" + type,
       icon: "edit",
       click: () => inspectObjectDialog(id),
     },
+    ...cardClipboardItems(position, item),
     {
-      label: "复制" + type,
+      label: "在画布创建副本",
       icon: "copy",
       click: () => {
         const copy = clone(item);
         regenerateInvestigationIds([copy]);
-        if (!copy.characterId) copy.name += " · 副本";
+        if (!isInvestigationPerson(copy)) copy.name += " · 副本";
         copy.position = suggestInvestigationPosition(stage, {
           x:
             item.position.x + INVESTIGATION_CARD.width + INVESTIGATION_CARD.gap,

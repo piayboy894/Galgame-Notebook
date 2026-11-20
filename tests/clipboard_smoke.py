@@ -166,7 +166,7 @@ with sync_playwright() as playwright:
             {bubbles:true, cancelable:true, clipboardData:d}));
     }""")
     assert len(cards()[1]['interactions'][0]['rows']) == 4
-    expect(page.locator('#toast')).to_contain_text('请先复制脚本行')
+    expect(page.locator('#toast')).to_contain_text('请先复制调查卡片或脚本行')
 
     # The local shortcut still works when both system write APIs are denied.
     page.evaluate("""() => {

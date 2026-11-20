@@ -4,6 +4,7 @@ import {
   normalizeProperties,
   selectedRoots,
 } from "../domain/scenes.js";
+import { copyClipboard, hasCopiedRows } from "./clipboard.js";
 import { groupDialog } from "./scenes.js";
 import { investigationScripts } from "../domain/investigation.js";
 import { investigationAddMenu } from "./investigation-editor.js";
@@ -26,13 +27,11 @@ import {
   C,
   P,
   R,
-  ROW_MIME,
   btn,
   currentStage,
   esc,
   ico,
   inspectName,
-  libraryVisible,
   option,
   state,
 } from "./context.js";
@@ -160,15 +159,14 @@ export function rowText(rows, characters, locations = []) {
     .join("\n");
 }
 
-function collectRows(ids) {
+export function collectRows(ids) {
   const rows = clone(selectedRoots(currentRows() || [], ids).map((loc) => loc.row));
   if (!rows.length) return null;
   const allRows = flattenRows(rows);
-  const chars = clone(
-    state.project.characters.filter((p) =>
-      allRows.some((row) => row.speakerId === p.id),
-    ),
-  );
+  const speakerIds = new Set(allRows.map((row) => row.speakerId).filter(Boolean));
+  const chars = clone([...speakerIds].map(P).filter(Boolean).map((speaker) =>
+    speaker.temporaryCharacter ? { id: speaker.id, name: speaker.name } : speaker,
+  ));
   return {
     format: "xuxian.rows.v2",
     locations: clone(
@@ -184,204 +182,10 @@ function collectRows(ids) {
   };
 }
 
-// A shortcut within the editor can use the rows it just copied even on
-// WebViews that never dispatch a paste event for a focused button. After
-// leaving the window, require a typed system payload to establish ownership.
-let ownsSystemRows = false;
-let localOnlyRows = null;
-let pendingPaste = null;
-let pastedOnKeyUp = false;
-
-function writeRowClipboard(payload, event) {
-  const data = event.clipboardData;
-  if (!data) return false;
-  try {
-    data.setData("text/plain", payload.text);
-  } catch {
-    return false;
-  }
-  event.preventDefault();
-  const serialized = JSON.stringify(payload);
-  // HTML survives clipboard bridges which strip private MIME types.
-  const html = '<pre data-xuxian-rows="' + encodeURIComponent(serialized) +
-    '">' + esc(payload.text) + '</pre>';
-  for (const [type, value] of [[ROW_MIME, serialized], ["text/html", html]]) {
-    try {
-      data.setData(type, value);
-    } catch {
-      // Each clipboard format is optional and independent of the others.
-    }
-  }
-  return true;
-}
-
-function copyRows(ids, event) {
-  const bundle = collectRows(ids);
-  if (!bundle) return;
-  const payload = {
-    ...bundle,
-    text: rowText(bundle.rows, bundle.characters, bundle.locations),
-  };
-  state.rowClipboard = payload;
-  ownsSystemRows = true;
-  let written = false;
-  if (event) written = writeRowClipboard(payload, event);
-  else {
-    // Run the same synchronous clipboard write from buttons and shortcuts.
-    // Even if the OS declines it, the explicitly copied rows remain available.
-    const onCopy = (ev) => {
-      ev.stopImmediatePropagation();
-      written = writeRowClipboard(payload, ev);
-    };
-    document.addEventListener("copy", onCopy, true);
-    try {
-      document.execCommand("copy");
-    } catch {
-      // The async text API can still work if the WebView disables execCommand.
-    } finally {
-      document.removeEventListener("copy", onCopy, true);
-    }
-  }
-  localOnlyRows = written ? null : payload;
-  if (!written) {
-    navigator.clipboard?.writeText?.(payload.text).catch(() => {});
-  }
-  toast("已复制 " + payload.rows.length + " 行");
-}
-
 export function copyRowsButton(ids = state.selectedRowIds) {
-  if (!ids.size) return toast("请先选择脚本行");
-  copyRows(ids);
-}
-
-function clipboardTarget(target) {
-  if (
-    state.view.type !== "stage" || state.syncBusy || state.composition ||
-    libraryVisible() || $("#modal-root").firstChild ||
-    $(".update-overlay:not([hidden])") ||
-    !(target === document.body || target.closest?.("#view"))
-  ) return null;
-  const editable = rowsAreEditable(target) &&
-    !target.matches(".investigation-script-select,.investigation-stage-picker");
-  if (editable && !target.matches('textarea[data-row-field="text"],textarea[data-branch-field="text"]'))
-    return null;
-  if (editable && target.selectionStart !== target.selectionEnd) return null;
-  const element = target.closest("[data-branch-row],[data-row]");
-  const id = element?.dataset.branchRow || element?.dataset.row;
-  const ids = id && (editable || !state.selectedRowIds.has(id))
-    ? new Set([id])
-    : state.selectedRowIds;
-  return { ids, editable, id };
-}
-
-function copySource(target) {
-  if (!target) return null;
-  // Copying a row requires a row selection. A caret alone is ordinary editing.
-  if (target.editable && !state.selectedRowIds.has(target.id)) return null;
-  return state.selectedRowIds.size ? state.selectedRowIds : null;
-}
-
-export function handleRowClipboardShortcut(event, key) {
-  const target = clipboardTarget(event.target);
-  if (key === "c") {
-    const ids = copySource(target);
-    if (ids) {
-      event.preventDefault();
-      copyRows(ids);
-    } else forgetCopiedRows();
-  } else if (target && ownsSystemRows && state.rowClipboard) {
-    if (localOnlyRows) {
-      // Neither the existence nor the contents of the system clipboard
-      // prove what an editor-only copy contained.
-      event.preventDefault();
-      pasteRows(localOnlyRows, target.ids);
-    } else {
-      // Let the trusted native paste report the current clipboard first.
-      // Some WebViews run no paste command at all on a focused row number.
-      pendingPaste = { element: event.target, rows: currentRows(), ids: new Set(target.ids) };
-    }
-  }
-}
-
-export function clearPasteGesture() {
-  pendingPaste = null;
-  pastedOnKeyUp = false;
-}
-
-export function finishRowPasteShortcut(event) {
-  if (event.key.toLowerCase() !== "v" || !pendingPaste) return;
-  const pending = pendingPaste;
-  pendingPaste = null;
-  if (document.activeElement !== pending.element || !clipboardTarget(pending.element) ||
-      pending.rows !== currentRows() || !ownsSystemRows || !state.rowClipboard) return;
-  pastedOnKeyUp = true;
-  pasteRows(state.rowClipboard, pending.ids);
-}
-
-export function handleRowCopy(event) {
-  const ids = copySource(clipboardTarget(event.target));
-  if (ids) copyRows(ids, event);
-  else forgetCopiedRows();
-}
-
-export function releaseRowClipboard() {
-  clearPasteGesture();
-  localOnlyRows = null;
-  ownsSystemRows = false;
-}
-
-export function forgetCopiedRows() {
-  releaseRowClipboard();
-  state.rowClipboard = null;
-}
-
-export function handleRowPaste(event) {
-  pendingPaste = null;
-  if (pastedOnKeyUp) {
-    // A late native event belongs to the gesture already handled on keyup.
-    pastedOnKeyUp = false;
-    event.preventDefault();
-    return;
-  }
-  const target = clipboardTarget(event.target);
-  if (!target) return;
-  const data = event.clipboardData;
-  let bundle = parseRows(data?.getData(ROW_MIME));
-  if (!bundle) {
-    const marker = /<pre\s+data-xuxian-rows="([^"]+)"/i.exec(data?.getData("text/html") || "");
-    if (marker) {
-      try {
-        bundle = parseRows(decodeURIComponent(marker[1]));
-      } catch {
-        // Other applications can place arbitrary HTML on the system clipboard.
-      }
-    }
-  }
-  if (!data?.types.length && ownsSystemRows) bundle = state.rowClipboard;
-  if (!bundle) {
-    forgetCopiedRows();
-    if (!target.editable) toast("请先复制脚本行，普通文字可粘贴到输入框");
-    return;
-  }
-  event.preventDefault();
-  if (pasteRows(bundle, target.ids)) {
-    state.rowClipboard = bundle;
-    localOnlyRows = null;
-    ownsSystemRows = true;
-  }
-}
-
-function parseRows(raw) {
-  if (!raw) return null;
-  try {
-    const data = JSON.parse(raw);
-    return ["xuxian.rows.v1", "xuxian.rows.v2"].includes(data?.format) &&
-      Array.isArray(data.rows)
-      ? data
-      : null;
-  } catch {
-    return null;
-  }
+  const bundle = collectRows(ids);
+  if (!bundle) return toast("请先选择脚本行");
+  copyClipboard(bundle);
 }
 
 export function pasteRows(bundle, ids = state.selectedRowIds) {
@@ -586,8 +390,8 @@ export function normalizeCopiedRow(
 }
 
 export function pasteRowsButton(ids = state.selectedRowIds) {
-  if (!state.rowClipboard) return toast("请先复制脚本行");
-  pasteRows(state.rowClipboard, ids);
+  if (!hasCopiedRows()) return toast("请先复制脚本行");
+  pasteRows(state.clipboard, ids);
 }
 
 export function rowsAreEditable(target) {
@@ -993,7 +797,8 @@ export function addRow(type = "dialogue", afterId = null) {
   if (type === "dialogue" && last?.type === "dialogue") {
     row.speakerId = last.speakerId;
     row.expression = last.expression;
-  } else if (type === "dialogue" && item?.characterId) row.speakerId = item.characterId;
+  } else if (type === "dialogue" && item)
+    row.speakerId = item.temporaryCharacter ? item.id : item.characterId;
   mutate(() => rows.push(row));
   focusRow(row.id);
 }
@@ -1052,7 +857,7 @@ export function rowMenu(id, anchor) {
     {
       label: "粘贴到此行下方",
       icon: "layers",
-      disabled: !state.rowClipboard,
+      disabled: !hasCopiedRows(),
       click: () => pasteRowsButton(new Set([id])),
     },
     {
@@ -1237,7 +1042,7 @@ export function scriptMenu(anchor) {
       label: "粘贴对白行",
       icon: "layers",
       shortcut: "Ctrl V",
-      disabled: !state.rowClipboard,
+      disabled: !hasCopiedRows(),
       click: pasteRowsButton,
     },
     null,

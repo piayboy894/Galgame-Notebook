@@ -285,6 +285,7 @@ export function go(type, chapterId = null, stageId = null) {
     stageId !== state.view.stageId ||
     chapterId !== state.view.chapterId
   ) {
+    state.selectedInvestigationCardIds.clear();
     state.selectedRowIds.clear();
     state.selectionAnchor = null;
   }

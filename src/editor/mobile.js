@@ -272,7 +272,7 @@ export function shortcuts() {
       ["Ctrl / ⌘ + G", "将连续选中行建组"],
       ["Ctrl / ⌘ + Z", "撤销"],
       ["Ctrl / ⌘ + Shift + Z", "重做"],
-      ["Ctrl / ⌘ + C / V", "复制、粘贴选中行"],
+      ["Ctrl / ⌘ + C / V", "复制、粘贴选中行或调查卡片"],
       ["Alt + Enter", "下方新增对白"],
       ["Shift + F10", "选中行的右键菜单"],
       ["Esc", "返回或关闭当前操作"],

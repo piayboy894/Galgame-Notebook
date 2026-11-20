@@ -1,3 +1,4 @@
+import { setEncyclopediaLinks, wrappedEncyclopediaLinks } from "./encyclopedia.js";
 import { investigationScripts } from "./investigation.js";
 
 export const MAX_DIALOGUE_LINE_LENGTH = 500;
@@ -50,6 +51,11 @@ export function wrapDialogue(text, limit) {
     })
     .join("\n");
 }
+export function applyDialogueWrap(row, text) {
+  setEncyclopediaLinks(row, wrappedEncyclopediaLinks(row.encyclopediaLinks, row.text, text));
+  row.text = text;
+}
+
 export function dialogueWrapChanges(project) {
   const settings = normalizeDialogueSettings(project.settings);
   if (!settings.dialogueLineLength) return [];

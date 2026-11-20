@@ -1,4 +1,4 @@
-import { wrapDialogue, normalizeDialogueSettings } from "../domain/dialogue.js";
+import { previewEncyclopediaDialogue } from "./encyclopedia.js";
 import { projectSettingsDialog } from "./dialogue-settings.js";
 import { findRow } from "../domain/scenes.js";
 import { investigationItems, investigationScripts } from "../domain/investigation.js";
@@ -284,6 +284,7 @@ export function topMenu(anchor) {
         ]
       : []),
     { label: "项目设置", icon: "settings", click: projectSettingsDialog },
+    { label: "百科", icon: "note", click: () => go("encyclopedia") },
     { label: "地点预设", icon: "map", click: () => go("locations") },
     {
       label: "新建剧本",
@@ -1128,7 +1129,7 @@ export function previewRow(r) {
     return `<div class="preview-effect">${esc(r.text)}</div>`;
   if (r.type === "branch")
     return `<div class="preview-dialogue"><strong>选项</strong><p>${esc(r.text)}</p><div class="read-local-options">${r.options.map((o, i) => `<div class="read-local-option"><strong>${String.fromCharCode(65 + i)} · ${esc(o.text)}</strong>${(o.rows || []).map(previewRow).join("")}<small>${o.mode === "jump" ? "↳ 跳转至 " + esc(C(o.chapterId)?.title || "未设置章节") + (o.stageId ? " / " + esc(S(o.stageId)?.stage.title || "未设置阶段") : "") : "↳ 返回下一行"}</small></div>`).join("")}</div></div>`;
-  return `<div class="preview-dialogue"><strong>${esc(P(r.speakerId)?.name || "旁白")}</strong>${r.expression || r.action ? `<small> &nbsp; ${esc([r.expression, r.action].filter(Boolean).join(" · "))}</small>` : ""}<p>${esc(wrapDialogue(r.text, normalizeDialogueSettings(state.project.settings).dialogueLineLength))}</p></div>`;
+  return `<div class="preview-dialogue"><strong>${esc(P(r.speakerId)?.name || "旁白")}</strong>${r.expression || r.action ? `<small> &nbsp; ${esc([r.expression, r.action].filter(Boolean).join(" · "))}</small>` : ""}<p>${previewEncyclopediaDialogue(r)}</p></div>`;
 }
 
 export function readStage() {
@@ -1509,7 +1510,7 @@ export function helpDialog() {
     `<div class="help"><h3>项目和文件</h3><p>${isAndroid ? "项目保存在应用私有目录；系统自动回收进程后可恢复最近草稿。卸载会删除本机数据，请先存到云端或导出备份。保存写入本机项目库；另存会创建新副本；导入、导出通过系统文件选择器选择位置。" : "项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。"}</p><h3>路线图触屏操作</h3><p>滑动屏幕浏览路线图。短按章节打开，长按约半秒出现拖动提示后再移动，松手放置；鼠标仍可直接拖动。移动前滑动、多指操作或取消不会改变章节位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p>
     <h3>调查画布</h3><p>双击空白处新建物品或人物。拖动空白处平移，滚轮或双指缩放，拖动卡片标题调整位置。点击卡片展开脚本，用卡片箭头收起，点击「演练」试跑调查与交互条件。</p>
     <p>按住鼠标右键拖动，框选物品或人物。按 Ctrl/⌘+C 复制，在同一项目的任一调查阶段按 Ctrl/⌘+V 粘贴。也可以用卡片菜单复制，在目标画布右键或打开「新建卡片」菜单粘贴。批量粘贴保留相对位置、脚本和交互。一起复制的卡片之间会自动更新条件引用，引用其他阶段卡片的条件需要在目标阶段重设。</p>
-    <p>物品和人物都可以选择或新建地点。新建人物时可以选择项目角色，也可以输入临时 NPC 的名称。临时 NPC 随卡片保存，可在调查对白中选作说话人。</p><h3>行与场景组</h3><p>点击行号选中，触屏连续点行号可多选；键盘使用 Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>点行号选中一行或多行，按 Ctrl/⌘+C 复制，按 Ctrl/⌘+V 插在目标行下方。支持连续粘贴、跨阶段和跨项目。选中文字时，Ctrl/⌘+C/V 在输入框中复制或替换文字。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。鼠标可按住行空白区域拖动排序；Android 触屏通过行菜单移动，避免滚动时误排序。</p><h3>全局云存档</h3><p>在项目库打开「云存档」。每个存档包含全部项目，由你手动新建、覆盖、读取或删除；不会自动判断同步方向。读档会直接替换整个项目库及未保存改动，不会先保存或保留读档备份。单个项目没有同步按钮。</p><h3>文件兼容</h3><p>JSON v5 保存调查画布、地点和交互规则，兼容读取 v1–v4。本机项目库在保存时保留自动备份。</p></div>`,
+    <p>物品和人物都可以选择或新建地点。新建人物时可以选择项目角色，也可以输入临时 NPC 的名称。临时 NPC 随卡片保存，可在调查对白中选作说话人。</p><h3>百科</h3><p>从「更多」或移动端「设定」打开百科，可以创建、搜索和编辑词条。选中对白文字后右键，点击「转换成词条」，选择已有词条或当场新建。触屏长按选择文字后，可以在该行的「…」菜单里转换。阅读阶段或演练调查时，点击带下划线的文字就能查看词条。点击编辑器里对白下方的标记可更换或解除关联。</p><h3>行与场景组</h3><p>点击行号选中，触屏连续点行号可多选；键盘使用 Shift 连续多选，Ctrl/⌘ 增减选择。右键行号或空白处，可在上方、下方插入对白或描述。Ctrl/⌘+G 将同一段脚本内的连续行建立为场景组。组可备注地点、折叠、复制、移动和取消分组；取消分组保留全部内容。首版使用单层组。</p><h3>地点预设</h3><p>在路线图点击「地点」管理背景、BGM、环境音和自定义属性。场景组引用地点后默认沿用预设，也可单独覆盖属性；这些设置作为剧本演出元数据保存。</p><h3>复制和撤销</h3><p>点行号选中一行或多行，按 Ctrl/⌘+C 复制，按 Ctrl/⌘+V 插在目标行下方。支持连续粘贴、跨阶段和跨项目。选中文字时，Ctrl/⌘+C/V 在输入框中复制或替换文字。跨项目复制会携带所引用的地点与角色。Delete 删除选中内容；Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做。鼠标可按住行空白区域拖动排序；Android 触屏通过行菜单移动，避免滚动时误排序。</p><h3>全局云存档</h3><p>在项目库打开「云存档」。每个存档包含全部项目，由你手动新建、覆盖、读取或删除；不会自动判断同步方向。读档会直接替换整个项目库及未保存改动，不会先保存或保留读档备份。单个项目没有同步按钮。</p><h3>文件兼容</h3><p>JSON v5 保存调查画布、地点和交互规则，兼容读取 v1–v4。本机项目库在保存时保留自动备份。</p></div>`,
     btn("关闭", null, "modal-close"),
     true,
   );

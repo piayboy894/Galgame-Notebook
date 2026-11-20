@@ -1,4 +1,13 @@
 import {
+  dialogueEncyclopediaMenu,
+  editDialogueLink,
+  encyclopediaEntryDialog,
+  revealEncyclopediaEntry,
+  selectedDialogueText,
+} from "./encyclopedia.js";
+import { remapEncyclopediaLinks, setEncyclopediaLinks } from "../domain/encyclopedia.js";
+import { applyDialogueWrap } from "../domain/dialogue.js";
+import {
   clearPasteGesture,
   finishPasteShortcut,
   forgetClipboard,
@@ -11,6 +20,7 @@ import {
   projectSettingsDialog,
   prepareDialogueInput,
   refreshDialogueMeter,
+  refreshDialogueLinks,
 } from "./dialogue-settings.js";
 import { revealSource } from "./project-files.js";
 import { groupDialog, groupMenu, locationDialog } from "./scenes.js";
@@ -136,6 +146,21 @@ function dispatch(action, el) {
       break;
     case "project-settings":
       projectSettingsDialog();
+      break;
+    case "encyclopedia":
+      go("encyclopedia");
+      break;
+    case "add-encyclopedia-entry":
+      encyclopediaEntryDialog();
+      break;
+    case "edit-encyclopedia-entry":
+      encyclopediaEntryDialog(id);
+      break;
+    case "edit-dialogue-link":
+      editDialogueLink(el);
+      break;
+    case "read-encyclopedia-entry":
+      revealEncyclopediaEntry(el);
       break;
     case "locations":
       go("locations");
@@ -480,6 +505,11 @@ document.addEventListener("contextmenu", (event) => {
     libraryVisible()
   )
     return;
+  const selection = selectedDialogueText(event.target);
+  if (selection) {
+    dialogueEncyclopediaMenu(event, selection);
+    return;
+  }
   const element = event.target.closest(".script-row,.branch-script-row");
   if (!element || event.target.closest("input,textarea,select")) return;
   event.preventDefault();
@@ -504,6 +534,15 @@ document.addEventListener("pointerdown", (ev) => {
     closeMenu();
 });
 
+const dialogueEdits = new WeakMap();
+document.addEventListener("beforeinput", (event) => {
+  const field = event.target;
+  if (field.matches?.("textarea.dialogue-cell"))
+    dialogueEdits.set(field, {
+      start: field.selectionStart, end: field.selectionEnd, inputType: event.inputType,
+    });
+});
+
 document.addEventListener("input", (ev) => {
   const t = ev.target;
   if (t.id === "project-name") {
@@ -524,8 +563,27 @@ document.addEventListener("input", (ev) => {
       );
     return;
   }
-  if (!state.composition && !ev.isComposing) prepareDialogueInput(t);
-  refreshDialogueMeter(t);
+  if (t.matches("textarea.dialogue-cell")) {
+    const element = t.closest("[data-branch-row],[data-row]");
+    const id = element.dataset.branchRow || element.dataset.row;
+    const row = rowLocation(id)?.row;
+    if (!row) return;
+    const selection = dialogueEdits.get(t);
+    dialogueEdits.delete(t);
+    const typed = t.value;
+    if (!state.composition && !ev.isComposing) prepareDialogueInput(t);
+    else refreshDialogueMeter(t);
+    if (row.text !== t.value || row.text !== typed) {
+      edit("row:" + id + ":text", () => {
+        setEncyclopediaLinks(row, remapEncyclopediaLinks(row.encyclopediaLinks, row.text, typed, selection));
+        row.text = typed;
+        applyDialogueWrap(row, t.value);
+      });
+      refreshDialogueLinks(t, row);
+    }
+    autoSize(t);
+    return;
+  }
   if (t.dataset.branchField && t.tagName !== "SELECT") {
     const id = t.closest("[data-branch-row]")?.dataset.branchRow,
       loc = rowLocation(id);
@@ -621,7 +679,7 @@ document.addEventListener("compositionend", (event) => {
     if (
       event.target.isConnected &&
       !state.composition &&
-      prepareDialogueInput(event.target)
+      event.target.matches?.("textarea.dialogue-cell")
     )
       event.target.dispatchEvent(new Event("input", { bubbles: true }));
   }, 0);

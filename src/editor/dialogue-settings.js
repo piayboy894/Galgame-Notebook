@@ -3,6 +3,7 @@ import {
   normalizeDialogueSettings,
   wrapDialogue,
 } from "../domain/dialogue.js";
+import { encyclopediaChips } from "./encyclopedia.js";
 import { attr, btn, esc, state } from "./context.js";
 import { closeModal, modal } from "./dialogs.js";
 import { mutate, toast } from "./session.js";
@@ -36,8 +37,16 @@ export function dialogueInputHTML(row, branch = false) {
     state.project.settings,
   ).dialogueLineLength;
   const size = longestDialogueLine(row.text);
-  return `<div class="dialogue-field"><textarea class="cell autosize dialogue-cell" rows="1" wrap="soft" ${branch ? 'data-branch-field="text"' : 'data-row-field="text"'} placeholder="对白" aria-label="对白 · Enter 换行 · Alt Enter 新增对白" aria-describedby="dialogue-meter-${attr(row.id)}">${esc(row.text)}</textarea><span class="dialogue-meter" id="dialogue-meter-${attr(row.id)}" ${n ? "" : "hidden"}>最长一行 ${size} / ${n}</span></div>`;
+  const chips = encyclopediaChips(row);
+  return `<div class="dialogue-field"><textarea class="cell autosize dialogue-cell" rows="1" wrap="soft" ${branch ? 'data-branch-field="text"' : 'data-row-field="text"'} placeholder="对白" aria-label="对白 · Enter 换行 · Alt Enter 新增对白" aria-describedby="dialogue-meter-${attr(row.id)}">${esc(row.text)}</textarea><span class="dialogue-meter" id="dialogue-meter-${attr(row.id)}" ${n ? "" : "hidden"}>最长一行 ${size} / ${n}</span><div class="encyclopedia-chips" ${chips ? "" : "hidden"}>${chips}</div></div>`;
 }
+export function refreshDialogueLinks(field, row) {
+  const links = field.parentElement.querySelector(".encyclopedia-chips");
+  const chips = encyclopediaChips(row);
+  links.innerHTML = chips;
+  links.hidden = !chips;
+}
+
 export function refreshDialogueMeter(target) {
   if (!target.matches?.("textarea.dialogue-cell")) return;
   const meter = target.parentElement.querySelector(".dialogue-meter");

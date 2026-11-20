@@ -1,3 +1,10 @@
+import { dialogueLinkDialog, dialogueLinkSelection } from "./encyclopedia.js";
+import {
+  copiedEncyclopediaEntries,
+  normalizeEncyclopediaLinks,
+  remapCopiedEncyclopediaLinks,
+  setEncyclopediaLinks,
+} from "../domain/encyclopedia.js";
 import {
   effectiveLocation,
   LOCATION_FIELDS,
@@ -176,6 +183,7 @@ export function collectRows(ids) {
         ),
       ),
     ),
+    encyclopedia: clone(copiedEncyclopediaEntries(state.project, allRows)),
     projectId: state.project.id,
     rows,
     characters: chars,
@@ -224,6 +232,7 @@ export function pasteRows(bundle, ids = state.selectedRowIds) {
   if (item) state.expandedInvestigationItems.add(item.id);
   const locationRefs = new Map();
   mutate(() => {
+    remapCopiedEncyclopediaLinks(state.project, flattenRows(prepared), bundle.encyclopedia, bundle.projectId);
     const chars = Array.isArray(bundle.characters) ? bundle.characters : [],
       charRefs = new Map();
     for (const r of prepared) {
@@ -366,6 +375,8 @@ export function normalizeCopiedRow(
     action: text(raw?.action),
     options: [],
   };
+  if (type === "dialogue")
+    setEncyclopediaLinks(row, normalizeEncyclopediaLinks(raw?.encyclopediaLinks, row.text));
   if (type === "branch")
     row.options = (Array.isArray(raw.options) ? raw.options : []).map(
       (option) => ({
@@ -840,7 +851,13 @@ export function rowMenu(id, anchor) {
   if (!loc) return;
   const { row, rows } = loc,
     index = rows.indexOf(row);
+  const selection = row.type === "dialogue" ? dialogueLinkSelection(id) : null;
   menu(anchor, [
+    ...(selection ? [{
+      label: "转换成词条",
+      icon: "link",
+      click: () => dialogueLinkDialog(selection),
+    }, null] : []),
     ...rowInsertionItems(id),
     null,
     {

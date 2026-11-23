@@ -13,6 +13,22 @@ fixture['chapters'][0]['stages'].append({
     'id': TARGET, 'title': '大厅调查', 'kind': 'investigation', 'rows': [], 'objects': [],
 })
 
+LAYER_STAGE = 'stage_panel_layers'
+fixture['chapters'][0]['stages'].append({
+    'id': LAYER_STAGE,
+    'title': '调查面板层级',
+    'kind': 'investigation',
+    'objects': [
+        {'id': 'layer_table', 'name': '小圆桌', 'position': {'x': 0, 'y': 0},
+         'rows': [{'id': 'layer_table_line', 'text': '桌上摆着一杯乌龙茶。'}]},
+        {'id': 'layer_computer', 'name': '笔记本电脑', 'position': {'x': 235, 'y': 0},
+         'rows': [{'id': 'layer_computer_line', 'text': '电脑还开着。'}]},
+        {'id': 'layer_object', 'name': '物品', 'position': {'x': 260, 'y': 160}},
+        {'id': 'layer_person', 'name': '路人乙', 'temporaryCharacter': True,
+         'position': {'x': 480, 'y': 160}},
+    ],
+})
+
 with sync_playwright() as playwright:
     chromium = os.environ.get('CHROMIUM_PATH') or (
         '/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None
@@ -135,6 +151,43 @@ with sync_playwright() as playwright:
     assert cards(TARGET) == copied
     expect(card(new_npc['id'])).to_contain_text('临时 NPC')
     expect(card(new_npc['id'])).to_contain_text('大厅服务台')
+    # Open editors must own overlapping pixels, including where another card can receive clicks.
+    open_stage(LAYER_STAGE)
+    table = card('layer_table')
+    computer = card('layer_computer')
+    table.locator('.inspect-open').click()
+
+    def layers_at_card(card_id):
+        return card(card_id).locator('.investigation-card-head').evaluate("""head => {
+            const {x, y, width, height} = head.getBoundingClientRect();
+            return document.elementsFromPoint(x + width / 2, y + height / 2)
+                .filter(element => element.matches('.investigation-card-head, .investigation-writing'))
+                .map(element => [element.className, element.closest('[data-investigation-card]').dataset.investigationCard]);
+        }""")
+
+    for card_id in ('layer_object', 'layer_person'):
+        assert layers_at_card(card_id)[:2] == [
+            ['investigation-writing', 'layer_table'], ['investigation-card-head', card_id],
+        ]
+
+    computer.locator('.inspect-open').click()
+    expect(page.locator('.investigation-writing')).to_have_count(2)
+    assert layers_at_card('layer_person')[:3] == [
+        ['investigation-writing', 'layer_computer'],
+        ['investigation-writing', 'layer_table'],
+        ['investigation-card-head', 'layer_person'],
+    ]
+    field = table.locator('textarea.dialogue-cell')
+    # Focus can move to an underlying editor through the keyboard.
+    field.focus()
+    assert layers_at_card('layer_person')[0] == ['investigation-writing', 'layer_table']
+    field.click()
+    page.keyboard.press('End')
+    page.keyboard.insert_text('还冒着热气。')
+    expect(field).to_have_value('桌上摆着一杯乌龙茶。还冒着热气。')
+
+    page.get_by_role('button', name='收起全部脚本').click()
+    assert layers_at_card('layer_person')[0] == ['investigation-card-head', 'layer_person']
     assert not errors, errors
     browser.close()
-    print('PASS: investigation selection, stage clipboard, NPC and location, rule references, undo and save/reopen')
+    print('PASS: investigation selection, stage clipboard, NPC and location, rule references, undo, save/reopen, and overlapping panels')

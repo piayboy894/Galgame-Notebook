@@ -1,3 +1,4 @@
+import { ensureInvestigationPool, refreshInvestigationInheritance } from "./investigation-inheritance.js";
 import { normalizeEncyclopediaLinks, setEncyclopediaLinks } from "./encyclopedia.js";
 import { applyDialogueWrap, dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
 import { FORMAT, PALETTE, uid, now, safeColor } from "./primitives.js";
@@ -75,6 +76,7 @@ export function regenerateInvestigationIds(items) {
   const ids = new Map(items.map((item) => [item.id, uid("object")]));
   for (const item of items) {
     item.id = ids.get(item.id);
+    delete item.inheritance;
     for (const rule of item.interactions) {
       rule.id = uid("interaction");
       for (const condition of rule.conditions)
@@ -123,7 +125,7 @@ export function chapter(routeId, title = "新章节", y = 112) {
 export function newProject(title = "未命名剧本") {
   const p = {
     format: FORMAT,
-    version: 5,
+    version: 6,
     id: uid("project"),
     title,
     createdAt: now(),
@@ -133,6 +135,7 @@ export function newProject(title = "未命名剧本") {
     characters: [],
     locations: [],
     encyclopedia: [],
+    investigationPool: [],
     flags: [],
     chapters: [],
   };
@@ -150,7 +153,7 @@ export function newProject(title = "未命名剧本") {
 export function normalizeProject(raw) {
   if (!raw || typeof raw !== "object" || raw.format !== FORMAT)
     throw Error("这不是叙线源文件（.json）");
-  if (![1, 2, 3, 4, 5].includes(raw.version))
+  if (![1, 2, 3, 4, 5, 6].includes(raw.version))
     throw Error("源文件版本不受支持，请使用兼容的编辑器");
   const ids = new Set();
   const id = (v) => {
@@ -170,7 +173,7 @@ export function normalizeProject(raw) {
     typeof v === "string" && /^[a-zA-Z0-9_-]{0,100}$/.test(v) ? v : "";
   const p = {
     format: FORMAT,
-    version: 5,
+    version: 6,
     id: id(raw.id),
     title: str(raw.title, "未命名剧本"),
     createdAt: str(raw.createdAt, now()),
@@ -180,6 +183,7 @@ export function normalizeProject(raw) {
     characters: [],
     locations: [],
     encyclopedia: [],
+    investigationPool: [],
     flags: [],
     chapters: [],
   };
@@ -220,6 +224,12 @@ export function normalizeProject(raw) {
     body: str(entry.body),
   }));
   const entryIds = new Set(p.encyclopedia.map((entry) => entry.id));
+  p.investigationPool = arr(raw.investigationPool).map((entry) => ({
+    id: id(entry.id),
+    name: str(entry.name, "未命名调查卡片"),
+    characterId: ref(entry.characterId),
+    ...(entry.temporaryCharacter === true && !ref(entry.characterId) ? { temporaryCharacter: true } : {}),
+  }));
   const parseRow = (r, inside = false, inGroup = false, depth = 0) => {
     if (depth > 12) throw Error("脚本结构嵌套过深");
     if (r?.type === "group") {
@@ -329,6 +339,7 @@ export function normalizeProject(raw) {
         title: str(st.title, "未命名阶段"),
         notes: str(st.notes),
         kind: st.kind === "investigation" ? "investigation" : "story",
+        ...(ref(st.investigationSourceId) ? { investigationSourceId: ref(st.investigationSourceId) } : {}),
         rows: arr(st.rows).map((r) => parseRow(r)),
         objects: arr(st.objects).map((o, i) => {
           const characterId = ref(o.characterId);
@@ -336,6 +347,18 @@ export function normalizeProject(raw) {
           const temporaryCharacter = !characterId && o.temporaryCharacter === true;
           return {
             id: id(o.id),
+            ...(ref(o.poolId) ? { poolId: ref(o.poolId) } : {}),
+            ...(ref(o.inheritance?.sourceId) ? {
+              inheritance: {
+                sourceId: ref(o.inheritance.sourceId),
+                rowIds: arr(o.inheritance.rowIds).filter((pair) =>
+                  Array.isArray(pair) && pair.length === 2 && ref(pair[0]) && ref(pair[1])),
+                ...(Array.isArray(o.inheritance.overrides) ? {
+                  overrides: o.inheritance.overrides.filter((path) =>
+                    typeof path === "string" && /^[a-zA-Z0-9_.-]{1,2500}$/.test(path)),
+                } : {}),
+              },
+            } : {}),
             name: str(o.name, characterId || temporaryCharacter ? "未命名人物" : "未命名物品"),
             notes: str(o.notes),
             characterId,
@@ -369,6 +392,8 @@ export function normalizeProject(raw) {
     };
   });
   if (p.chapters.length > 3000) throw Error("章节数量超过安全上限（3000）");
+  ensureInvestigationPool(p);
+  refreshInvestigationInheritance(p);
   for (const { row, text } of dialogueWrapChanges(p)) applyDialogueWrap(row, text);
   return p;
 }

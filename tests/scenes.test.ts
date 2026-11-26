@@ -71,7 +71,7 @@ describe("scene structure and location inheritance", () => {
     const normalized: any = normalizeProject(
       JSON.parse(JSON.stringify(project)),
     );
-    expect(normalized.version).toBe(5);
+    expect(normalized.version).toBe(6);
     expect(normalized.chapters[0].stages[0].rows[0]).toEqual(group);
     expect(normalizeProject(normalized)).toEqual(normalized);
     const copy = JSON.parse(JSON.stringify(group));

@@ -1,3 +1,7 @@
+import {
+  ensureInvestigationPool, investigationIndex,
+  previousInvestigationEdit, refreshInvestigationInheritance,
+} from "../domain/investigation-inheritance.js";
 import { renderEncyclopedia } from "./encyclopedia.js";
 import { applyDialogueWrap, dialogueWrapChanges } from "../domain/dialogue.js";
 import { findRow } from "../domain/scenes.js";
@@ -137,7 +141,10 @@ export function changed(renderNow = false) {
 
 export function mutate(fn, renderNow = true) {
   pushHistory();
+  const before = state.history.at(-1);
   fn();
+  ensureInvestigationPool(state.project);
+  refreshInvestigationInheritance(state.project, investigationIndex(before));
   if (!state.composition)
     for (const { row, text } of dialogueWrapChanges(state.project))
       applyDialogueWrap(row, text);
@@ -146,7 +153,11 @@ export function mutate(fn, renderNow = true) {
 
 export function edit(token, fn) {
   rememberEdit(token);
+  const previous = currentStage()?.kind === "investigation" && /^(row|option):/.test(token)
+    ? previousInvestigationEdit(state.project, state.activeInspectObjectId)
+    : null;
   fn();
+  if (previous) refreshInvestigationInheritance(state.project, previous);
   changed(false);
 }
 

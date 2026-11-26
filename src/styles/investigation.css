@@ -473,3 +473,58 @@
 .phone-ui .investigation-writing .row-add-pair {
   display: flex;
 }
+
+.investigation-script-source {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border-bottom: 1px solid #e6ece8;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.investigation-script-source span {
+  max-width: 16ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.investigation-pool-list {
+  display: grid;
+  gap: 5px;
+  max-height: 44vh;
+  overflow: auto;
+}
+
+.investigation-pool-list label,
+.investigation-inheritance-options > label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+}
+
+.investigation-pool-list label {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.investigation-pool-list label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.investigation-pool-list small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.investigation-inheritance-options ul {
+  margin-block: 8px;
+  max-height: 25vh;
+  overflow: auto;
+}

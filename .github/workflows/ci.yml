@@ -50,7 +50,7 @@ jobs:
         run: |
           $env:CHROMIUM_PATH = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
           $env:PYTHONUTF8 = '1'
-          node scripts/smoke.mjs tests/clipboard_smoke.py tests/investigation_cards_smoke.py tests/encyclopedia_smoke.py
+          node scripts/smoke.mjs tests/clipboard_smoke.py tests/investigation_cards_smoke.py tests/investigation_pool_smoke.py tests/encyclopedia_smoke.py
       - run: cargo check --locked --manifest-path src-tauri/Cargo.toml
       - run: cargo test --locked --manifest-path crates/story-store/Cargo.toml
       - run: cargo test --locked --manifest-path crates/github-sync/Cargo.toml

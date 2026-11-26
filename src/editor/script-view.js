@@ -1,3 +1,4 @@
+import { investigationSourceLabel } from "./investigation-pool.js";
 import { dialogueInputHTML } from "./dialogue-settings.js";
 import { effectiveLocation, LOCATION_FIELDS } from "../domain/scenes.js";
 import { mobileRowControls } from "./mobile-presentation.js";
@@ -231,6 +232,7 @@ function investigationScript(stage, item) {
   const script = currentInvestigationScript(item);
   const defaultScript = item === script;
   const name = inspectName(item);
+  const source = investigationSourceLabel(item);
   return `<section class="investigation-writing" data-inspect-item="${attr(item.id)}" aria-label="${attr(name + "的调查脚本")}">
     <div class="investigation-script-head">
       <div class="investigation-script-actions">
@@ -240,6 +242,10 @@ function investigationScript(stage, item) {
         ${ib("dots", "script-menu", "脚本操作")}
       </div>
     </div>
+    ${source ? `<div class="investigation-script-source">
+      ${ib("link", "inspect-inheritance-card", "设置对白来源", `data-id="${attr(item.id)}"`)}
+      <span title="${attr(source)}">继承自 ${esc(source)}</span>${btn("查看来源", null, "inspect-inheritance-source", "small ghost")}
+    </div>` : ""}
     ${!defaultScript ? `<p class="investigation-active-rule" title="${attr(describeInvestigationRule(stage, script))}">${esc(describeInvestigationRule(stage, script))}</p>` : ""}
     <div class="script-scroll investigation-script-scroll">
       ${item.notes && defaultScript ? `<div class="inspect-notes">${esc(item.notes)}</div>` : ""}

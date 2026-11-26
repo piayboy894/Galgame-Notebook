@@ -1,3 +1,4 @@
+import { investigationInheritanceDialog, investigationPoolDialog, openInvestigationSource } from "./investigation-pool.js";
 import {
   dialogueEncyclopediaMenu,
   editDialogueLink,
@@ -243,6 +244,18 @@ function dispatch(action, el) {
       break;
     case "inspect-create":
       investigationAddMenu(el);
+      break;
+    case "inspect-pool":
+      investigationPoolDialog();
+      break;
+    case "inspect-inheritance-default":
+      investigationInheritanceDialog();
+      break;
+    case "inspect-inheritance-card":
+      investigationInheritanceDialog(new Set([id]));
+      break;
+    case "inspect-inheritance-source":
+      openInvestigationSource();
       break;
     case "inspect-stage-menu":
       investigationStageMenu(el);

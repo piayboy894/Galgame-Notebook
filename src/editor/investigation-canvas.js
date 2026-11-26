@@ -26,6 +26,7 @@ export function investigationToolbar(stage, navigation = "") {
     ${navigation}
     <div class="investigation-tools investigation-actions">
       <button class="btn primary" data-act="inspect-create" title="新建卡片" aria-label="新建卡片">${ico("plus")}<span>新建卡片</span></button>
+      <button class="btn ghost" data-act="inspect-pool" title="调查卡池" aria-label="调查卡池">${ico("layers")}<span>卡池</span></button>
       <button class="btn ghost" data-act="inspect-rehearse" title="演练" aria-label="演练">${ico("play")}<span>演练</span></button>
       ${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
       ${isAndroid ? ib("dots", "inspect-stage-menu", "调查阶段操作") : ""}

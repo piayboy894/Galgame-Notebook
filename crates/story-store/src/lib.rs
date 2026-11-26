@@ -89,7 +89,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
                 .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
     });
     if value["format"] != "xuxian.story"
-        || !matches!(value["version"].as_u64(), Some(1..=5))
+        || !matches!(value["version"].as_u64(), Some(1..=6))
         || !valid_id
         || !value["routes"]
             .as_array()
@@ -99,7 +99,7 @@ pub fn validate_story(text: &str) -> Result<Value> {
             .is_some_and(|a| a.len() <= 3000)
         || !value["title"].is_string()
     {
-        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v5）"));
+        return Err(Error::new(400, "不是有效的叙线剧本文件（支持 JSON v1–v6）"));
     }
     Ok(value)
 }

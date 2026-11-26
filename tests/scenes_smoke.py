@@ -87,7 +87,7 @@ with sync_playwright() as p:
     assert copied['locations'][0]['name']=='旧书房'
     assert copied_group['locationId']==copied['locations'][0]['id']
     assert copied_group['overrides']['bgm']=='紧张.ogg'
-    assert copied['version']==5
+    assert copied['version']==6
     # JSON export contains the full new schema; reopening restores it.
     page.locator('#menu-btn').click()
     with page.expect_download() as event:

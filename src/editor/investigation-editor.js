@@ -1,3 +1,5 @@
+import { setInvestigationIdentity } from "../domain/investigation-inheritance.js";
+import { investigationInheritanceItems, investigationPoolDialog } from "./investigation-pool.js";
 import {
   INVESTIGATION_CARD,
   investigationConditionText,
@@ -48,6 +50,11 @@ import {
 function addCardItems(position) {
   return [
     {
+      label: "从调查卡池添加…",
+      icon: "layers",
+      click: () => investigationPoolDialog(position),
+    },
+    {
       label: "新建物品",
       icon: "box",
       click: () => inspectObjectDialog(null, position),
@@ -69,7 +76,10 @@ export function investigationAddMenu(anchor, position = null) {
 
 export function investigationContextMenu(anchor, position, cardId) {
   if (cardId) return inspectObjectMenu(cardId, anchor, position);
-  menu(anchor, [...cardClipboardItems(position), null, ...addCardItems(position)]);
+  menu(anchor, [
+    ...investigationInheritanceItems(state.selectedInvestigationCardIds),
+    ...cardClipboardItems(position), null, ...addCardItems(position),
+  ]);
 }
 
 export function collectInvestigationCards(ids = state.selectedInvestigationCardIds) {
@@ -100,6 +110,7 @@ export function pasteInvestigationCards(bundle, position = null) {
       id: state.project.id,
       routes: [route],
       locations: state.project.locations,
+      investigationPool: state.project.investigationPool,
       encyclopedia: state.project.encyclopedia,
       chapters: [{
         id: uid("chapter"), routeId: route.id,
@@ -179,13 +190,16 @@ export function inspectObjectDialog(
   const character = item.temporaryCharacter ? "__temporary" :
     item.characterId || (characters.length ? "" : "__temporary");
   const locationField = person ? "inspect-location" : "inspect-reference";
+  const shared = item.poolId && state.project.chapters.some((chapter) => chapter.stages.some((stage) =>
+    stage.objects.some((card) => card !== item && card.poolId === item.poolId)));
   modal(
     (id ? "编辑" : "新建") + "调查" + type,
     `${person ? `<div class="field"><label for="inspect-reference">人物来源</label><select class="input" id="inspect-reference" autofocus>${option("", "选择已有角色", character)}${option("__temporary", "临时 NPC", character)}${characters.map((entry) => option(entry.id, entry.name, character)).join("")}${option("__new", "新建项目角色…", character)}</select></div>
       <div class="field" id="inspect-new-reference" ${character.startsWith("__") ? "" : "hidden"}><label for="inspect-reference-name">人物名称</label><input class="input" id="inspect-reference-name" value="${attr(item.temporaryCharacter ? item.name : "")}" maxlength="120"></div>` : `<div class="field"><label for="inspect-name">物品名称</label><input class="input" id="inspect-name" value="${attr(item.name)}" maxlength="160" autofocus></div>`}
     <div class="field"><label for="${locationField}">地点</label><select class="input" id="${locationField}">${option("", "未设地点", item.locationId)}${locations.map((entry) => option(entry.id, entry.name, item.locationId)).join("")}${option("__new", "新建地点…", item.locationId)}</select></div>
     <div class="field" id="inspect-new-location" hidden><label for="${person ? "inspect-location-name" : "inspect-reference-name"}">地点名称</label><input class="input" id="${person ? "inspect-location-name" : "inspect-reference-name"}" maxlength="120"></div>
-    <div class="field"><label for="inspect-notes">备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(item.notes)}</textarea></div>`,
+    <div class="field"><label for="inspect-notes">备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(item.notes)}</textarea></div>
+    ${shared ? '<p class="investigation-form-help">名称和角色关联会同步到此卡片出现的阶段。地点与备注只用于当前阶段。</p>' : ""}`,
     btn("取消", null, "modal-close") +
       `<button class="btn primary" id="inspect-save">${id ? "保存" : "创建"}</button>`,
   );
@@ -220,11 +234,14 @@ export function inspectObjectDialog(
       place = locations.find((entry) => entry.name === value) || locationPreset(value);
     }
     const notes = $("#inspect-notes").value;
-    const previousSpeaker = item.temporaryCharacter ? item.id : item.characterId;
-    const nextSpeaker = temporary ? item.id : linked?.id || "";
-    const remapRows = item.temporaryCharacter && !temporary
-      ? state.project.chapters.flatMap((chapter) => chapter.stages.flatMap(stageRootRows))
-      : investigationScripts(item).flatMap((script) => script.rows);
+    const stages = state.project.chapters.flatMap((chapter) => chapter.stages);
+    const appearances = item.poolId
+      ? stages.flatMap((stage) => stage.objects).filter((card) => card.poolId === item.poolId)
+      : [item];
+    const swappable = new Map(appearances.map((card) => [
+      card.temporaryCharacter ? card.id : card.characterId,
+      temporary ? card.id : linked?.id || "",
+    ]).filter(([from, to]) => from && from !== to));
     if (!id) {
       item.position = position || suggestInvestigationPosition(stage);
       if (stage.objects.length)
@@ -234,14 +251,23 @@ export function inspectObjectDialog(
     mutate(() => {
       if (newRole && !characters.includes(linked)) characters.push(linked);
       if (place && !locations.includes(place)) locations.push(place);
-      if (previousSpeaker && previousSpeaker !== nextSpeaker)
-        for (const row of flattenRows(remapRows))
-          if (row.speakerId === previousSpeaker) row.speakerId = nextSpeaker;
-      item.name = linked?.name || name;
+      if (item.temporaryCharacter && !temporary) {
+        for (const row of flattenRows(stages.flatMap(stageRootRows)))
+          if (swappable.has(row.speakerId)) row.speakerId = swappable.get(row.speakerId);
+      } else {
+        for (const card of appearances) {
+          if (!card.characterId) continue;
+          const speaker = temporary ? card.id : linked?.id || "";
+          for (const row of flattenRows(investigationScripts(card).flatMap((script) => script.rows)))
+            if (row.speakerId === card.characterId) row.speakerId = speaker;
+        }
+      }
+      setInvestigationIdentity(state.project, item, {
+        name: linked?.name || name,
+        characterId: linked?.id || "",
+        temporaryCharacter: temporary,
+      });
       item.notes = notes;
-      item.characterId = linked?.id || "";
-      if (temporary) item.temporaryCharacter = true;
-      else delete item.temporaryCharacter;
       item.locationId = place?.id || "";
       if (!id) {
         stage.objects.push(item);
@@ -267,6 +293,8 @@ export function inspectObjectMenu(id, anchor, position = null) {
       icon: "edit",
       click: () => inspectObjectDialog(id),
     },
+    ...investigationInheritanceItems(state.selectedInvestigationCardIds.has(id)
+      ? state.selectedInvestigationCardIds : new Set([id])),
     ...cardClipboardItems(position, item),
     {
       label: "在画布创建副本",
@@ -274,7 +302,10 @@ export function inspectObjectMenu(id, anchor, position = null) {
       click: () => {
         const copy = clone(item);
         regenerateInvestigationIds([copy]);
-        if (!isInvestigationPerson(copy)) copy.name += " · 副本";
+        if (!isInvestigationPerson(copy)) {
+          delete copy.poolId;
+          copy.name += " · 副本";
+        }
         copy.position = suggestInvestigationPosition(stage, {
           x:
             item.position.x + INVESTIGATION_CARD.width + INVESTIGATION_CARD.gap,
@@ -339,7 +370,7 @@ export function inspectObjectMenu(id, anchor, position = null) {
         if (rows.length || item.interactions.length || item.outcomes.length)
           confirmBox(
             "删除" + type,
-            `删除「${inspectName(item)}」及其中的交互与脚本？`,
+            `移除本阶段的「${inspectName(item)}」及其中的脚本？卡片仍在调查卡池。引用此处对白的其他卡片将保留当前内容，转为独立编辑。`,
             remove,
             true,
           );

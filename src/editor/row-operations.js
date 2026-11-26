@@ -1,3 +1,4 @@
+import { restoreInvestigationRowItem } from "./investigation-pool.js";
 import { dialogueLinkDialog, dialogueLinkSelection } from "./encyclopedia.js";
 import {
   copiedEncyclopediaEntries,
@@ -858,6 +859,7 @@ export function rowMenu(id, anchor) {
       icon: "link",
       click: () => dialogueLinkDialog(selection),
     }, null] : []),
+    ...restoreInvestigationRowItem(id),
     ...rowInsertionItems(id),
     null,
     {

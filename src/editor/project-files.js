@@ -1,3 +1,4 @@
+import { planReadableInvestigation } from "../domain/readable-investigation.js";
 import { encyclopediaParts, wrappedEncyclopediaLinks } from "../domain/encyclopedia.js";
 import {
   dialogueMarkdown,
@@ -15,7 +16,7 @@ import {
   isAndroid,
   projectStorageName,
 } from "../platform/runtime";
-import { normalizeProject, newProject } from "../domain/project.js";
+import { flattenRows, normalizeProject, newProject, stageRootRows } from "../domain/project.js";
 import { clone, uid, now } from "../domain/primitives.js";
 import {
   mutate,
@@ -32,7 +33,10 @@ import {
   C,
   HANDLE_DB,
   P,
+  R,
   S,
+  currentChapter,
+  option,
   attr,
   btn,
   esc,
@@ -881,10 +885,7 @@ export function appendMarkdownRows(out, rows, indent = "") {
           indent +
             (op.mode === "jump"
               ? "↳ 跳转：" +
-                (C(op.chapterId)?.title || "未设置章节") +
-                (op.stageId
-                  ? " / " + (S(op.stageId)?.stage.title || "未设置阶段")
-                  : "")
+                chapterDestination(op.chapterId, op.stageId)
               : "↳ 合流，继续下一行"),
           "",
         );
@@ -908,27 +909,82 @@ export function appendMarkdownRows(out, rows, indent = "") {
   }
 }
 
-export async function exportMarkdown() {
-  const out = [
-    "# " + state.project.title,
-    "",
-    "> 叙线可读剧本 · " + new Date().toLocaleString("zh-CN"),
-    "",
-  ];
-  if (state.project.characters.length) {
+function chapterDestination(chapterId, stageId) {
+  const chapter = C(chapterId);
+  return [R(chapter?.routeId)?.name, chapter?.title || "未设置章节",
+    stageId ? S(stageId)?.stage.title || "未设置阶段" : "章节起始"].filter(Boolean).join(" / ");
+}
+
+export function markdownScopeDialog() {
+  const chapterId = currentChapter()?.id;
+  modal(
+    "按范围导出可读剧本",
+    `<div class="field"><label for="markdown-scope">导出范围</label><select id="markdown-scope" class="input" autofocus>
+      ${option("", "整个项目", chapterId ? null : "")}
+      ${state.project.routes.map((route) => `<optgroup label="${attr(route.name)}">
+        ${option("route:" + route.id, "整条路线 · " + route.name)}
+        ${routeChapters(route.id).map((chapter) => option("chapter:" + chapter.id, chapter.title, "chapter:" + chapterId)).join("")}
+      </optgroup>`).join("")}</select></div>
+    <p class="investigation-form-help">部分导出会写入所选范围内实际生效的对白。指向范围外的分支仍保留完整去向。</p>`,
+    btn("取消", null, "modal-close") + '<button class="btn primary" id="markdown-scope-export">导出 Markdown</button>',
+  );
+  $("#markdown-scope-export").onclick = () => {
+    const [type, id] = $("#markdown-scope").value.split(":");
+    closeModal();
+    exportMarkdown(type ? { type, id } : null);
+  };
+}
+
+export async function exportMarkdown(scope = null) {
+  const chapterGroups = state.project.routes.map((route) => ({
+    route,
+    chapters: routeChapters(route.id).filter((chapter) => !scope ||
+      (scope.type === "route" ? route.id === scope.id : chapter.id === scope.id)),
+  })).filter(({ chapters }) => chapters.length);
+  const chapters = chapterGroups.flatMap(({ chapters }) => chapters);
+  const stages = chapters.flatMap((chapter) => chapter.stages);
+  const rows = flattenRows(stages.flatMap(stageRootRows));
+  const scoped = Boolean(scope);
+  const usedSpeakers = new Set([
+    ...rows.map((row) => row.speakerId),
+    ...stages.flatMap((stage) => stage.objects.map((item) => item.characterId)),
+  ]);
+  const usedTerms = new Set(rows.flatMap((row) => (row.encyclopediaLinks || []).map((link) => link.entryId)));
+  const plan = planReadableInvestigation(stages.filter((stage) => stage.kind === "investigation"), (row) => {
+    const lines = [];
+    appendMarkdownRows(lines, [row]);
+    return lines.join("\n").trimEnd();
+  });
+  const scopeName = scope?.type === "route" ? R(scope.id)?.name : C(scope?.id)?.title;
+  const out = ["# " + state.project.title, ""];
+  if (scopeName) out.push("> 范围 · " + scopeName, "");
+  if (plan.hasReferences)
+    out.push("> 「沿用」按所指脚本的条目顺序展开，之后继续阅读本段。", "");
+  if (stages.some((stage) => stage.kind === "investigation" &&
+    stage.objects.some((item) => item.interactions.length)))
+    out.push("> 调查时按顺序匹配交互规则，先命中的规则生效。没有命中时使用启用的默认脚本。", "");
+  const characters = state.project.characters.filter((p) => p.notes && (!scoped || usedSpeakers.has(p.id)));
+  if (characters.length) {
     out.push("## 角色", "");
-    for (const p of state.project.characters)
-      out.push(
-        "### " + p.name,
-        p.notes || "",
-        p.expressions.length ? "表情：" + p.expressions.join(" / ") : "",
-        p.actions.length ? "动作：" + p.actions.join(" / ") : "",
-        "",
-      );
+    for (const p of characters) out.push("### " + p.name, p.notes, "");
   }
-  for (const r of state.project.routes) {
-    out.push("---", "", "## " + r.name, "");
-    for (const c of routeChapters(r.id)) {
+  const usedFlags = new Set(chapters.flatMap((chapter) => chapter.unlock.rules
+    .filter((rule) => rule.type === "flag").map((rule) => rule.targetId)));
+  for (const stage of stages)
+    if (stage.kind === "investigation")
+      for (const script of stage.objects.flatMap(investigationScripts)) {
+        for (const outcome of script.outcomes) usedFlags.add(outcome);
+        for (const condition of script.conditions || [])
+          if (condition.type === "flag") usedFlags.add(condition.targetId);
+      }
+  const flags = state.project.flags.filter((flag) => flag.notes && usedFlags.has(flag.id));
+  if (flags.length) {
+    out.push("## 条件说明", "");
+    for (const flag of flags) out.push("- **" + flag.name + "** " + flag.notes);
+    out.push("");
+  }
+  for (const { route, chapters } of chapterGroups) {
+    out.push("## " + route.name, "");    for (const c of chapters) {
       out.push("### " + c.title, "");
       if (c.ending !== "continue")
         out.push(
@@ -965,7 +1021,7 @@ export async function exportMarkdown() {
         if (st.notes) out.push("> " + st.notes.replace(/\n/g, "\n> "), "");
         if (st.kind === "investigation") {
           for (const item of st.objects) {
-            out.push("##### " + inspectName(item), "");
+            out.push("##### " + inspectName(item) + (item.characterId || item.temporaryCharacter ? " [人物]" : " [物品]"), "");
             const location = inspectLocation(item);
             if (location) out.push("地点：" + location, "");
             if (item.notes) out.push("> " + item.notes.replace(/\n/g, "\n> "), "");
@@ -976,24 +1032,24 @@ export async function exportMarkdown() {
               }
               const outcome = describeInvestigationOutcomes(script);
               if (outcome) out.push("完成后达成：" + outcome, "");
-              appendMarkdownRows(out, script.rows);
+              const text = plan.render(item, script);
+              if (text) out.push(text, "");
             }
           }
         } else appendMarkdownRows(out, st.rows);
       }
     }
   }
-  if (state.project.encyclopedia.length) {
-    out.push("---", "", "## 百科", "");
-    for (const { id, title, body } of state.project.encyclopedia)
+  const encyclopedia = state.project.encyclopedia.filter((entry) => !scoped || usedTerms.has(entry.id));
+  if (encyclopedia.length) {
+    out.push("## 百科", "");
+    for (const { id, title, body } of encyclopedia)
       out.push('<a id="encyclopedia-' + id + '"></a>', "", "### " + title, "", body, "");
   }
-  if (
-    await downloadText(
-      out.join("\n"),
-      fileName().replace(".story.json", ".md"),
-      "text/markdown",
-    )
-  )
-    toast("已导出可读剧本");
+  const text = out.join("\n").replace(/\n{3,}/g, "\n\n");
+  const suffix = scopeName ? " - " + scopeName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").slice(0, 70) : "";
+  if (await downloadText(text, fileName().replace(/\.story\.json$/, suffix + ".md"), "text/markdown")) {
+    const size = new Blob([text]).size;
+    toast(`已导出可读剧本 · ${size < 1024 ? size + " B" : (size / 1024).toFixed(1) + " KB"}`);
+  }
 }

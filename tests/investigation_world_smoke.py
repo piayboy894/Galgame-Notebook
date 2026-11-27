@@ -36,19 +36,23 @@ with sync_playwright() as playwright:
     executable = os.environ.get('CHROMIUM_PATH') or (
         '/usr/bin/chromium' if Path('/usr/bin/chromium').exists() else None)
     browser = playwright.chromium.launch(executable_path=executable, headless=True, args=['--no-sandbox'])
-    page = browser.new_page(viewport={'width': 1360, 'height': 960})
-    page.set_default_timeout(8000)
     errors = []
-    page.on('pageerror', lambda error: errors.append(str(error)))
-    page.goto(os.environ.get('APP_URL', 'http://127.0.0.1:1420'))
+
+    def open_editor():
+        editor = browser.new_page(viewport={'width': 1360, 'height': 960})
+        editor.set_default_timeout(8000)
+        editor.on('pageerror', lambda error: errors.append(str(error)))
+        editor.goto(os.environ.get('APP_URL', 'http://127.0.0.1:1420'))
+        expect(editor.locator('#library-update')).to_be_visible()
+        return editor
+
+    page = open_editor()
 
     def load(project):
         page.locator('#file-input').set_input_files({
             'name': 'world.story.json', 'mimeType': 'application/json', 'buffer': json.dumps(project).encode(),
         })
-        discard = page.locator('#replace-discard')
-        if discard.is_visible():
-            discard.click()
+        expect(page.locator('.chapter-card')).to_have_count(len(project['chapters']))
 
     def snapshot():
         return page.evaluate('window.XuXian.snapshot()')
@@ -112,6 +116,7 @@ with sync_playwright() as playwright:
     assert opening['worldSourceId'] == 'first'
     expect(page.locator('.investigation-card.is-carried')).to_have_count(3)
     expect(page.locator('.investigation-card')).to_have_count(3)
+    page.locator('#brand').hover()
     assert page.locator('.investigation-card.is-carried .investigation-card-head').first.evaluate(
         '(head) => getComputedStyle(head).opacity') == '0.66'
     assert opening['objects'][2]['interactions'][0]['conditions'][0]['targetId'] == letter
@@ -177,6 +182,8 @@ with sync_playwright() as playwright:
 
     saved = snapshot()
     assert saved['version'] == 7
+    page.close()
+    page = open_editor()
     load(saved)
     open_stage(after, opening['id'])
     expect(card(passerby)).to_have_count(0)

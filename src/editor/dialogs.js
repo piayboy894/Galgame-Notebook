@@ -809,8 +809,10 @@ export function stageDialog(id = null) {
 
 function copyInvestigationSnapshot(stage) {
   delete stage.worldSourceId;
-  stage.objects = presentInvestigationItems(stage);
+  const present = new Set(presentInvestigationItems(stage));
   regenerateInvestigationIds(stage.objects);
+  for (const item of stage.objects)
+    if (!present.has(item)) item.world = { presence: "away" };
 }
 
 export function duplicateStage(id) {

@@ -989,7 +989,7 @@ export async function exportMarkdown(scope = null) {
   if (investigations.some((stage) => stage.worldSourceId))
     out.push("> 延续阶段保留调查次数和已达成条件。新对象或重置对象从第 1 次开始。", "");
   if (investigations.some((stage) => presentInvestigationItems(stage).some((item) => item.interactions.length)))
-    out.push("> 调查时按顺序匹配交互规则，先命中的规则生效。没有命中时使用启用的默认脚本。", "");
+    out.push("> 按顺序使用首条命中的规则，否则使用启用的默认脚本。成功交互才计次。", "");
   const characters = state.project.characters.filter((p) => p.notes && (!scoped || usedSpeakers.has(p.id)));
   if (characters.length) {
     out.push("## 角色", "");

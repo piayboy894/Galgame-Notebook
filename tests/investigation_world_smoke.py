@@ -26,6 +26,7 @@ before['stages'] = [{
         {'id': 'barista', 'name': '店员', 'temporaryCharacter': True,
          'interactions': [{'id': 'ask_letter', 'name': '询问来信', 'conditions': [
              {'type': 'investigated', 'targetId': 'letter'},
+             {'type': 'investigated', 'targetId': 'passerby'},
              {'type': 'flag', 'targetId': 'flag_letter_read'},
          ], 'rows': [{'id': 'reply', 'speakerId': 'barista', 'text': '那封信是我寄来的。'}]}]},
     ],
@@ -142,6 +143,7 @@ with sync_playwright() as playwright:
     visit('letter').click()
     result = page.locator('.investigation-rehearsal-result')
     expect(result).to_contain_text('你第一次打开来信。')
+    visit('passerby').click()
     picker.select_option(opening['id'])
     expect(visit(letter)).to_contain_text('已交互 1 次')
     expect(visit(passerby)).to_have_count(0)
@@ -162,7 +164,7 @@ with sync_playwright() as playwright:
         assert '现在把信封收回口袋。' in current and '未出场的NPC' not in text
     assert full.count('那封信是我寄来的。') == 1
     assert '沿用来源的地点和交互：店员' in full
-    assert '那封信是我寄来的。' in single and '调查过信封' in single
+    assert '那封信是我寄来的。' in single and '调查过信封' in single and '调查过路人' in single
     assert '原来信封是蓝色的。' not in single
     menu_card(letter, '本阶段从第 1 次调查开始')
     assert '本阶段重置调查次数：信封' in export_markdown(scoped=True)

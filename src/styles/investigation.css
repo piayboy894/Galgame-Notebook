@@ -171,6 +171,10 @@
   border-color: #d8d3e5;
   background: #fdfcff;
 }
+/* Keep the script panel and its stacking priority independent of the faded header. */
+.investigation-card.is-carried:not(.is-card-picked):not(:has(.investigation-writing, :focus-within)):not(:hover) > .investigation-card-head {
+  opacity: 0.66;
+}
 .investigation-card.is-selected > .investigation-card-head {
   border-color: #4d8172;
   box-shadow:
@@ -440,6 +444,7 @@
     .investigation-toolbar
     :is(
       [data-act="inspect-collapse-all"],
+      [data-act="inspect-world"],
       [data-investigation-zoom="in"],
       [data-investigation-zoom="out"]
     ),

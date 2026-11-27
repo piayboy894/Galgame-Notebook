@@ -52,7 +52,7 @@ describe("existing story compatibility", () => {
       },
     ];
     const result: any = normalizeProject(p);
-    expect(result.version).toBe(6);
+    expect(result.version).toBe(7);
     expect(result.chapters[0].stages[0].rows[0].options[0].mode).toBe("jump");
     expect(result.chapters[0].stages[0].rows[1].options[0].rows[0].text).toBe(
       "没有署名",

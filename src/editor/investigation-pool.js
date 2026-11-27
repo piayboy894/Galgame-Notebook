@@ -1,3 +1,4 @@
+import { isInvestigationPresent, presentInvestigationItems } from "../domain/investigation-world.js";
 import {
   canInheritInvestigation,
   inheritedInvestigationScript,
@@ -9,6 +10,7 @@ import { investigationObject } from "../domain/project.js";
 import { findRow } from "../domain/scenes.js";
 import { $, $$, R, attr, btn, currentChapter, currentStage, esc, inspectName, option, state } from "./context.js";
 import { closeModal, modal } from "./dialogs.js";
+import { investigationWorldDialog } from "./investigation-world.js";
 import {
   revealInvestigationPosition, selectInvestigationCards, suggestInvestigationPosition,
 } from "./investigation-canvas.js";
@@ -24,10 +26,11 @@ function sourceChoices(index, stageId, value) {
 
 function sourceFor(stage, item, matchName = false) {
   if (!stage) return null;
-  const shared = stage.objects.filter((card) => card.poolId === item.poolId);
+  const active = presentInvestigationItems(stage);
+  const shared = active.filter((card) => card.poolId === item.poolId);
   if (shared.length) return shared.length === 1 ? shared[0] : null;
   if (!matchName) return null;
-  const sameName = stage.objects.filter((card) => inspectName(card) === inspectName(item) &&
+  const sameName = active.filter((card) => inspectName(card) === inspectName(item) &&
     card.characterId === item.characterId &&
     Boolean(card.temporaryCharacter) === Boolean(item.temporaryCharacter));
   return sameName.length === 1 ? sameName[0] : null;
@@ -55,10 +58,13 @@ export function investigationPoolDialog(position = null) {
   modal("调查卡池", `
     <div class="field"><label for="investigation-pool-search">搜索物品或人物</label><input class="input" id="investigation-pool-search" type="search" autofocus></div>
     <div class="investigation-pool-list" id="investigation-pool-list"></div>
+    ${stage.objects.some((item) => !isInvestigationPresent(item)) ? '<button class="btn small ghost" id="pool-world-restore">在世界状态中恢复离场卡片</button>' : ""}
     <p class="investigation-form-help">${defaultSource ? "本阶段默认继承 " + esc(stageLabel(defaultSource)) : "添加后沿用同一路线最近一次出现时的对白。"} ${btn("设置默认来源", null, "inspect-inheritance-default", "small ghost")}</p>`,
     btn("取消", null, "modal-close") +
       '<button class="btn primary" id="investigation-pool-add" disabled>放入当前阶段</button>',
   );
+  const restore = $("#pool-world-restore");
+  if (restore) restore.onclick = investigationWorldDialog;
   const field = $("#investigation-pool-search");
   const list = $("#investigation-pool-list");
   const add = $("#investigation-pool-add");
@@ -112,7 +118,7 @@ export function investigationPoolDialog(position = null) {
 export function investigationInheritanceDialog(ids = null) {
   const stage = currentStage();
   const index = investigationIndex(state.project);
-  const targets = ids ? stage.objects.filter((item) => ids.has(item.id)) : [];
+  const targets = ids ? presentInvestigationItems(stage).filter((item) => ids.has(item.id)) : [];
   if (ids && !targets.length) return toast("请先框选物品或人物");
   const linkedSource = index.placements.get(targets[0]?.inheritance?.sourceId);
   const value = ids ? linkedSource?.stage.id || stage.investigationSourceId || "" : stage.investigationSourceId || "";
@@ -175,7 +181,7 @@ export function investigationInheritanceDialog(ids = null) {
 }
 
 export function investigationInheritanceItems(ids) {
-  const items = currentStage().objects.filter((item) => ids.has(item.id));
+  const items = presentInvestigationItems(currentStage()).filter((item) => ids.has(item.id));
   return [
     {
       label: items.length > 1 ? "批量继承对白…" : "设置对白来源…",

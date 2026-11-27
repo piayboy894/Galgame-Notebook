@@ -1,3 +1,4 @@
+import { presentInvestigationItems } from "../domain/investigation-world.js";
 import {
   INVESTIGATION_CARD,
   isInvestigationPerson,
@@ -27,8 +28,9 @@ export function investigationToolbar(stage, navigation = "") {
     <div class="investigation-tools investigation-actions">
       <button class="btn primary" data-act="inspect-create" title="新建卡片" aria-label="新建卡片">${ico("plus")}<span>新建卡片</span></button>
       <button class="btn ghost" data-act="inspect-pool" title="调查卡池" aria-label="调查卡池">${ico("layers")}<span>卡池</span></button>
+      <button class="btn ghost" data-act="inspect-world" title="世界状态" aria-label="世界状态">${ico("link")}<span>世界</span></button>
       <button class="btn ghost" data-act="inspect-rehearse" title="演练" aria-label="演练">${ico("play")}<span>演练</span></button>
-      ${stage.objects.some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
+      ${presentInvestigationItems(stage).some((item) => state.expandedInvestigationItems.has(item.id)) ? ib("up", "inspect-collapse-all", "收起全部脚本") : ""}
       ${isAndroid ? ib("dots", "inspect-stage-menu", "调查阶段操作") : ""}
     </div>
     <div class="investigation-tools investigation-zoom">
@@ -41,7 +43,7 @@ export function investigationToolbar(stage, navigation = "") {
 }
 
 export function investigationCanvas(stage, active, renderScript, toolbar) {
-  const cards = stage.objects
+  const cards = presentInvestigationItems(stage)
     .map((item) => {
       const person = isInvestigationPerson(item);
       const type = item.temporaryCharacter ? "临时 NPC" : person ? "人物" : "物品";
@@ -51,11 +53,15 @@ export function investigationCanvas(stage, active, renderScript, toolbar) {
         .flatMap((script) => flattenRows(script.rows))
         .filter((row) => row.type !== "group").length;
       const expanded = state.expandedInvestigationItems.has(item.id);
-      return `<article class="investigation-card ${person ? "is-character" : ""} ${item.id === active?.id ? "is-selected" : ""} ${state.selectedInvestigationCardIds.has(item.id) ? "is-card-picked" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
+      const carried = !!item.world?.from;
+      const edited = carried && (item.world.fields?.length || item.world.resetVisits ||
+        item.world.presence === "present" || item.world.scriptEdited ||
+        item.inheritance?.sourceId !== item.world.from);
+      return `<article class="investigation-card ${person ? "is-character" : ""} ${carried && !edited ? "is-carried" : ""} ${item.id === active?.id ? "is-selected" : ""} ${state.selectedInvestigationCardIds.has(item.id) ? "is-card-picked" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
       <div class="investigation-card-head">
         <button class="inspect-open" data-act="inspect-select" data-id="${attr(item.id)}" title="${expanded ? "定位脚本" : "展开脚本"}">
           <span class="investigation-card-icon">${ico(person ? "users" : "box")}</span>
-          <span class="investigation-card-name"><small>${type}</small><strong>${esc(name)}</strong><span class="investigation-card-meta">${location ? ico("pin") + "<span>" + esc(location) + "</span>" : count + " 行脚本"}</span></span>
+          <span class="investigation-card-name"><small>${type}${carried ? edited ? " · 本阶段改动" : " · 延续" : ""}</small><strong>${esc(name)}</strong><span class="investigation-card-meta">${location ? ico("pin") + "<span>" + esc(location) + "</span>" : count + " 行脚本"}</span></span>
         </button>
         ${ib(expanded ? "up" : "down", "inspect-fold", expanded ? "收起脚本" : "展开脚本", `data-id="${attr(item.id)}" aria-expanded="${expanded}"`)}
         ${ib("dots", "inspect-menu", type + "操作", `data-id="${attr(item.id)}"`)}
@@ -111,13 +117,14 @@ export function suggestInvestigationPosition(stage, origin = null, offsets = [{ 
           y: viewport.clientHeight / 2,
         })
       : { x: 0, y: 0 });
+  const occupied = presentInvestigationItems(stage);
   for (let i = 0; ; i++) {
     const position = {
       x: start.x + (i % 3) * (width + gap),
       y: start.y + Math.floor(i / 3) * (height + gap),
     };
     if (
-      !stage.objects.some(({ position: saved }) => offsets.some((offset) =>
+      !occupied.some(({ position: saved }) => offsets.some((offset) =>
         Math.abs(saved.x - position.x - offset.x) < width + gap / 2 &&
         Math.abs(saved.y - position.y - offset.y) < height + gap / 2,
       ))
@@ -176,7 +183,7 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
   const world = $(".investigation-world", viewport);
   const selectionBox = $(".investigation-selection-box", viewport);
   const zoomLabel = $('[data-investigation-zoom="reset"]', root);
-  const items = new Map(stage.objects.map((item) => [item.id, item]));
+  const items = new Map(presentInvestigationItems(stage).map((item) => [item.id, item]));
   const camera = state.investigationCameras.get(stage.id) || {
     x: 0,
     y: 0,
@@ -197,7 +204,7 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
   });
   function fit() {
     const middle = center();
-    if (stage.objects.length) {
+    if (items.size) {
       let left = Infinity,
         right = -Infinity,
         top = Infinity,

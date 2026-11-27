@@ -80,6 +80,12 @@ function projectScript(index, item, source, targetStage, rowIds) {
     const placement = index.placements.get(id);
     if (!placement) return id;
     if (targetStage.objects.some((card) => card.id === id)) return id;
+    if (targetStage.worldSourceId) {
+      const key = placement.item.world?.key || placement.item.id;
+      const match = targetStage.objects.find((card) => (card.world?.key || card.id) === key);
+      if (match) return match.id;
+      if (item.world?.from) return id;
+    }
     const matches = targetStage.objects.filter((card) => card.poolId === placement.item.poolId);
     return matches.length === 1 ? matches[0].id : id;
   };
@@ -198,6 +204,10 @@ export function inheritedInvestigationScript(index, item) {
   return projectScript(index, item, source.item, target.stage, new Map(item.inheritance.rowIds));
 }
 
+export function matchesInheritedInvestigationScript(index, item) {
+  return same(scriptOf(item), inheritedInvestigationScript(index, item));
+}
+
 export function linkInvestigation(index, stage, item, source, keepChanges = true) {
   const oldSource = keepChanges ? inheritedInvestigationScript(index, item) : null;
   const local = scriptOf(item);
@@ -229,7 +239,7 @@ export function previousInvestigationEdit(project, itemId) {
   return index;
 }
 
-export function refreshInvestigationInheritance(project, previous) {
+export function refreshInvestigationInheritance(project, previous, pending = new Map()) {
   const index = investigationIndex(project);
   for (const { stage } of index.stages.values())
     if (stage.investigationSourceId && !index.stages.has(stage.investigationSourceId))
@@ -239,6 +249,13 @@ export function refreshInvestigationInheritance(project, previous) {
     const { item, stage } = target;
     if (visited.has(item.id)) return;
     visited.add(item.id);
+    const planned = pending.get(item.id);
+    if (planned && canInheritInvestigation(index, item.id, planned.sourceId)) {
+      const source = index.placements.get(planned.sourceId);
+      update(source);
+      linkInvestigation(index, stage, item, source.item, planned.keepChanges);
+      return;
+    }
     const link = item.inheritance;
     if (!link) return;
     const source = index.placements.get(link.sourceId);

@@ -1,4 +1,6 @@
-import { setInvestigationIdentity } from "../domain/investigation-inheritance.js";
+import { investigationIndex, setInvestigationIdentity } from "../domain/investigation-inheritance.js";
+import { investigationVisitKeys, investigationWorldChain, presentInvestigationItems } from "../domain/investigation-world.js";
+import { investigationStageLabel, investigationWorldMenu } from "./investigation-world.js";
 import { investigationInheritanceItems, investigationPoolDialog } from "./investigation-pool.js";
 import {
   INVESTIGATION_CARD,
@@ -77,6 +79,7 @@ export function investigationAddMenu(anchor, position = null) {
 export function investigationContextMenu(anchor, position, cardId) {
   if (cardId) return inspectObjectMenu(cardId, anchor, position);
   menu(anchor, [
+    ...investigationWorldMenu(state.selectedInvestigationCardIds),
     ...investigationInheritanceItems(state.selectedInvestigationCardIds),
     ...cardClipboardItems(position), null, ...addCardItems(position),
   ]);
@@ -84,7 +87,7 @@ export function investigationContextMenu(anchor, position, cardId) {
 
 export function collectInvestigationCards(ids = state.selectedInvestigationCardIds) {
   const stage = currentStage();
-  const cards = stage?.objects.filter((item) => ids.has(item.id));
+  const cards = presentInvestigationItems(stage).filter((item) => ids.has(item.id));
   if (!cards?.length || stage.kind !== "investigation") return null;
   return {
     format: "xuxian.investigation-cards.v1",
@@ -199,7 +202,7 @@ export function inspectObjectDialog(
     <div class="field"><label for="${locationField}">地点</label><select class="input" id="${locationField}">${option("", "未设地点", item.locationId)}${locations.map((entry) => option(entry.id, entry.name, item.locationId)).join("")}${option("__new", "新建地点…", item.locationId)}</select></div>
     <div class="field" id="inspect-new-location" hidden><label for="${person ? "inspect-location-name" : "inspect-reference-name"}">地点名称</label><input class="input" id="${person ? "inspect-location-name" : "inspect-reference-name"}" maxlength="120"></div>
     <div class="field"><label for="inspect-notes">备注</label><textarea class="input" id="inspect-notes" rows="3">${esc(item.notes)}</textarea></div>
-    ${shared ? '<p class="investigation-form-help">名称和角色关联会同步到此卡片出现的阶段。地点与备注只用于当前阶段。</p>' : ""}`,
+    ${shared ? '<p class="investigation-form-help">名称和角色关联会同步到此卡片出现的阶段。地点与备注随世界状态延续，可在后续阶段单独改写。</p>' : ""}`,
     btn("取消", null, "modal-close") +
       `<button class="btn primary" id="inspect-save">${id ? "保存" : "创建"}</button>`,
   );
@@ -244,7 +247,7 @@ export function inspectObjectDialog(
     ]).filter(([from, to]) => from && from !== to));
     if (!id) {
       item.position = position || suggestInvestigationPosition(stage);
-      if (stage.objects.length)
+      if (presentInvestigationItems(stage).length)
         revealInvestigationPosition(stage, item.position);
       else state.investigationCameras.delete(stage.id);
     }
@@ -287,14 +290,16 @@ export function inspectObjectMenu(id, anchor, position = null) {
   const item = stage?.objects[index];
   if (!item) return;
   const type = isInvestigationPerson(item) ? "人物卡片" : "物品";
+  const selected = state.selectedInvestigationCardIds;
+  const ids = selected.has(id) ? selected : new Set([id]);
   menu(anchor, [
     {
       label: "编辑" + type,
       icon: "edit",
       click: () => inspectObjectDialog(id),
     },
-    ...investigationInheritanceItems(state.selectedInvestigationCardIds.has(id)
-      ? state.selectedInvestigationCardIds : new Set([id])),
+    ...investigationWorldMenu(ids),
+    ...investigationInheritanceItems(ids),
     ...cardClipboardItems(position, item),
     {
       label: "在画布创建副本",
@@ -337,7 +342,7 @@ export function inspectObjectMenu(id, anchor, position = null) {
         ),
     },
     null,
-    {
+    ...(!item.world?.from ? [{
       label: "删除" + type,
       icon: "trash",
       danger: true,
@@ -376,22 +381,23 @@ export function inspectObjectMenu(id, anchor, position = null) {
           );
         else remove();
       },
-    },
+    }] : []),
   ]);
 }
 
-function conditionText(stage, condition) {
+function conditionText(stage, condition, index) {
   return investigationConditionText(
     condition,
     (id) => {
-      const item = stage.objects.find((entry) => entry.id === id);
-      return item && inspectName(item);
+      const target = index.placements.get(id);
+      if (!target || !investigationWorldChain(index, stage).includes(target.stage)) return null;
+      return inspectName(target.item);
     },
     (id) => F(id)?.name,
   );
 }
 
-export function describeInvestigationRule(stage, rule) {
+export function describeInvestigationRule(stage, rule, index = investigationIndex(state.project)) {
   const parts = [investigationTiming(rule)];
   if (rule.conditions.length)
     parts.push(
@@ -401,7 +407,7 @@ export function describeInvestigationRule(stage, rule) {
           : "全部满足 "
         : "") +
         rule.conditions
-          .map((condition) => conditionText(stage, condition))
+          .map((condition) => conditionText(stage, condition, index))
           .join("、"),
     );
   return parts.join(" · ");
@@ -433,14 +439,15 @@ export function investigationRuleDialog(id = null, editingDefault = false) {
       ? item.interactions.find((entry) => entry.id === id)
       : investigationRule();
   if (!rule) return;
+  const worldIndex = investigationIndex(state.project);
   const original = new Map(
     (rule.conditions || []).map((condition) => [
-      conditionText(stage, condition),
+      conditionText(stage, condition, worldIndex),
       condition,
     ]),
   );
   const originalConditions = (rule.conditions || [])
-    .map((condition) => conditionText(stage, condition))
+    .map((condition) => conditionText(stage, condition, worldIndex))
     .join("\n");
   const originalOutcomes = new Map(
     rule.outcomes.map((flagId) => [F(flagId)?.name || "（缺失条件）", flagId]),
@@ -523,9 +530,9 @@ export function investigationRuleDialog(id = null, editingDefault = false) {
                     /^(调查过|已调查|还没调查|未调查)[：:\s]*(.+)$/u,
                   );
                   if (cardText) {
-                    const matches = stage.objects.filter(
-                      (entry) => inspectName(entry) === cardText[2].trim(),
-                    );
+                    const matches = investigationWorldChain(worldIndex, stage)
+                      .map((phase) => phase.objects.filter((entry) => inspectName(entry) === cardText[2].trim()))
+                      .find((items) => items.length) || [];
                     if (matches.length > 1)
                       throw Error(
                         `「${cardText[2].trim()}」对应多张卡片，请用名称唯一的卡片或自定条件`,
@@ -573,22 +580,35 @@ export function investigationRuleDialog(id = null, editingDefault = false) {
 }
 
 export function rehearseInvestigation() {
-  const stage = currentStage();
-  if (!stage?.objects.length) return toast("请先新建一张调查卡片");
+  let stage = currentStage();
+  const index = investigationIndex(state.project);
+  const ancestors = investigationWorldChain(index, stage).reverse().map((phase) => index.stages.get(phase.id));
+  const later = [...index.stages.values()].filter(({ stage: next }) =>
+    next !== stage && investigationWorldChain(index, next).includes(stage));
+  const phases = [...ancestors, ...later];
+  if (!presentInvestigationItems(stage).length && phases.length === 1)
+    return toast("本阶段暂无在场的调查卡片");
   const visits = new Map();
   const initialFlags = new Set(state.sim.flags);
   let flags = new Set(initialFlags);
   const knownFlags = new Set(state.project.flags.map((flag) => flag.id));
-  const knownItems = new Set(stage.objects.map((item) => item.id));
+  let progressing = false;
   let result = "",
     flagsOpen = false;
 
   function draw(focus = null) {
+    const keys = investigationVisitKeys(index, stage);
+    const visited = new Set([...keys].filter(([, key]) => visits.has(key)).map(([id]) => id));
+    const choices = progressing
+      ? phases.filter(({ stage: next }) => investigationWorldChain(index, next).includes(stage))
+      : phases;
     modal(
       "演练调查",
       `<div class="investigation-rehearsal">
         <p class="investigation-form-help">点击卡片模拟一次交互。按规则顺序取第一条匹配的脚本，成功后才增加次数。</p>
-        <div class="investigation-rehearsal-picks">${stage.objects.map((item) => `<button class="btn" data-investigation-visit="${attr(item.id)}">${esc(inspectName(item))}<small>已交互 ${visits.get(item.id) || 0} 次</small></button>`).join("")}</div>
+        ${phases.length > 1 ? `<div class="field"><label for="investigation-rehearsal-stage">演练阶段</label><select id="investigation-rehearsal-stage" class="input">${choices.map((entry) =>
+          option(entry.stage.id, investigationStageLabel(entry), stage.id)).join("")}</select></div>` : ""}
+        <div class="investigation-rehearsal-picks">${presentInvestigationItems(stage).map((item) => `<button class="btn" data-investigation-visit="${attr(item.id)}">${esc(inspectName(item))}<small>已交互 ${visits.get(keys.get(item.id)) || 0} 次</small></button>`).join("") || "<p>本阶段没有在场的调查卡片。</p>"}</div>
         ${state.project.flags.length ? `<details id="investigation-rehearsal-flags" ${flagsOpen ? "open" : ""}><summary>演练条件 <span>${state.project.flags.filter((flag) => flags.has(flag.id)).length} 项已达成</span></summary><div class="investigation-rehearsal-flags">${state.project.flags.map((flag) => `<label><input type="checkbox" data-investigation-flag="${attr(flag.id)}" ${flags.has(flag.id) ? "checked" : ""}> ${esc(flag.name)}</label>`).join("")}</div></details>` : ""}
         <div class="readable-preview investigation-rehearsal-result" aria-live="polite">${result || "<p>选择一张卡片开始。</p>"}</div>
       </div>`,
@@ -598,24 +618,34 @@ export function rehearseInvestigation() {
     );
     if (focus)
       $(`[data-investigation-visit="${focus}"]`)?.setAttribute("autofocus", "");
+    const picker = $("#investigation-rehearsal-stage");
+    if (picker) picker.onchange = () => {
+      stage = index.stages.get(picker.value).stage;
+      flagsOpen = $("#investigation-rehearsal-flags")?.open || false;
+      if (progressing) result = "<p>已进入下一调查阶段，调查历史按本阶段设置延续。</p>";
+      else result = "";
+      draw();
+      $("#investigation-rehearsal-stage")?.focus();
+    };
     $$("[data-investigation-visit]").forEach((button) => {
       button.onclick = () => {
         const item = stage.objects.find(
           (entry) => entry.id === button.dataset.investigationVisit,
         );
-        const attempt = (visits.get(item.id) || 0) + 1;
+        const attempt = (visits.get(keys.get(item.id)) || 0) + 1;
         const script = matchingInvestigationScript(
           item,
           attempt,
-          visits,
+          visited,
           flags,
           knownFlags,
-          knownItems,
+          keys,
         );
         if (!script)
           result = `<h3>${esc(inspectName(item))}</h3><p>当前条件未满足，交互次数保持为 ${attempt - 1}。</p>`;
         else {
-          visits.set(item.id, attempt);
+          visits.set(keys.get(item.id), attempt);
+          progressing = true;
           const outcomes = script.outcomes.map((id) => F(id)).filter(Boolean);
           for (const flag of outcomes) flags.add(flag.id);
           result = `<h3>${esc(inspectName(item))} · 第 ${attempt} 次 · ${script === item ? "默认脚本" : esc(script.name)}</h3>
@@ -637,6 +667,7 @@ export function rehearseInvestigation() {
     });
     $("#investigation-rehearsal-reset").onclick = () => {
       visits.clear();
+      progressing = false;
       flags = new Set(initialFlags);
       flagsOpen = $("#investigation-rehearsal-flags")?.open || false;
       result = "";

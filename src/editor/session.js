@@ -1,3 +1,4 @@
+import { presentInvestigationItems, refreshInvestigationWorld } from "../domain/investigation-world.js";
 import {
   ensureInvestigationPool, investigationIndex,
   previousInvestigationEdit, refreshInvestigationInheritance,
@@ -69,10 +70,8 @@ export function selectableRows() {
 export function currentInvestigationItem() {
   const s = currentStage();
   if (s?.kind !== "investigation") return null;
-  const o =
-    (s.objects || []).find((x) => x.id === state.activeInspectObjectId) ||
-    s.objects?.[0] ||
-    null;
+  const cards = presentInvestigationItems(s);
+  const o = cards.find((x) => x.id === state.activeInspectObjectId) || cards[0] || null;
   if (o?.id !== state.activeInspectObjectId) selectInvestigationItem(o?.id || null);
   return o;
 }
@@ -139,12 +138,14 @@ export function changed(renderNow = false) {
   if (renderNow) render();
 }
 
-export function mutate(fn, renderNow = true) {
+export function mutate(fn, renderNow = true, matchWorldNamesFor = null) {
   pushHistory();
   const before = state.history.at(-1);
   fn();
   ensureInvestigationPool(state.project);
-  refreshInvestigationInheritance(state.project, investigationIndex(before));
+  const previous = investigationIndex(before);
+  const pending = refreshInvestigationWorld(state.project, previous, matchWorldNamesFor);
+  refreshInvestigationInheritance(state.project, previous, pending);
   if (!state.composition)
     for (const { row, text } of dialogueWrapChanges(state.project))
       applyDialogueWrap(row, text);
@@ -157,6 +158,10 @@ export function edit(token, fn) {
     ? previousInvestigationEdit(state.project, state.activeInspectObjectId)
     : null;
   fn();
+  if (/^(row|option):/.test(token)) {
+    const item = currentInvestigationItem();
+    if (item?.world?.from) item.world.scriptEdited = true;
+  }
   if (previous) refreshInvestigationInheritance(state.project, previous);
   changed(false);
 }

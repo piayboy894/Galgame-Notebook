@@ -29,6 +29,7 @@ try {
     "tests/clipboard_smoke.py",
     "tests/investigation_cards_smoke.py",
     "tests/investigation_pool_smoke.py",
+    "tests/investigation_world_smoke.py",
     "tests/readable_export_smoke.py",
     "tests/encyclopedia_smoke.py",
     "tests/github_sync_smoke.py",

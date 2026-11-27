@@ -1,3 +1,4 @@
+import { refreshInvestigationWorld } from "./investigation-world.js";
 import { ensureInvestigationPool, refreshInvestigationInheritance } from "./investigation-inheritance.js";
 import { normalizeEncyclopediaLinks, setEncyclopediaLinks } from "./encyclopedia.js";
 import { applyDialogueWrap, dialogueWrapChanges, normalizeDialogueSettings } from "./dialogue.js";
@@ -77,6 +78,7 @@ export function regenerateInvestigationIds(items) {
   for (const item of items) {
     item.id = ids.get(item.id);
     delete item.inheritance;
+    delete item.world;
     for (const rule of item.interactions) {
       rule.id = uid("interaction");
       for (const condition of rule.conditions)
@@ -125,7 +127,7 @@ export function chapter(routeId, title = "新章节", y = 112) {
 export function newProject(title = "未命名剧本") {
   const p = {
     format: FORMAT,
-    version: 6,
+    version: 7,
     id: uid("project"),
     title,
     createdAt: now(),
@@ -153,7 +155,7 @@ export function newProject(title = "未命名剧本") {
 export function normalizeProject(raw) {
   if (!raw || typeof raw !== "object" || raw.format !== FORMAT)
     throw Error("这不是叙线源文件（.json）");
-  if (![1, 2, 3, 4, 5, 6].includes(raw.version))
+  if (![1, 2, 3, 4, 5, 6, 7].includes(raw.version))
     throw Error("源文件版本不受支持，请使用兼容的编辑器");
   const ids = new Set();
   const id = (v) => {
@@ -173,7 +175,7 @@ export function normalizeProject(raw) {
     typeof v === "string" && /^[a-zA-Z0-9_-]{0,100}$/.test(v) ? v : "";
   const p = {
     format: FORMAT,
-    version: 6,
+    version: 7,
     id: id(raw.id),
     title: str(raw.title, "未命名剧本"),
     createdAt: str(raw.createdAt, now()),
@@ -339,6 +341,7 @@ export function normalizeProject(raw) {
         title: str(st.title, "未命名阶段"),
         notes: str(st.notes),
         kind: st.kind === "investigation" ? "investigation" : "story",
+        ...(ref(st.worldSourceId) ? { worldSourceId: ref(st.worldSourceId) } : {}),
         ...(ref(st.investigationSourceId) ? { investigationSourceId: ref(st.investigationSourceId) } : {}),
         rows: arr(st.rows).map((r) => parseRow(r)),
         objects: arr(st.objects).map((o, i) => {
@@ -348,6 +351,16 @@ export function normalizeProject(raw) {
           return {
             id: id(o.id),
             ...(ref(o.poolId) ? { poolId: ref(o.poolId) } : {}),
+            ...(o.world && typeof o.world === "object" ? { world: {
+              ...(ref(o.world.key) ? { key: ref(o.world.key) } : {}),
+              ...(ref(o.world.from) ? { from: ref(o.world.from) } : {}),
+              ...(["away", "present"].includes(o.world.presence) ? { presence: o.world.presence } : {}),
+              ...(o.world.scriptEdited === true ? { scriptEdited: true } : {}),
+              ...(o.world.resetVisits === true ? { resetVisits: true } : {}),
+              ...(o.world.unavailable === true ? { unavailable: true } : {}),
+              ...(Array.isArray(o.world.fields) ? { fields: [...new Set(o.world.fields.filter((field) =>
+                ["locationId", "notes", "position"].includes(field)))] } : {}),
+            } } : {}),
             ...(ref(o.inheritance?.sourceId) ? {
               inheritance: {
                 sourceId: ref(o.inheritance.sourceId),
@@ -393,7 +406,7 @@ export function normalizeProject(raw) {
   });
   if (p.chapters.length > 3000) throw Error("章节数量超过安全上限（3000）");
   ensureInvestigationPool(p);
-  refreshInvestigationInheritance(p);
+  refreshInvestigationInheritance(p, undefined, refreshInvestigationWorld(p));
   for (const { row, text } of dialogueWrapChanges(p)) applyDialogueWrap(row, text);
   return p;
 }

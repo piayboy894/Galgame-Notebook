@@ -1,3 +1,6 @@
+import { investigationIndex, matchesInheritedInvestigationScript } from "../domain/investigation-inheritance.js";
+import { isInvestigationPresent, presentInvestigationItems } from "../domain/investigation-world.js";
+import { investigationStageLabel } from "./investigation-world.js";
 import { planReadableInvestigation } from "../domain/readable-investigation.js";
 import { encyclopediaParts, wrappedEncyclopediaLinks } from "../domain/encyclopedia.js";
 import {
@@ -16,7 +19,7 @@ import {
   isAndroid,
   projectStorageName,
 } from "../platform/runtime";
-import { flattenRows, normalizeProject, newProject, stageRootRows } from "../domain/project.js";
+import { flattenRows, normalizeProject, newProject } from "../domain/project.js";
 import { clone, uid, now } from "../domain/primitives.js";
 import {
   mutate,
@@ -943,25 +946,49 @@ export async function exportMarkdown(scope = null) {
   })).filter(({ chapters }) => chapters.length);
   const chapters = chapterGroups.flatMap(({ chapters }) => chapters);
   const stages = chapters.flatMap((chapter) => chapter.stages);
-  const rows = flattenRows(stages.flatMap(stageRootRows));
+  const investigations = stages.filter((stage) => stage.kind === "investigation");
+  const worldIndex = investigationIndex(state.project);
+  const includedStages = new Set(investigations.map((stage) => stage.id));
+  const compact = new Set();
+  const readableRows = (stage) => stage.kind === "investigation"
+    ? presentInvestigationItems(stage).flatMap(investigationScripts).flatMap((script) => script.rows)
+    : stage.rows;
+  for (const stage of investigations) {
+    const active = presentInvestigationItems(stage);
+    const source = worldIndex.stages.get(stage.worldSourceId)?.stage;
+    if (!source || !includedStages.has(source.id)) continue;
+    const originals = presentInvestigationItems(source);
+    for (const item of active) {
+      if (!item.world?.from || item.inheritance?.sourceId !== item.world.from) continue;
+      const prior = worldIndex.placements.get(item.world.from);
+      if (prior?.stage !== source || !isInvestigationPresent(prior.item)) continue;
+      const name = inspectName(item);
+      if (active.filter((card) => inspectName(card) === name).length !== 1 ||
+          originals.filter((card) => inspectName(card) === name).length !== 1) continue;
+      if (item.notes === prior.item.notes && item.locationId === prior.item.locationId &&
+          matchesInheritedInvestigationScript(worldIndex, item)) compact.add(item.id);
+    }
+  }
+  const rows = flattenRows(stages.flatMap(readableRows));
   const scoped = Boolean(scope);
   const usedSpeakers = new Set([
     ...rows.map((row) => row.speakerId),
-    ...stages.flatMap((stage) => stage.objects.map((item) => item.characterId)),
+    ...investigations.flatMap((stage) => presentInvestigationItems(stage).map((item) => item.characterId)),
   ]);
   const usedTerms = new Set(rows.flatMap((row) => (row.encyclopediaLinks || []).map((link) => link.entryId)));
-  const plan = planReadableInvestigation(stages.filter((stage) => stage.kind === "investigation"), (row) => {
+  const plan = planReadableInvestigation(investigations, (row) => {
     const lines = [];
     appendMarkdownRows(lines, [row]);
     return lines.join("\n").trimEnd();
-  });
+  }, compact);
   const scopeName = scope?.type === "route" ? R(scope.id)?.name : C(scope?.id)?.title;
   const out = ["# " + state.project.title, ""];
   if (scopeName) out.push("> 范围 · " + scopeName, "");
   if (plan.hasReferences)
     out.push("> 「沿用」按所指脚本的条目顺序展开，之后继续阅读本段。", "");
-  if (stages.some((stage) => stage.kind === "investigation" &&
-    stage.objects.some((item) => item.interactions.length)))
+  if (investigations.some((stage) => stage.worldSourceId))
+    out.push("> 延续阶段保留调查次数和已达成条件。新对象或重置对象从第 1 次开始。", "");
+  if (investigations.some((stage) => presentInvestigationItems(stage).some((item) => item.interactions.length)))
     out.push("> 调查时按顺序匹配交互规则，先命中的规则生效。没有命中时使用启用的默认脚本。", "");
   const characters = state.project.characters.filter((p) => p.notes && (!scoped || usedSpeakers.has(p.id)));
   if (characters.length) {
@@ -972,7 +999,7 @@ export async function exportMarkdown(scope = null) {
     .filter((rule) => rule.type === "flag").map((rule) => rule.targetId)));
   for (const stage of stages)
     if (stage.kind === "investigation")
-      for (const script of stage.objects.flatMap(investigationScripts)) {
+      for (const script of presentInvestigationItems(stage).flatMap(investigationScripts)) {
         for (const outcome of script.outcomes) usedFlags.add(outcome);
         for (const condition of script.conditions || [])
           if (condition.type === "flag") usedFlags.add(condition.targetId);
@@ -1014,13 +1041,27 @@ export async function exportMarkdown(scope = null) {
           "#### " +
             st.title +
             " [" +
-            (st.kind === "investigation" ? "调查" : "剧情") +
+            (st.kind === "investigation" ? st.worldSourceId ? "调查" : "独立调查" : "剧情") +
             "]",
           "",
         );
         if (st.notes) out.push("> " + st.notes.replace(/\n/g, "\n> "), "");
         if (st.kind === "investigation") {
-          for (const item of st.objects) {
+          const active = presentInvestigationItems(st);
+          const source = worldIndex.stages.get(st.worldSourceId);
+          const list = (items) => items.map(inspectName).join("、") || "无";
+          const away = st.objects.filter((item) => !isInvestigationPresent(item));
+          const resets = active.filter((item) => item.world?.resetVisits);
+          const short = active.filter((item) => compact.has(item.id));
+          const newItems = active.filter((item) => !item.world?.from);
+          if (source) out.push("- 延续「" + investigationStageLabel(source) + "」", "- 本阶段在场：" + list(active));
+          if (away.length) out.push("- 本阶段离场：" + list(away));
+          if (source && newItems.length) out.push("- 本阶段新出现：" + list(newItems));
+          if (source && resets.length) out.push("- 本阶段重置调查次数：" + list(resets));
+          if (short.length) out.push("- 沿用来源的地点和交互：" + list(short));
+          if (source || away.length) out.push("");
+          for (const item of active) {
+            if (compact.has(item.id)) continue;
             out.push("##### " + inspectName(item) + (item.characterId || item.temporaryCharacter ? " [人物]" : " [物品]"), "");
             const location = inspectLocation(item);
             if (location) out.push("地点：" + location, "");
@@ -1028,7 +1069,7 @@ export async function exportMarkdown(scope = null) {
             for (const script of investigationScripts(item)) {
               if (item.interactions.length || !item.fallbackEnabled) {
                 out.push("###### " + (script === item ? (item.fallbackEnabled ? "默认脚本" : "默认脚本（已停用）") : script.name), "");
-                if (script !== item) out.push("触发：" + describeInvestigationRule(st, script), "");
+                if (script !== item) out.push("触发：" + describeInvestigationRule(st, script, worldIndex), "");
               }
               const outcome = describeInvestigationOutcomes(script);
               if (outcome) out.push("完成后达成：" + outcome, "");

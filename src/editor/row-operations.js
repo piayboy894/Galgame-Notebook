@@ -1,3 +1,4 @@
+import { presentInvestigationItems } from "../domain/investigation-world.js";
 import { restoreInvestigationRowItem } from "./investigation-pool.js";
 import { dialogueLinkDialog, dialogueLinkSelection } from "./encyclopedia.js";
 import {
@@ -993,7 +994,7 @@ export function moveRowDialog(id) {
   const choices = state.project.chapters.flatMap((c) =>
     c.stages.flatMap((st) =>
       st.kind === "investigation"
-        ? st.objects.flatMap((item) =>
+        ? presentInvestigationItems(st).flatMap((item) =>
             investigationScripts(item).filter((script) => script.rows !== current).map((script) => ({
               id: script.id,
               label: `${R(c.routeId)?.name} / ${c.title} / ${st.title} / ${inspectName(item)} / ${script === item ? "默认脚本" : script.name}`,

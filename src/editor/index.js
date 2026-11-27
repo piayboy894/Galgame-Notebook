@@ -1,3 +1,4 @@
+import { investigationWorldDialog } from "./investigation-world.js";
 import { investigationInheritanceDialog, investigationPoolDialog, openInvestigationSource } from "./investigation-pool.js";
 import {
   dialogueEncyclopediaMenu,
@@ -298,6 +299,9 @@ function dispatch(action, el) {
       }
       break;
     }
+    case "inspect-world":
+      investigationWorldDialog();
+      break;
     case "inspect-rehearse":
       rehearseInvestigation();
       break;

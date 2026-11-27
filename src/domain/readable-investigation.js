@@ -1,3 +1,4 @@
+import { presentInvestigationItems } from "./investigation-world.js";
 import { investigationScripts } from "./investigation.js";
 
 function numberedRows(chunks) {
@@ -51,11 +52,12 @@ function findRepeatedRows(target, source, number) {
 
 /** Keep reusable scripts in the document as complete numbered blocks. A later
  * placement can reuse ranges in its exact order, with edited rows written inline. */
-export function planReadableInvestigation(stages, renderRows) {
+export function planReadableInvestigation(stages, renderRows, compactCards = new Set()) {
   const entries = [];
   const byCard = new Map();
   for (const stage of stages) {
-    for (const item of stage.objects) {
+    for (const item of presentInvestigationItems(stage)) {
+      if (compactCards.has(item.id)) continue;
       const scripts = new Map();
       for (const script of investigationScripts(item)) {
         const entry = {
@@ -68,6 +70,7 @@ export function planReadableInvestigation(stages, renderRows) {
       byCard.set(item.id, scripts);
     }
   }
+  const allCards = new Map(stages.flatMap((stage) => stage.objects.map((item) => [item.id, item])));
   const earliest = new Map();
   let count = 0;
   for (const entry of entries) {
@@ -88,7 +91,14 @@ export function planReadableInvestigation(stages, renderRows) {
       const sourceScriptId = prior.script === prior.item ? sourceId
         : rowIds.find(([, currentId]) => currentId === prior.script.id)?.[0];
       const source = byCard.get(sourceId)?.get(sourceScriptId);
-      if (!source) break;
+      if (!source) {
+        const card = allCards.get(sourceId);
+        if (!card || !compactCards.has(card.id)) break;
+        const script = investigationScripts(card).find((entry) => entry.id === sourceScriptId);
+        if (!script) break;
+        prior = { item: card, script };
+        continue;
+      }
       if (!source.condensed) candidate = source;
       prior = source;
     }

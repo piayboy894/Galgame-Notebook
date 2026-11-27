@@ -1,4 +1,4 @@
-import { investigationWorldDialog } from "./investigation-world.js";
+import { investigationWorldDialog, leaveInvestigationCards } from "./investigation-world.js";
 import { investigationInheritanceDialog, investigationPoolDialog, openInvestigationSource } from "./investigation-pool.js";
 import {
   dialogueEncyclopediaMenu,
@@ -63,6 +63,7 @@ import { autoSize } from "./script-view.js";
 import {
   boot,
   currentInvestigationScript,
+  expandInvestigationEditor,
   currentRows,
   edit,
   go,
@@ -261,12 +262,24 @@ function dispatch(action, el) {
     case "inspect-stage-menu":
       investigationStageMenu(el);
       break;
+    case "inspect-leave": {
+      const item = currentStage()?.objects.find((entry) => entry.id === id);
+      if (item) leaveInvestigationCards([item]);
+      break;
+    }
     case "inspect-select":
-    case "inspect-fold": {
+    case "inspect-fold":
+    case "inspect-modify": {
       const expanded = state.expandedInvestigationItems;
       const collapse = action === "inspect-fold" && expanded.has(id);
-      if (collapse) expanded.delete(id);
-      else expanded.add(id);
+      if (collapse) {
+        expanded.delete(id);
+        state.previewInvestigationItems.delete(id);
+      } else if (action === "inspect-modify") expandInvestigationEditor(id);
+      else if (!expanded.has(id)) {
+        expanded.add(id);
+        state.previewInvestigationItems.add(id);
+      }
       selectInvestigationItem(id);
       if (collapse) {
         state.selectedRowIds.clear();
@@ -274,12 +287,17 @@ function dispatch(action, el) {
       }
       render();
       const card = $(`[data-investigation-card="${id}"]`);
-      $(`[data-act="${action}"]`, card)?.focus({ preventScroll: true });
+      const focus = action === "inspect-modify" ? $(".investigation-script-select", card)
+        : $(`[data-act="${action}"]`, card);
+      focus?.focus({ preventScroll: true });
       if (!collapse) revealInvestigationElement(card);
       break;
     }
     case "inspect-collapse-all":
-      for (const item of currentStage().objects) state.expandedInvestigationItems.delete(item.id);
+      for (const { id } of currentStage().objects) {
+        state.expandedInvestigationItems.delete(id);
+        state.previewInvestigationItems.delete(id);
+      }
       state.selectedRowIds.clear();
       state.selectionAnchor = null;
       render();
@@ -522,6 +540,12 @@ document.addEventListener("contextmenu", (event) => {
     libraryVisible()
   )
     return;
+  const stageTab = event.target.closest(".stage-tab[data-id]");
+  if (stageTab) {
+    event.preventDefault();
+    stageMenu(stageTab.dataset.id, stageTab);
+    return;
+  }
   const selection = selectedDialogueText(event.target);
   if (selection) {
     dialogueEncyclopediaMenu(event, selection);

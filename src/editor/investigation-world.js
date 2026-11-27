@@ -17,26 +17,39 @@ export function investigationWorldOptions(stage, value, independent = "独立调
     .map((entry) => option(entry.stage.id, investigationStageLabel(entry), value)).join("");
 }
 
+export function leaveInvestigationCards(items) {
+  mutate(() => {
+    for (const item of items) {
+      (item.world ||= {}).presence = "away";
+      state.expandedInvestigationItems.delete(item.id);
+      state.previewInvestigationItems.delete(item.id);
+    }
+    selectInvestigationCards([]);
+  });
+  $(".investigation-viewport")?.focus({ preventScroll: true });
+  toast("已设为离场，可在「世界状态」中恢复");
+}
+
 export function investigationWorldMenu(ids) {
   const stage = currentStage();
   const items = presentInvestigationItems(stage).filter((item) => ids.has(item.id));
   if (!items.length) return [];
   const carried = items.filter((item) => item.world?.from);
+  const pinned = carried.filter((item) => item.world.fields?.includes("position") && !item.world.unavailable);
+
   return [
     {
       label: items.length > 1 ? "所选卡片在本阶段离场" : "本阶段离场",
       icon: "eye",
-      click: () => {
-        mutate(() => {
-          for (const item of items) {
-            (item.world ||= {}).presence = "away";
-            state.expandedInvestigationItems.delete(item.id);
-          }
-          selectInvestigationCards([]);
-        });
-        toast("已设为离场，可在「世界状态」中恢复");
-      },
+      click: () => leaveInvestigationCards(items),
     },
+    ...(pinned.length ? [{
+      label: "恢复来源位置",
+      icon: "reset",
+      click: () => mutate(() => {
+        for (const item of pinned) item.world.fields = item.world.fields.filter((field) => field !== "position");
+      }),
+    }] : []),
     ...(carried.length ? [{
       label: "本阶段从第 1 次调查开始",
       icon: "undo",

@@ -1,3 +1,4 @@
+import { previewRow } from "./dialogs.js";
 import { presentInvestigationItems } from "../domain/investigation-world.js";
 import { investigationSourceLabel } from "./investigation-pool.js";
 import { dialogueInputHTML } from "./dialogue-settings.js";
@@ -229,7 +230,7 @@ function investigationStagePicker(chapter, stage) {
   </div>`;
 }
 
-function investigationScript(stage, item) {
+function investigationScript(stage, item, preview) {
   const script = currentInvestigationScript(item);
   const defaultScript = item === script;
   const name = inspectName(item);
@@ -238,19 +239,21 @@ function investigationScript(stage, item) {
     <div class="investigation-script-head">
       <div class="investigation-script-actions">
         <select class="input investigation-script-select" aria-label="交互脚本">${option("", item.fallbackEnabled ? "默认脚本" : "默认脚本（已停用）", defaultScript ? "" : script.id)}${item.interactions.map((rule, index) => option(rule.id, (index + 1) + ". " + rule.name, script.id)).join("")}</select>
-        ${ib("settings", "inspect-rule-settings", defaultScript ? "默认交互设置" : "编辑交互规则")}
-        ${btn("交互规则", "plus", "inspect-rule-add")}
-        ${ib("dots", "script-menu", "脚本操作")}
+        ${preview
+          ? `<button class="btn small" data-act="inspect-modify" data-id="${attr(item.id)}">${ico("edit")}修改本阶段脚本</button>`
+          : ib("settings", "inspect-rule-settings", defaultScript ? "默认交互设置" : "编辑交互规则") +
+            btn("交互规则", "plus", "inspect-rule-add") + ib("dots", "script-menu", "脚本操作")}
       </div>
     </div>
     ${source ? `<div class="investigation-script-source">
-      ${ib("link", "inspect-inheritance-card", "设置对白来源", `data-id="${attr(item.id)}"`)}
+      ${preview ? "" : ib("link", "inspect-inheritance-card", "设置对白来源", `data-id="${attr(item.id)}"`)}
       <span title="${attr(source)}">继承自 ${esc(source)}</span>${btn("查看来源", null, "inspect-inheritance-source", "small ghost")}
     </div>` : ""}
     ${!defaultScript ? `<p class="investigation-active-rule" title="${attr(describeInvestigationRule(stage, script))}">${esc(describeInvestigationRule(stage, script))}</p>` : ""}
     <div class="script-scroll investigation-script-scroll">
       ${item.notes && defaultScript ? `<div class="inspect-notes">${esc(item.notes)}</div>` : ""}
-      ${stageScriptTable(script.rows)}
+      ${preview ? `<div class="readable-preview investigation-script-preview">${script.rows.map(previewRow).join("") ||
+        '<p class="empty-centered">暂无脚本</p>'}</div>` : stageScriptTable(script.rows)}
     </div>
   </section>`;
 }

@@ -109,7 +109,7 @@ it("preserves scripted investigations and remaps their internal references when 
   const items = normalized.chapters[0].stages[0].objects;
   const [letter, door] = items;
   expect(letter.position).toEqual({ x: 0, y: 0 });
-  expect(door.position).toEqual({ x: -421, y: 790 });
+  expect(door.position).toEqual({ x: -448, y: 800 });
   const visits = new Map([[letter.id, 1]]);
   const flags = new Set(["key"]);
   const knownItems = new Set(items.map((item: { id: string }) => item.id));

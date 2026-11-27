@@ -97,7 +97,7 @@ with sync_playwright() as p:
     x, y = bbox['x'] + 25, bbox['y'] + bbox['height'] / 2
     page.mouse.move(x, y)
     page.mouse.down()
-    page.mouse.move(x - 55, y + 20, steps=8)
+    page.mouse.move(x - 172, y + 12, steps=8)
     page.mouse.up()
     moved = page.evaluate(investigation + '.objects.at(-1).position')
     assert moved != key['position'], (moved, key)

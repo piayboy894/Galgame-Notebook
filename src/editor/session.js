@@ -1,3 +1,4 @@
+import { syncInvestigationCardState } from "./investigation-canvas.js";
 import { presentInvestigationItems, refreshInvestigationWorld } from "../domain/investigation-world.js";
 import {
   ensureInvestigationPool, investigationIndex,
@@ -90,6 +91,11 @@ export function selectInvestigationItem(
   return true;
 }
 
+export function expandInvestigationEditor(id) {
+  state.previewInvestigationItems.delete(id);
+  state.expandedInvestigationItems.add(id);
+}
+
 export function currentInvestigationScript(item = currentInvestigationItem()) {
   return item?.interactions.find((rule) => rule.id === state.investigationScriptsByItem.get(item.id)) || item;
 }
@@ -154,15 +160,11 @@ export function mutate(fn, renderNow = true, matchWorldNamesFor = null) {
 
 export function edit(token, fn) {
   rememberEdit(token);
-  const previous = currentStage()?.kind === "investigation" && /^(row|option):/.test(token)
-    ? previousInvestigationEdit(state.project, state.activeInspectObjectId)
-    : null;
+  const item = /^(row|option):/.test(token) ? currentInvestigationItem() : null;
+  const previous = item ? previousInvestigationEdit(state.project, item.id) : null;
   fn();
-  if (/^(row|option):/.test(token)) {
-    const item = currentInvestigationItem();
-    if (item?.world?.from) item.world.scriptEdited = true;
-  }
   if (previous) refreshInvestigationInheritance(state.project, previous);
+  if (item?.world?.from) syncInvestigationCardState(item);
   changed(false);
 }
 

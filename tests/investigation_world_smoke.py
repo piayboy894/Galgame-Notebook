@@ -1,6 +1,7 @@
 """Follow a continuous investigation from authoring through rehearsal and AI export."""
 import json
 import os
+import re
 from pathlib import Path
 
 from playwright.sync_api import expect, sync_playwright
@@ -19,11 +20,11 @@ project['flags'] = [{'id': 'flag_letter_read', 'name': '读过来信'}]
 after['stages'] = [{'id': 'cafe_story', 'title': '前往咖啡馆', 'kind': 'story'}]
 before['stages'] = [{
     'id': 'first', 'title': '共通线自由活动', 'kind': 'investigation', 'objects': [
-        {'id': 'letter', 'name': '信封', 'rows': [{'id': 'letter_line', 'text': '信封静静地躺在桌上。'}],
+        {'id': 'letter', 'name': '信封', 'position': {'x': 15, 'y': 6}, 'rows': [{'id': 'letter_line', 'text': '信封静静地躺在桌上。'}],
          'interactions': [{'id': 'first_letter', 'name': '第一次读信', 'timing': 'exact', 'attempt': 1,
                            'outcomes': ['flag_letter_read'], 'rows': [{'id': 'first_line', 'text': '你第一次打开来信。'}]}]},
-        {'id': 'passerby', 'name': '路人', 'temporaryCharacter': True},
-        {'id': 'barista', 'name': '店员', 'temporaryCharacter': True,
+        {'id': 'passerby', 'name': '路人', 'temporaryCharacter': True, 'position': {'x': 3, 'y': 7}},
+        {'id': 'barista', 'name': '店员', 'temporaryCharacter': True, 'position': {'x': 447, 'y': 14},
          'interactions': [{'id': 'ask_letter', 'name': '询问来信', 'conditions': [
              {'type': 'investigated', 'targetId': 'letter'},
              {'type': 'investigated', 'targetId': 'passerby'},
@@ -38,8 +39,8 @@ with sync_playwright() as playwright:
     browser = playwright.chromium.launch(executable_path=executable, headless=True, args=['--no-sandbox'])
     errors = []
 
-    def open_editor():
-        editor = browser.new_page(viewport={'width': 1360, 'height': 960})
+    def open_editor(touch=False):
+        editor = browser.new_page(has_touch=touch, viewport={'width': 1360, 'height': 960})
         editor.set_default_timeout(8000)
         editor.on('pageerror', lambda error: errors.append(str(error)))
         editor.goto(os.environ.get('APP_URL', 'http://127.0.0.1:1420'))
@@ -91,7 +92,28 @@ with sync_playwright() as playwright:
 
     def dialogue(item_id):
         card(item_id).locator('.inspect-open').click()
+        if card(item_id).locator('.investigation-script-preview').is_visible():
+            card(item_id).locator('.investigation-writing [data-act="inspect-modify"]').click()
         return lines(item_id).first
+
+    def drag_card(item_id, dx, dy, blocked=None):
+        header = card(item_id).locator('.inspect-open').bounding_box()
+        x, y = header['x'] + 25, header['y'] + header['height'] / 2
+        scale = card(item_id).evaluate('(card) => card.getBoundingClientRect().width / card.offsetWidth')
+        page.mouse.move(x, y)
+        page.mouse.down()
+        page.mouse.move(x + dx * scale, y + dy * scale, steps=8)
+        drop = page.locator('.investigation-drop-cell')
+        if blocked is None:
+            expect(drop).to_be_hidden()
+        else:
+            expect(drop).to_be_visible()
+            assert ('is-blocked' in drop.get_attribute('class')) == blocked
+        page.mouse.up()
+        expect(drop).to_be_hidden()
+
+    def card_data(title, item_id):
+        return next(item for item in stage_data(title)['objects'] if item['id'] == item_id)
 
     def visit(item_id):
         return page.locator(f'[data-investigation-visit="{item_id}"]')
@@ -110,6 +132,8 @@ with sync_playwright() as playwright:
 
     load(project)
     assert 'worldSourceId' not in stage_data('共通线自由活动')
+    root_positions = [item['position'] for item in stage_data('共通线自由活动')['objects']]
+    assert root_positions == [{'x': 0, 'y': 0}, {'x': 224, 'y': 0}, {'x': 448, 'y': 0}]
     open_chapter(after)
     opening = new_investigation('开端', 'first')
     letter, passerby, barista = [item['id'] for item in opening['objects']]
@@ -120,7 +144,14 @@ with sync_playwright() as playwright:
     assert page.locator('.investigation-card.is-carried .investigation-card-head').first.evaluate(
         '(head) => getComputedStyle(head).opacity') == '0.66'
     assert opening['objects'][2]['interactions'][0]['conditions'][0]['targetId'] == letter
-    menu_card(passerby, '本阶段离场')
+    drag_card(letter, 0, 100)
+    assert card_data('开端', letter)['position'] == root_positions[0]
+    card(letter).locator('.inspect-open').click()
+    expect(card(letter).locator('.investigation-script-preview')).to_contain_text('信封静静地躺在桌上。')
+    expect(lines(letter)).to_have_count(0)
+    page.get_by_role('button', name='收起全部脚本').click()
+    card(passerby).locator('.inspect-open').hover()
+    card(passerby).locator('.investigation-card-quick [data-act="inspect-leave"]').click()
     expect(card(passerby)).to_have_count(0)
 
     continuation = new_investigation('稍后', opening['id'])
@@ -141,6 +172,17 @@ with sync_playwright() as playwright:
     expect(lines('letter').first).to_have_value('原来信封是蓝色的。')
     open_stage(after, opening['id'])
     expect(lines(letter).first).to_have_value('现在把信封收回口袋。')
+    page.get_by_role('button', name='收起全部脚本').click()
+    before_layout = export_markdown(scoped=True)
+    drag_card(letter, 448, 0, blocked=True)
+    assert card_data('开端', letter)['position'] == root_positions[0]
+    drag_card(letter, 8, 100, blocked=False)
+    assert card_data('开端', letter)['position'] == {'x': 0, 'y': 100}
+    assert export_markdown(scoped=True) == before_layout
+    page.keyboard.press('Control+z')
+    assert card_data('开端', letter)['position'] == root_positions[0]
+    page.keyboard.press('Control+Shift+z')
+    assert card_data('开端', letter)['position'] == {'x': 0, 'y': 100}
     # Playing from the earlier phase preserves flags and attempts when opening the next phase.
     page.get_by_role('button', name='演练', exact=True).click()
     picker = page.locator('#investigation-rehearsal-stage')
@@ -183,10 +225,20 @@ with sync_playwright() as playwright:
     saved = snapshot()
     assert saved['version'] == 7
     page.close()
-    page = open_editor()
+    # A v7 position override on an otherwise inherited card stays pale and locked.
+    persisted_opening = next(stage for chapter in saved['chapters'] for stage in chapter['stages'] if stage['id'] == opening['id'])
+    persisted_barista = next(item for item in persisted_opening['objects'] if item['id'] == barista)
+    persisted_barista['position'] = {'x': 499, 'y': 106}
+    persisted_barista['world']['fields'] = ['position']
+    page = open_editor(touch=True)
     load(saved)
     open_stage(after, opening['id'])
     expect(card(passerby)).to_have_count(0)
-    assert stage_data('开端')['objects'][0]['rows'][0]['text'] == '现在把信封收回口袋。'
+    assert card_data('开端', letter)['rows'][0]['text'] == '现在把信封收回口袋。'
+    expect(card(barista)).to_have_class(re.compile(r'\bis-carried\b'))
+    assert card_data('开端', barista)['position'] == {'x': 448, 'y': 100}
+    card(barista).locator('.investigation-card-quick [data-act="inspect-modify"]').tap()
+    expect(card(barista).locator('.investigation-writing')).to_be_visible()
+    expect(card(barista)).to_contain_text('延续')
     assert not errors, errors
-    print(f'PASS: continuous world, local overrides, visit history, full export {len(full.encode())} B, scoped export {len(single.encode())} B')
+    print(f'PASS: inherited preview, grid snapping, collision, local overrides, visit history, full export {len(full.encode())} B, scoped export {len(single.encode())} B')

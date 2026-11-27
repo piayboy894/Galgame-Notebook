@@ -1,7 +1,9 @@
-import { investigationIdentity, investigationIndex } from "./investigation-inheritance.js";
+import { investigationIdentity, investigationIndex, matchesInheritedInvestigationScript } from "./investigation-inheritance.js";
+import { alignInvestigationPositions } from "./investigation-layout.js";
 import { clone, uid } from "./primitives.js";
 
-const placementFields = ["locationId", "notes", "position"];
+const worldFields = ["locationId", "notes"];
+const hasOwnPosition = (item) => item.world?.fields?.includes("position");
 const worldKey = (item) => item.world?.key || item.id;
 
 export const isInvestigationPresent = (item) =>
@@ -10,6 +12,19 @@ export const isInvestigationPresent = (item) =>
 
 export const presentInvestigationItems = (stage) =>
   (stage?.objects || []).filter(isInvestigationPresent);
+
+export function hasInvestigationOverride(item, index) {
+  const world = item.world;
+  return Boolean(world?.from && (world.fields?.some((field) => worldFields.includes(field)) ||
+    world.resetVisits || world.presence === "present" || item.inheritance?.sourceId !== world.from ||
+    !matchesInheritedInvestigationScript(index, item)));
+}
+
+function alignStage(stage) {
+  const cards = presentInvestigationItems(stage);
+  const followsSource = (item) => Boolean(item.world?.from && !item.world.unavailable && !hasOwnPosition(item));
+  alignInvestigationPositions([...cards.filter(followsSource), ...cards.filter((item) => !followsSource(item))]);
+}
 
 export function investigationWorldChain(index, stage) {
   const chain = [];
@@ -88,6 +103,7 @@ export function refreshInvestigationWorld(project, previous, matchNamesFor = nul
     const source = index.stages.get(stage.worldSourceId)?.stage;
     if (!canContinueInvestigationWorld(index, stage, source)) {
       if (stage.worldSourceId || stage.objects.some((item) => item.world?.from)) detachWorld(stage);
+      alignStage(stage);
       return;
     }
     update(source);
@@ -109,27 +125,26 @@ export function refreshInvestigationWorld(project, previous, matchNamesFor = nul
       const attaching = world.from !== card.id;
       if (attaching) Object.assign(item, investigationIdentity(card), { poolId: card.poolId });
       const fields = new Set(world.fields);
-      for (const field of placementFields) {
+      for (const field of worldFields) {
         const value = JSON.stringify(item[field]);
         if ((attaching && existing && !world.from && value !== JSON.stringify(card[field])) ||
             (prior && value !== JSON.stringify(prior[field]))) fields.add(field);
         if (!fields.has(field) && card[field] !== undefined) item[field] = clone(card[field]);
       }
+      // Preserve layouts saved by v7. Only an explicit move or an existing placement
+      // pins the coordinates, so reconciling grid collisions never changes the story.
+      if (attaching && existing && !world.from && item.position) fields.add("position");
+      if (!fields.has("position") || !item.position) item.position = { ...card.position };
       if (fields.size) world.fields = [...fields];
-      if (prior && ["rows", "interactions", "fallbackEnabled", "outcomes"].some((field) =>
-        JSON.stringify(item[field]) !== JSON.stringify(prior[field]))) world.scriptEdited = true;
       world.key = worldKey(card);
       world.from = card.id;
       delete world.unavailable;
-      if (attaching && (!item.inheritance || item.inheritance.sourceId === prior?.world?.from)) {
+      if (attaching && (!item.inheritance || item.inheritance.sourceId === prior?.world?.from))
         pendingScripts.set(item.id, { sourceId: card.id, keepChanges: existing });
-        if (existing && !prior?.world?.from &&
-          (item.rows.length || item.interactions.length || item.outcomes.length || !item.fallbackEnabled))
-          world.scriptEdited = true;
-      }
     }
     for (const item of stage.objects)
       if (item.world?.from && !claimed.has(item.id)) item.world.unavailable = true;
+    alignStage(stage);
   }
   for (const { stage } of index.stages.values()) update(stage);
   return pendingScripts;

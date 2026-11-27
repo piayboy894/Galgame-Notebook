@@ -1,4 +1,8 @@
-import { presentInvestigationItems } from "../domain/investigation-world.js";
+import { investigationIndex } from "../domain/investigation-inheritance.js";
+import {
+  freeInvestigationPosition, investigationCellKey, snapInvestigationPosition,
+} from "../domain/investigation-layout.js";
+import { hasInvestigationOverride, presentInvestigationItems } from "../domain/investigation-world.js";
 import {
   INVESTIGATION_CARD,
   isInvestigationPerson,
@@ -20,7 +24,7 @@ import {
 import { mutate } from "./session.js";
 import { syncRowSelection } from "./row-operations.js";
 
-const { width, height, gap } = INVESTIGATION_CARD;
+const { width, height } = INVESTIGATION_CARD;
 
 export function investigationToolbar(stage, navigation = "") {
   return `<div class="investigation-toolbar" role="group" aria-label="调查工具">
@@ -42,7 +46,20 @@ export function investigationToolbar(stage, navigation = "") {
   </div>`;
 }
 
+function investigationWorldLabel(item, edited) {
+  return item.world?.from ? (edited ? " · 本阶段改动" : " · 延续") : "";
+}
+
+export function syncInvestigationCardState(item) {
+  const card = $(`[data-investigation-card="${item.id}"]`);
+  if (!card) return;
+  const edited = hasInvestigationOverride(item, investigationIndex(state.project));
+  card.classList.toggle("is-carried", !edited);
+  $(".investigation-world-label", card).textContent = investigationWorldLabel(item, edited);
+}
+
 export function investigationCanvas(stage, active, renderScript, toolbar) {
+  const index = investigationIndex(state.project);
   const cards = presentInvestigationItems(stage)
     .map((item) => {
       const person = isInvestigationPerson(item);
@@ -54,26 +71,34 @@ export function investigationCanvas(stage, active, renderScript, toolbar) {
         .filter((row) => row.type !== "group").length;
       const expanded = state.expandedInvestigationItems.has(item.id);
       const carried = !!item.world?.from;
-      const edited = carried && (item.world.fields?.length || item.world.resetVisits ||
-        item.world.presence === "present" || item.world.scriptEdited ||
-        item.inheritance?.sourceId !== item.world.from);
-      return `<article class="investigation-card ${person ? "is-character" : ""} ${carried && !edited ? "is-carried" : ""} ${item.id === active?.id ? "is-selected" : ""} ${state.selectedInvestigationCardIds.has(item.id) ? "is-card-picked" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
+      const edited = hasInvestigationOverride(item, index);
+      const locked = carried && !edited;
+      const preview = locked && state.previewInvestigationItems.has(item.id);
+      const id = `data-id="${attr(item.id)}"`;
+      const fold = ib(expanded ? "up" : "down", "inspect-fold", expanded ? "收起脚本" : "展开脚本", `${id} aria-expanded="${expanded}"`);
+      const more = ib("dots", "inspect-menu", type + "操作", id);
+      return `<article class="investigation-card ${person ? "is-character" : ""} ${locked ? "is-carried" : ""} ${item.id === active?.id ? "is-selected" : ""} ${state.selectedInvestigationCardIds.has(item.id) ? "is-card-picked" : ""}" data-investigation-card="${attr(item.id)}" style="left:${item.position.x}px;top:${item.position.y}px">
       <div class="investigation-card-head">
-        <button class="inspect-open" data-act="inspect-select" data-id="${attr(item.id)}" title="${expanded ? "定位脚本" : "展开脚本"}">
+        <button class="inspect-open" data-act="inspect-select" data-id="${attr(item.id)}" title="${expanded ? "定位脚本" : locked ? "预览继承脚本" : "展开脚本"}">
           <span class="investigation-card-icon">${ico(person ? "users" : "box")}</span>
-          <span class="investigation-card-name"><small>${type}${carried ? edited ? " · 本阶段改动" : " · 延续" : ""}</small><strong>${esc(name)}</strong><span class="investigation-card-meta">${location ? ico("pin") + "<span>" + esc(location) + "</span>" : count + " 行脚本"}</span></span>
+          <span class="investigation-card-name"><small>${type}<span class="investigation-world-label">${investigationWorldLabel(item, edited)}</span></small><strong>${esc(name)}</strong><span class="investigation-card-meta">${location ? ico("pin") + "<span>" + esc(location) + "</span>" : count + " 行脚本"}</span></span>
         </button>
-        ${ib(expanded ? "up" : "down", "inspect-fold", expanded ? "收起脚本" : "展开脚本", `data-id="${attr(item.id)}" aria-expanded="${expanded}"`)}
-        ${ib("dots", "inspect-menu", type + "操作", `data-id="${attr(item.id)}"`)}
+        ${carried ? `<div class="investigation-card-actions">
+          <div>${fold}${more}</div>
+          <div class="investigation-card-quick">
+            ${ib("edit", "inspect-modify", "修改本阶段脚本", id)}
+            ${ib("exit", "inspect-leave", "本阶段离场", id)}
+          </div>
+        </div>` : fold + more}
       </div>
-      ${expanded ? renderScript(stage, item) : ""}
+      ${expanded ? renderScript(stage, item, preview) : ""}
     </article>`;
     })
     .join("");
   return `<section class="investigation-canvas" aria-label="调查画布">
     ${toolbar}
     <div class="investigation-viewport" data-investigation-stage="${attr(stage.id)}" aria-label="调查画布背景" tabindex="0">
-      <div class="investigation-world" style="--card-width:${width}px;--card-height:${height}px">${cards}</div>
+      <div class="investigation-world" style="--card-width:${width}px;--card-height:${height}px">${cards}<div class="investigation-drop-cell" hidden aria-hidden="true"></div></div>
       ${cards ? "" : '<p class="investigation-empty">新建一张物品或人物卡片，开始编排调查。</p>'}
       <div class="investigation-selection-box" hidden aria-hidden="true"></div>
     </div>
@@ -117,20 +142,8 @@ export function suggestInvestigationPosition(stage, origin = null, offsets = [{ 
           y: viewport.clientHeight / 2,
         })
       : { x: 0, y: 0 });
-  const occupied = presentInvestigationItems(stage);
-  for (let i = 0; ; i++) {
-    const position = {
-      x: start.x + (i % 3) * (width + gap),
-      y: start.y + Math.floor(i / 3) * (height + gap),
-    };
-    if (
-      !occupied.some(({ position: saved }) => offsets.some((offset) =>
-        Math.abs(saved.x - position.x - offset.x) < width + gap / 2 &&
-        Math.abs(saved.y - position.y - offset.y) < height + gap / 2,
-      ))
-    )
-      return position;
-  }
+  const occupied = new Set(presentInvestigationItems(stage).map((item) => investigationCellKey(item.position)));
+  return freeInvestigationPosition(start, occupied, offsets);
 }
 
 export function revealInvestigationPosition(stage, position, positions = [position]) {
@@ -181,6 +194,7 @@ export function revealInvestigationElement(element) {
 export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMenu) {
   const viewport = $(".investigation-viewport", root);
   const world = $(".investigation-world", viewport);
+  const dropCell = $(".investigation-drop-cell", world);
   const selectionBox = $(".investigation-selection-box", viewport);
   const zoomLabel = $('[data-investigation-zoom="reset"]', root);
   const items = new Map(presentInvestigationItems(stage).map((item) => [item.id, item]));
@@ -209,7 +223,7 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
         right = -Infinity,
         top = Infinity,
         bottom = -Infinity;
-      for (const card of world.children) {
+      for (const card of $$("[data-investigation-card]", world)) {
         const { x, y } = items.get(card.dataset.investigationCard).position;
         const editor = $(".investigation-writing", card);
         left = Math.min(left, x);
@@ -428,20 +442,24 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
     if (!editing) (button || viewport).setPointerCapture(event.pointerId);
     if (pointers.size === 1) {
       const hit = event.target.closest("[data-investigation-card]");
-      const card = event.button === 0 && !editing ? hit : null;
+      const locked = event.button === 0 && hit?.classList.contains("is-carried");
+      const card = event.button === 0 && !editing && !locked ? hit : null;
       const item = card && items.get(card.dataset.investigationCard);
       gesture = {
         point,
         origin: item?.position || { x: camera.x, y: camera.y },
         card,
         item,
+        occupied: item && new Set([...items.values()].filter((entry) => entry !== item)
+          .map((entry) => investigationCellKey(entry.position))),
+        locked,
         blank: !hit,
         moved: false,
         editing,
       };
     } else if (pointers.size === 2) {
       if (gesture.card) {
-        setCardPosition(gesture.card, gesture.origin);
+        dropCell.hidden = true;
         gesture.card.classList.remove("is-dragging");
       }
       const [a, b] = pointers.values();
@@ -476,13 +494,18 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
     gesture.moved = true;
     suppressClick = true;
     lastTap = null;
+    if (gesture.locked) return;
     if (gesture.item) {
       gesture.card.classList.add("is-dragging");
-      gesture.position = {
-        x: Math.round(gesture.origin.x + dx / camera.scale),
-        y: Math.round(gesture.origin.y + dy / camera.scale),
-      };
-      setCardPosition(gesture.card, gesture.position);
+      const position = snapInvestigationPosition({
+        x: gesture.origin.x + dx / camera.scale,
+        y: gesture.origin.y + dy / camera.scale,
+      });
+      const blocked = gesture.occupied.has(investigationCellKey(position));
+      gesture.position = blocked ? null : position;
+      setCardPosition(dropCell, position);
+      dropCell.classList.toggle("is-blocked", blocked);
+      dropCell.hidden = false;
     } else {
       viewport.classList.add("is-panning");
       camera.x = gesture.origin.x + dx;
@@ -505,6 +528,7 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
     }
     viewport.classList.remove("is-panning");
     if (gesture.card) {
+      dropCell.hidden = true;
       gesture.card.classList.remove("is-dragging");
       const position = gesture.position;
       if (
@@ -512,8 +536,13 @@ export function setupInvestigationCanvas(root, stage, openAddMenu, openContextMe
         position &&
         (position.x !== gesture.origin.x || position.y !== gesture.origin.y)
       ) {
-        mutate(() => (gesture.item.position = position), false);
-      } else setCardPosition(gesture.card, gesture.origin);
+        mutate(() => {
+          gesture.item.position = position;
+          const info = gesture.item.world;
+          if (info?.from && !info.fields?.includes("position")) (info.fields ||= []).push("position");
+        }, false);
+        setCardPosition(gesture.card, gesture.item.position);
+      }
     }
     if (
       gesture.blank &&

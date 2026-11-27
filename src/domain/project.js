@@ -355,7 +355,6 @@ export function normalizeProject(raw) {
               ...(ref(o.world.key) ? { key: ref(o.world.key) } : {}),
               ...(ref(o.world.from) ? { from: ref(o.world.from) } : {}),
               ...(["away", "present"].includes(o.world.presence) ? { presence: o.world.presence } : {}),
-              ...(o.world.scriptEdited === true ? { scriptEdited: true } : {}),
               ...(o.world.resetVisits === true ? { resetVisits: true } : {}),
               ...(o.world.unavailable === true ? { unavailable: true } : {}),
               ...(Array.isArray(o.world.fields) ? { fields: [...new Set(o.world.fields.filter((field) =>

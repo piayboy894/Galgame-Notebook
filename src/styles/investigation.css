@@ -182,8 +182,20 @@
     0 4px 12px #31584919;
 }
 .investigation-card.is-dragging > .investigation-card-head {
+  opacity: 0.5;
+}
+.investigation-drop-cell {
+  position: absolute;
   z-index: 2;
-  box-shadow: 0 7px 16px #31584932;
+  width: var(--card-width);
+  height: var(--card-height);
+  border: 2px dashed #598475;
+  border-radius: 12px;
+  background: #77a69526;
+}
+.investigation-drop-cell.is-blocked {
+  border-color: #a65b51;
+  background: #b9766c24;
 }
 .investigation-card .inspect-open {
   flex: 1;
@@ -197,6 +209,44 @@
   color: #253832;
   text-align: left;
   cursor: grab;
+}
+.investigation-card.is-carried .inspect-open {
+  cursor: pointer;
+}
+.investigation-card-head:has(.investigation-card-actions) .inspect-open {
+  gap: 6px;
+  padding-left: 8px;
+}
+.investigation-card-head:has(.investigation-card-actions) .investigation-card-name small {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.investigation-card-actions {
+  flex: none;
+  display: grid;
+  align-content: center;
+  width: 61px;
+}
+.investigation-card-actions > div {
+  display: flex;
+  justify-content: flex-end;
+}
+.investigation-card-actions .icon-btn {
+  padding: 0;
+  width: 29px;
+  height: 30px;
+  min-width: 29px;
+  color: #526b61;
+}
+.investigation-card-quick [data-act="inspect-leave"]:is(:hover, :focus-visible) {
+  color: #984b41;
+  background: #f8eae8;
+}
+@media (hover: hover) {
+  .investigation-card-head:not(:hover, :focus-within) .investigation-card-quick {
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 .investigation-card-icon {
   flex: none;
@@ -532,4 +582,8 @@
   margin-block: 8px;
   max-height: 25vh;
   overflow: auto;
+}
+
+.investigation-script-preview {
+  padding: 8px 24px 16px;
 }

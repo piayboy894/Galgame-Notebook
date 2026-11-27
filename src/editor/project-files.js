@@ -487,6 +487,7 @@ export function adopt(
   state.collapsedGroupIds.clear();
   state.investigationCameras.clear();
   state.expandedInvestigationItems.clear();
+  state.previewInvestigationItems.clear();
   state.investigationScriptsByItem.clear();
   state.activeInspectObjectId = null;
   state.selectedInvestigationCardIds.clear();

@@ -55,6 +55,7 @@ import {
 import {
   backup,
   edit,
+  expandInvestigationEditor,
   go,
   mutate,
   reconcileSimulation,
@@ -1340,7 +1341,7 @@ export function searchDialog() {
                     const candidate = findRow(script.rows, r.rowId);
                     if (!candidate) continue;
                     selectInvestigationItem(item.id, script === item ? null : script.id);
-                    state.expandedInvestigationItems.add(item.id);
+                    expandInvestigationEditor(item.id);
                     revealInvestigationPosition(stage, item.position);
                     location = candidate;
                     break;
@@ -1536,7 +1537,7 @@ export function helpDialog() {
   modal(
     "使用说明",
     `<div class="help"><h3>项目和文件</h3><p>${isAndroid ? "项目保存在应用私有目录；系统自动回收进程后可恢复最近草稿。卸载会删除本机数据，请先存到云端或导出备份。保存写入本机项目库；另存会创建新副本；导入、导出通过系统文件选择器选择位置。" : "项目保存在系统「文档/叙线/剧本项目」。Ctrl+S 保存当前源文件；另存会创建并切换到新副本。「打开源文件所在文件夹」定位当前 JSON；「下载源文件副本」可自行选择导出位置。"}</p><h3>路线图触屏操作</h3><p>滑动屏幕浏览路线图。短按章节打开，长按约半秒出现拖动提示后再移动，松手放置；鼠标仍可直接拖动。移动前滑动、多指操作或取消不会改变章节位置。</p><h3>章节与脚本</h3><p>路线 → 章节 → 剧情阶段 / 调查阶段。对白可编辑角色、表情和动作；描述用于记录画面、音效和转场。Enter 换行，Alt+Enter 新增对白。</p>
-    <h3>调查画布</h3><p>双击空白处新建物品或人物。拖动空白处平移，滚轮或双指缩放，拖动卡片标题调整位置。点击卡片展开脚本，用卡片箭头收起，点击「演练」试跑调查与交互条件。</p>
+    <h3>调查画布</h3><p>双击空白处新建物品或人物。拖动空白处平移，滚轮或双指缩放，拖动本阶段新增或改过的卡片可吸附到空格。点淡色卡片可预览，卡片上的「修改」和「离场」支持鼠标悬停、键盘和触屏。点击「演练」试跑调查与交互条件。</p>
     <p>按住鼠标右键拖动，框选物品或人物。按 Ctrl/⌘+C 复制，在同一项目的任一调查阶段按 Ctrl/⌘+V 粘贴。也可以用卡片菜单复制，在目标画布右键或打开「新建卡片」菜单粘贴。批量粘贴保留相对位置、脚本和交互。一起复制的卡片之间会自动更新条件引用，引用其他阶段卡片的条件需要在目标阶段重设。</p>
     <p>新调查默认延续同路线的前一个调查。淡色卡片会在场，右键可让单张或所选卡片离场。「世界状态」可更换来源和恢复卡片。演练中切换到后续阶段时沿用次数与条件。</p>
     <p>打开「卡池」可以把同一个物品或人物放到不同调查阶段，并设置该阶段的默认对白来源。右键框选后选择「批量继承对白」，可为所选卡片指定来源。直接编辑某句只改当前阶段，之后仍可通过行菜单恢复来源，或在卡片菜单解除继承并保留当前对白。</p>

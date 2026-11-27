@@ -246,7 +246,7 @@ export function inspectObjectDialog(
       temporary ? card.id : linked?.id || "",
     ]).filter(([from, to]) => from && from !== to));
     if (!id) {
-      item.position = position || suggestInvestigationPosition(stage);
+      item.position = suggestInvestigationPosition(stage, position);
       if (presentInvestigationItems(stage).length)
         revealInvestigationPosition(stage, item.position);
       else state.investigationCameras.delete(stage.id);
@@ -293,6 +293,11 @@ export function inspectObjectMenu(id, anchor, position = null) {
   const selected = state.selectedInvestigationCardIds;
   const ids = selected.has(id) ? selected : new Set([id]);
   menu(anchor, [
+    ...(item.world?.from ? [{
+      label: "修改本阶段脚本",
+      icon: "edit",
+      click: () => $(`[data-investigation-card="${id}"] .investigation-card-quick [data-act="inspect-modify"]`)?.click(),
+    }] : []),
     {
       label: "编辑" + type,
       icon: "edit",

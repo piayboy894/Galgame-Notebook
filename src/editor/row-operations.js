@@ -24,6 +24,7 @@ import { flattenRows, regenRowIds, line } from "../domain/project.js";
 import {
   currentInvestigationItem,
   currentRows,
+  expandInvestigationEditor,
   go,
   mutate,
   rowLocation,
@@ -231,7 +232,7 @@ export function pasteRows(bundle, ids = state.selectedRowIds) {
     (insideOption && item.type === "branch") || (insideGroup && item.type === "group")
   ))) return toast("当前位置不支持嵌套选项或场景组", true);
   const item = currentInvestigationItem();
-  if (item) state.expandedInvestigationItems.add(item.id);
+  if (item) expandInvestigationEditor(item.id);
   const locationRefs = new Map();
   mutate(() => {
     remapCopiedEncyclopediaLinks(state.project, flattenRows(prepared), bundle.encyclopedia, bundle.projectId);
@@ -804,7 +805,7 @@ export function addRow(type = "dialogue", afterId = null) {
   const rows = currentRows();
   if (!rows) return toast("请先新建调查卡片");
   const item = currentInvestigationItem();
-  if (item) state.expandedInvestigationItems.add(item.id);
+  if (item) expandInvestigationEditor(item.id);
   const row = line(type),
     last = rows.at(-1);
   if (type === "dialogue" && last?.type === "dialogue") {
@@ -1097,7 +1098,7 @@ export function bulkDialog() {
     if (!rows) return toast("请先新建调查卡片");
     if (!list.length) return toast("请粘贴对白");
     const item = currentInvestigationItem();
-    if (item) state.expandedInvestigationItems.add(item.id);
+    if (item) expandInvestigationEditor(item.id);
     mutate(() => {
       for (const str of list) {
         const m = str.match(/^\s*([^:：\n]{1,40})[:：]\s*(.*)$/),

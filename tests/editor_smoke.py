@@ -204,6 +204,24 @@ with sync_playwright() as p:
     long_tabs.locator('[data-id="stage_a1_1"]').click()
     expect(many_stages.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_1')
 
+    # Use the same stage actions from a tab without selecting the target first.
+    target = many_stages.locator('.stage-tab[data-id="stage_a1_investigation"]')
+    target.click(button='right')
+    actions = many_stages.get_by_role('menu')
+    for label in ('编辑阶段', '上移', '下移', '复制阶段', '删除阶段'):
+        expect(actions.get_by_role('menuitem', name=label, exact=True)).to_be_visible()
+    expect(many_stages.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_1')
+    actions.get_by_role('menuitem', name='复制阶段', exact=True).click()
+    copy = many_stages.locator('.stage-tab[title="房间调查 · 副本"]')
+    expect(copy).to_have_count(1)
+    copy.click(button='right')
+    actions.get_by_role('menuitem', name='删除阶段', exact=True).click()
+    expect(many_stages.get_by_role('dialog', name='删除阶段')).to_contain_text('房间调查 · 副本')
+    many_stages.locator('#confirm-yes').click()
+    expect(copy).to_have_count(0)
+    expect(target).to_have_count(1)
+    expect(many_stages.locator('.stage-tab.active')).to_have_attribute('data-id', 'stage_a1_1')
+
     assert failures == [], failures
     print('PASS: script editing, investigation canvas, locations, repeated and conditional dialogue, rehearsal, and JSON round trip')
     browser.close()

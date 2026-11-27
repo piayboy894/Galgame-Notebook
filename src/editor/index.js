@@ -540,6 +540,12 @@ document.addEventListener("contextmenu", (event) => {
     libraryVisible()
   )
     return;
+  const stageTab = event.target.closest(".stage-tab[data-id]");
+  if (stageTab) {
+    event.preventDefault();
+    stageMenu(stageTab.dataset.id, stageTab);
+    return;
+  }
   const selection = selectedDialogueText(event.target);
   if (selection) {
     dialogueEncyclopediaMenu(event, selection);

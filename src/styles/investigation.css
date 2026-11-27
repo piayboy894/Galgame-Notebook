@@ -497,8 +497,15 @@
       [data-act="inspect-world"],
       [data-investigation-zoom="in"],
       [data-investigation-zoom="out"]
-    ),
-  .phone-ui .investigation-stage > [data-act="open-chapter"] {
+    ) {
+    display: none;
+  }
+}
+@media (width < 600px) {
+  .android .app:has(.investigation-canvas) > .view {
+    margin-left: 0;
+  }
+  .android .investigation-stage > [data-act="open-chapter"] {
     display: none;
   }
 }
